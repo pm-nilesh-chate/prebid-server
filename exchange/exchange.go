@@ -164,6 +164,8 @@ type AuctionRequest struct {
 	FirstPartyData map[openrtb_ext.BidderName]*firstpartydata.ResolvedFirstPartyData
 	// map of imp id to stored response
 	StoredAuctionResponses map[string]json.RawMessage
+	// map of imp id to bidder to stored response
+	StoredBidResponses map[string]map[string]json.RawMessage
 }
 
 // BidderRequest holds the bidder specific request and all other
