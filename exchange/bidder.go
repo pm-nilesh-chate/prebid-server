@@ -131,6 +131,8 @@ type bidderAdapterConfig struct {
 
 func (bidder *bidderAdapter) requestBid(ctx context.Context, request *openrtb2.BidRequest, name openrtb_ext.BidderName, bidAdjustment float64, conversions currency.Conversions, reqInfo *adapters.ExtraRequestInfo, accountDebugAllowed, headerDebugAllowed bool) (*pbsOrtbSeatBid, []error) {
 
+	//!!!!remove imps with stored bid resp for this bidder. Skip if all imps have stored bid resp.
+	//make sure it works properly for mixed type of request
 	reqData, errs := bidder.Bidder.MakeRequests(request, reqInfo)
 
 	if len(reqData) == 0 {
@@ -166,6 +168,17 @@ func (bidder *bidderAdapter) requestBid(ctx context.Context, request *openrtb2.B
 			}(oneReqData) // Method arg avoids a race condition on oneReqData
 		}
 	}
+	//!!!if stored bid responses are present - replace impIds and add them as is to responseChannel <- stored responses
+
+	//return &httpCallInfo{
+	//		request: req,
+	//		response: &adapters.ResponseData{
+	//			StatusCode: 200,
+	//			Body:       respBody,
+	//			Headers:    httpResp.Header,
+	//		},
+	//		err: err,
+	//	}
 
 	defaultCurrency := "USD"
 	seatBid := &pbsOrtbSeatBid{
