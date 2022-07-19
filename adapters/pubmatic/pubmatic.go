@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/buger/jsonparser"
 	"github.com/golang/glog"
 	"github.com/mxmCherry/openrtb/v15/openrtb2"
 	"github.com/prebid/prebid-server/adapters"
@@ -401,12 +400,6 @@ func (a *PubmaticAdapter) MakeBids(internalRequest *openrtb2.BidRequest, externa
 					impVideo.Duration = *bidExt.VideoCreativeInfo.Duration
 				}
 				bidType = getBidType(bidExt)
-			}
-
-			if bidType == openrtb_ext.BidTypeNative {
-				if value, _, _, err := jsonparser.Get([]byte(bid.AdM), string(openrtb_ext.BidTypeNative)); err == nil {
-					bid.AdM = string(value)
-				}
 			}
 
 			bidResponse.Bids = append(bidResponse.Bids, &adapters.TypedBid{
