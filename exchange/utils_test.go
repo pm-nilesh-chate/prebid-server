@@ -3121,3 +3121,65 @@ func TestBuildExtData(t *testing.T) {
 		assert.JSONEq(t, test.expectedRes, string(actualRes), "Incorrect result data")
 	}
 }
+
+func Test_setExtAlternateBidderCodes(t *testing.T) {
+	type args struct {
+		requestExt *openrtb_ext.ExtRequest
+		cfgABC     *config.AlternateBidderCodes
+	}
+	tests := []struct {
+		name                     string
+		args                     args
+		wantAlternateBidderCodes *openrtb_ext.ExtAlternateBidderCodes
+	}{
+		{
+			name:                     "AlternateBidderCodes nil/absent in both config and request : No change",
+			args:                     args{},
+			wantAlternateBidderCodes: nil,
+		},
+		{
+			name: "AlternateBidderCodes present config but requestExt nil : requestExt nil, do nothing",
+			args: args{
+				cfgABC: &config.AlternateBidderCodes{Enabled: true, Bidders: map[string]openrtb_ext.ExtAdapterAlternateBidderCodes{"pubmatic": {Enabled: true, AllowedBidderCodes: []string{"groupm"}}}},
+			},
+			wantAlternateBidderCodes: nil,
+		},
+		{
+			name: "AlternateBidderCodes present only in config : fill request with data from config",
+			args: args{
+				requestExt: &openrtb_ext.ExtRequest{},
+				cfgABC:     &config.AlternateBidderCodes{Enabled: true, Bidders: map[string]openrtb_ext.ExtAdapterAlternateBidderCodes{"pubmatic": {Enabled: true, AllowedBidderCodes: []string{"groupm"}}}},
+			},
+			wantAlternateBidderCodes: &openrtb_ext.ExtAlternateBidderCodes{Enabled: true, Bidders: map[string]openrtb_ext.ExtAdapterAlternateBidderCodes{"pubmatic": {Enabled: true, AllowedBidderCodes: []string{"groupm"}}}},
+		},
+		{
+			name: "AlternateBidderCodes present only in request : do nothing",
+			args: args{
+				requestExt: &openrtb_ext.ExtRequest{
+					Prebid: openrtb_ext.ExtRequestPrebid{AlternateBidderCodes: &openrtb_ext.ExtAlternateBidderCodes{Enabled: true, Bidders: map[string]openrtb_ext.ExtAdapterAlternateBidderCodes{"pubmatic": {Enabled: true, AllowedBidderCodes: []string{"appnexus"}}}}},
+				},
+			},
+			wantAlternateBidderCodes: &openrtb_ext.ExtAlternateBidderCodes{Enabled: true, Bidders: map[string]openrtb_ext.ExtAdapterAlternateBidderCodes{"pubmatic": {Enabled: true, AllowedBidderCodes: []string{"appnexus"}}}},
+		},
+		{
+			name: "AlternateBidderCodes present in both config and request : do nothing, request data has priority",
+			args: args{
+				requestExt: &openrtb_ext.ExtRequest{
+					Prebid: openrtb_ext.ExtRequestPrebid{AlternateBidderCodes: &openrtb_ext.ExtAlternateBidderCodes{Enabled: true, Bidders: map[string]openrtb_ext.ExtAdapterAlternateBidderCodes{"pubmatic": {Enabled: true, AllowedBidderCodes: []string{"appnexus"}}}}},
+				},
+				cfgABC: &config.AlternateBidderCodes{Enabled: true, Bidders: map[string]openrtb_ext.ExtAdapterAlternateBidderCodes{"pubmatic": {Enabled: true, AllowedBidderCodes: []string{"groupm"}}}},
+			},
+			wantAlternateBidderCodes: &openrtb_ext.ExtAlternateBidderCodes{Enabled: true, Bidders: map[string]openrtb_ext.ExtAdapterAlternateBidderCodes{"pubmatic": {Enabled: true, AllowedBidderCodes: []string{"appnexus"}}}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setExtAlternateBidderCodes(tt.args.requestExt, tt.args.cfgABC)
+			if tt.args.requestExt != nil {
+				assert.Equal(t, tt.wantAlternateBidderCodes, tt.args.requestExt.Prebid.AlternateBidderCodes)
+			} else {
+				assert.Nil(t, tt.args.requestExt)
+			}
+		})
+	}
+}

@@ -248,7 +248,7 @@ func getAuctionBidderRequests(auctionRequest AuctionRequest,
 			requestExt.Prebid.BidderParams = params
 		}
 
-		reqExt, err := getExtJson(req.BidRequest, requestExt)
+		reqExt, err := getBidderRequestExtJson(req.BidRequest, requestExt, bidder)
 		if err != nil {
 			return nil, []error{err}
 		}
@@ -297,13 +297,26 @@ func getBidderParamsForBidder(bidderParamsInReqExt map[string]map[string]json.Ra
 	return params, nil
 }
 
-func getExtJson(req *openrtb2.BidRequest, unpackedExt *openrtb_ext.ExtRequest) (json.RawMessage, error) {
+func getBidderRequestExtJson(req *openrtb2.BidRequest, unpackedExt *openrtb_ext.ExtRequest, bidder string) (json.RawMessage, error) {
 	if len(req.Ext) == 0 || unpackedExt == nil {
 		return json.RawMessage(``), nil
 	}
 
 	extCopy := *unpackedExt
 	extCopy.Prebid.SChains = nil
+
+	//filter request.ext.prebid.alternatebiddercode to have data only of the current bidder
+	if extCopy.Prebid.AlternateBidderCodes != nil && len(extCopy.Prebid.AlternateBidderCodes.Bidders) != 0 {
+		if bidderCodes, ok := extCopy.Prebid.AlternateBidderCodes.Bidders[bidder]; ok {
+			extCopy.Prebid.AlternateBidderCodes = &openrtb_ext.ExtAlternateBidderCodes{
+				Enabled: extCopy.Prebid.AlternateBidderCodes.Enabled,
+				Bidders: map[string]openrtb_ext.ExtAdapterAlternateBidderCodes{
+					bidder: bidderCodes,
+				},
+			}
+		}
+	}
+
 	return json.Marshal(extCopy)
 }
 
@@ -812,4 +825,16 @@ func WrapJSONInData(data []byte) []byte {
 	res = append(res, data...)
 	res = append(res, []byte(`}`)...)
 	return res
+}
+
+// getExtAlternateBidderCodes map config.account.alternatebiddercodes to ext.prebid.alternatebiddercodes
+func setExtAlternateBidderCodes(requestExt *openrtb_ext.ExtRequest, cfgABC *config.AlternateBidderCodes) {
+	if requestExt == nil || requestExt.Prebid.AlternateBidderCodes != nil {
+		return
+	}
+
+	if cfgABC != nil {
+		alternateBidderCodes := openrtb_ext.ExtAlternateBidderCodes(*cfgABC)
+		requestExt.Prebid.AlternateBidderCodes = &alternateBidderCodes
+	}
 }
