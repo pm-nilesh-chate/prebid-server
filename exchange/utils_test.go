@@ -3130,21 +3130,21 @@ func TestCleanOpenRTBRequestsFilterBidderRequestExt(t *testing.T) {
 		wantExt   []json.RawMessage
 		wantError bool
 	}{
-		// {
-		// 	desc:      "Nil request ext",
-		// 	inExt:     nil,
-		// 	wantExt:   []json.RawMessage{json.RawMessage(""), json.RawMessage("")},
-		// 	wantError: false,
-		// },
-		// {
-		// 	desc:  "request ext having alternatebiddercodes for only one bidder",
-		// 	inExt: json.RawMessage(`{"prebid":{"alternatebiddercodes":{"enabled":true,"bidders":{"pubmatic":{"enabled":true,"allowedbiddercodes":["groupm"]}}}}}`),
-		// 	wantExt: []json.RawMessage{
-		// 		json.RawMessage(`{"prebid":{}}`),
-		// 		json.RawMessage(`{"prebid":{"alternatebiddercodes":{"enabled":true,"bidders":{"pubmatic":{"enabled":true,"allowedbiddercodes":["groupm"]}}}}}`),
-		// 	},
-		// 	wantError: false,
-		// },
+		{
+			desc:      "Nil request ext",
+			inExt:     nil,
+			wantExt:   []json.RawMessage{json.RawMessage(""), json.RawMessage("")},
+			wantError: false,
+		},
+		{
+			desc:  "request ext having alternatebiddercodes for only one bidder",
+			inExt: json.RawMessage(`{"prebid":{"alternatebiddercodes":{"enabled":true,"bidders":{"pubmatic":{"enabled":true,"allowedbiddercodes":["groupm"]}}}}}`),
+			wantExt: []json.RawMessage{
+				json.RawMessage(`{"prebid":{}}`),
+				json.RawMessage(`{"prebid":{"alternatebiddercodes":{"enabled":true,"bidders":{"pubmatic":{"enabled":true,"allowedbiddercodes":["groupm"]}}}}}`),
+			},
+			wantError: false,
+		},
 		{
 			desc:  "request ext having alternatebiddercodes for multiple bidder",
 			inExt: json.RawMessage(`{"prebid":{"alternatebiddercodes":{"enabled":true,"bidders":{"pubmatic":{"enabled":true,"allowedbiddercodes":["groupm"]},"appnexus":{"enabled":true,"allowedbiddercodes":["ix"]}}}}}`),
