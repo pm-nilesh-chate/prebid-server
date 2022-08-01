@@ -41,7 +41,7 @@
             "includewinners": true,
             "includebidderkeys": true
           },
-          "alternatebiddercode": {
+          "alternatebiddercodes": {
             "enabled": true,
             "bidders": {
               "pubmatic": {

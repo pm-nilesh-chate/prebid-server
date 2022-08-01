@@ -304,12 +304,13 @@ func getBidderRequestExtJson(req *openrtb2.BidRequest, unpackedExt *openrtb_ext.
 
 	extCopy := *unpackedExt
 	extCopy.Prebid.SChains = nil
+	extCopy.Prebid.AlternateBidderCodes = nil
 
-	//filter request.ext.prebid.alternatebiddercode to have data only of the current bidder
-	if extCopy.Prebid.AlternateBidderCodes != nil && len(extCopy.Prebid.AlternateBidderCodes.Bidders) != 0 {
-		if bidderCodes, ok := extCopy.Prebid.AlternateBidderCodes.Bidders[bidder]; ok {
+	//fill request.ext.prebid.alternatebiddercode to have data only of the current bidder
+	if unpackedExt.Prebid.AlternateBidderCodes != nil && len(unpackedExt.Prebid.AlternateBidderCodes.Bidders) != 0 {
+		if bidderCodes, ok := unpackedExt.Prebid.AlternateBidderCodes.Bidders[bidder]; ok {
 			extCopy.Prebid.AlternateBidderCodes = &openrtb_ext.ExtAlternateBidderCodes{
-				Enabled: extCopy.Prebid.AlternateBidderCodes.Enabled,
+				Enabled: unpackedExt.Prebid.AlternateBidderCodes.Enabled,
 				Bidders: map[string]openrtb_ext.ExtAdapterAlternateBidderCodes{
 					bidder: bidderCodes,
 				},

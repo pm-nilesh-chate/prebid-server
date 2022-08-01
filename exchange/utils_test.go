@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/mxmCherry/openrtb/v16/openrtb2"
@@ -3119,6 +3120,76 @@ func TestBuildExtData(t *testing.T) {
 	for _, test := range testCases {
 		actualRes := WrapJSONInData(test.input)
 		assert.JSONEq(t, test.expectedRes, string(actualRes), "Incorrect result data")
+	}
+}
+
+func TestCleanOpenRTBRequestsFilterBidderRequestExt(t *testing.T) {
+	testCases := []struct {
+		desc      string
+		inExt     json.RawMessage
+		wantExt   []json.RawMessage
+		wantError bool
+	}{
+		// {
+		// 	desc:      "Nil request ext",
+		// 	inExt:     nil,
+		// 	wantExt:   []json.RawMessage{json.RawMessage(""), json.RawMessage("")},
+		// 	wantError: false,
+		// },
+		// {
+		// 	desc:  "request ext having alternatebiddercodes for only one bidder",
+		// 	inExt: json.RawMessage(`{"prebid":{"alternatebiddercodes":{"enabled":true,"bidders":{"pubmatic":{"enabled":true,"allowedbiddercodes":["groupm"]}}}}}`),
+		// 	wantExt: []json.RawMessage{
+		// 		json.RawMessage(`{"prebid":{}}`),
+		// 		json.RawMessage(`{"prebid":{"alternatebiddercodes":{"enabled":true,"bidders":{"pubmatic":{"enabled":true,"allowedbiddercodes":["groupm"]}}}}}`),
+		// 	},
+		// 	wantError: false,
+		// },
+		{
+			desc:  "request ext having alternatebiddercodes for multiple bidder",
+			inExt: json.RawMessage(`{"prebid":{"alternatebiddercodes":{"enabled":true,"bidders":{"pubmatic":{"enabled":true,"allowedbiddercodes":["groupm"]},"appnexus":{"enabled":true,"allowedbiddercodes":["ix"]}}}}}`),
+			wantExt: []json.RawMessage{
+				json.RawMessage(`{"prebid":{"alternatebiddercodes":{"enabled":true,"bidders":{"appnexus":{"enabled":true,"allowedbiddercodes":["ix"]}}}}}`),
+				json.RawMessage(`{"prebid":{"alternatebiddercodes":{"enabled":true,"bidders":{"pubmatic":{"enabled":true,"allowedbiddercodes":["groupm"]}}}}}`),
+			},
+			wantError: false,
+		},
+	}
+
+	for _, test := range testCases {
+		req := newBidRequestWithBidderParams(t)
+		req.Ext = nil
+		var extRequest *openrtb_ext.ExtRequest
+		if test.inExt != nil {
+			req.Ext = test.inExt
+			unmarshaledExt, err := extractBidRequestExt(req)
+			assert.NoErrorf(t, err, test.desc+":Error unmarshaling inExt")
+			extRequest = unmarshaledExt
+		}
+
+		auctionReq := AuctionRequest{
+			BidRequestWrapper: &openrtb_ext.RequestWrapper{BidRequest: req},
+			UserSyncs:         &emptyUsersync{},
+		}
+		gdprPermissionsBuilder := fakePermissionsBuilder{
+			permissions: &permissionsMock{
+				allowAllBidders: true,
+			},
+		}.Builder
+		tcf2ConfigBuilder := fakeTCF2ConfigBuilder{
+			cfg: gdpr.NewTCF2Config(config.TCF2{}, config.AccountGDPR{}),
+		}.Builder
+		bidderToSyncerKey := map[string]string{}
+		metrics := metrics.MetricsEngineMock{}
+
+		bidderRequests, _, errs := cleanOpenRTBRequests(context.Background(), auctionReq, extRequest, bidderToSyncerKey, &metrics, gdpr.SignalNo, config.Privacy{}, gdprPermissionsBuilder, tcf2ConfigBuilder, nil)
+		assert.Equal(t, test.wantError, len(errs) != 0, test.desc)
+		sort.Slice(bidderRequests, func(i, j int) bool {
+			return bidderRequests[i].BidderCoreName < bidderRequests[j].BidderCoreName
+		})
+		for i, wantBidderRequest := range test.wantExt {
+			assert.Equal(t, wantBidderRequest, bidderRequests[i].BidRequest.Ext, test.desc+" : "+string(bidderRequests[i].BidderCoreName)+"\n\t\tGotRequestExt : "+string(bidderRequests[i].BidRequest.Ext))
+		}
 	}
 }
 
