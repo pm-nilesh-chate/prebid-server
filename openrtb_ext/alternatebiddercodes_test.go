@@ -91,7 +91,7 @@ func TestAlternateBidderCodes_IsValidBidderCodae(t *testing.T) {
 			wantErr:     errors.New(`alternateBidderCodes disabled for "pubmatic", rejecting bids for "groupm"`),
 		},
 		{
-			name: "account.alternatebiddercodes and adapter config enabled but adapter config has allowedBidderCodes list empty or not defined",
+			name: "account.alternatebiddercodes and adapter config enabled but adapter config does not have allowedBidderCodes defined",
 			args: args{
 				bidderCodes: &ExtAlternateBidderCodes{
 					Enabled: true,
@@ -147,6 +147,24 @@ func TestAlternateBidderCodes_IsValidBidderCodae(t *testing.T) {
 						"pubmatic": {
 							Enabled:            true,
 							AllowedBidderCodes: []string{"xyz"},
+						},
+					},
+				},
+				bidder:          "pubmatic",
+				alternateBidder: "groupm",
+			},
+			wantIsValid: false,
+			wantErr:     errors.New(`invalid biddercode "groupm" sent by adapter "pubmatic"`),
+		},
+		{
+			name: "account.alternatebiddercodes and adapter config enabled but adapter config has allowedBidderCodes list empty",
+			args: args{
+				bidderCodes: &ExtAlternateBidderCodes{
+					Enabled: true,
+					Bidders: map[string]ExtAdapterAlternateBidderCodes{
+						"pubmatic": {
+							Enabled:            true,
+							AllowedBidderCodes: []string{},
 						},
 					},
 				},
