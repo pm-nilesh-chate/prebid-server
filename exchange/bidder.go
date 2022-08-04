@@ -52,7 +52,7 @@ type AdaptedBidder interface {
 	//
 	// Any errors will be user-facing in the API.
 	// Error messages should help publishers understand what might account for "bad" bids.
-	requestBid(ctx context.Context, bidderRequest BidderRequest, conversions currency.Conversions, reqInfo *adapters.ExtraRequestInfo, adsCertSigner adscert.Signer, bidRequestOptions bidRequestOptions, alternateBidderCodes config.AlternateBidderCodes) ([]*pbsOrtbSeatBid, []error)
+	requestBid(ctx context.Context, bidderRequest BidderRequest, conversions currency.Conversions, reqInfo *adapters.ExtraRequestInfo, adsCertSigner adscert.Signer, bidRequestOptions bidRequestOptions, alternateBidderCodes *openrtb_ext.ExtAlternateBidderCodes) ([]*pbsOrtbSeatBid, []error)
 }
 
 //bidRequestOptions holds additional options for bid request execution to maintain clean code and reasonable number of parameters
@@ -145,7 +145,7 @@ type bidderAdapterConfig struct {
 	DebugInfo          config.DebugInfo
 }
 
-func (bidder *bidderAdapter) requestBid(ctx context.Context, bidderRequest BidderRequest, conversions currency.Conversions, reqInfo *adapters.ExtraRequestInfo, adsCertSigner adscert.Signer, bidRequestOptions bidRequestOptions, alternateBidderCodes config.AlternateBidderCodes) ([]*pbsOrtbSeatBid, []error) {
+func (bidder *bidderAdapter) requestBid(ctx context.Context, bidderRequest BidderRequest, conversions currency.Conversions, reqInfo *adapters.ExtraRequestInfo, adsCertSigner adscert.Signer, bidRequestOptions bidRequestOptions, alternateBidderCodes *openrtb_ext.ExtAlternateBidderCodes) ([]*pbsOrtbSeatBid, []error) {
 
 	var reqData []*adapters.RequestData
 	var errs []error
@@ -322,7 +322,7 @@ func (bidder *bidderAdapter) requestBid(ctx context.Context, bidderRequest Bidde
 							bidderName = bidResponse.Bids[i].Seat
 						}
 
-						if valid, err := alternateBidderCodes.IsValidBidderCode(bidderRequest.BidderName.String(), bidderName.String()); !valid {
+						if valid, err := openrtb_ext.IsValidBidderCode(alternateBidderCodes, bidderRequest.BidderName.String(), bidderName.String()); !valid {
 							if err != nil {
 								err = &errortypes.Warning{
 									WarningCode: errortypes.AlternateBidderCodeWarningCode,
