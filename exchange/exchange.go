@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PubMatic-OpenWrap/prebid-server/endpoints/openrtb2/ctv/util"
 	"github.com/prebid/prebid-server/adapters"
 	"github.com/prebid/prebid-server/config"
 	"github.com/prebid/prebid-server/currency"
@@ -87,7 +88,7 @@ type seatResponseExtra struct {
 
 type bidResponseWrapper struct {
 	adapterSeatBids []*pbsOrtbSeatBid
-	adapterExtra    *seatResponseExtra
+	adapterExtra    *seatResponseExtra // responsemilli AAA
 	bidder          openrtb_ext.BidderName
 }
 
@@ -201,21 +202,36 @@ type BidderRequest struct {
 }
 
 func (e *exchange) HoldAuction(ctx context.Context, r AuctionRequest, debugLog *DebugLog) (*openrtb2.BidResponse, error) {
+	defer util.TimeTrack(time.Now(), fmt.Sprintf("Tid:<> ExchangeHoldAuction"))
+
+	startTime := time.Now()
+
 	var errs []error
 	// rebuild/resync the request in the request wrapper.
 	if err := r.BidRequestWrapper.RebuildRequest(); err != nil {
 		return nil, err
 	}
+
+	elapsedTime := time.Since(startTime)
+	util.Logf("[TIMETRACK] RebuildRequest took %s", elapsedTime)
+
 	requestExt, err := extractBidRequestExt(r.BidRequestWrapper.BidRequest)
 	if err != nil {
 		return nil, err
 	}
+
+	elapsedTime = time.Since(startTime)
+	util.Logf("[TIMETRACK] extractBidRequestExt took %s", elapsedTime)
 
 	cacheInstructions := getExtCacheInstructions(requestExt)
 	targData := getExtTargetData(requestExt, &cacheInstructions)
 	if targData != nil {
 		_, targData.cacheHost, targData.cachePath = e.cache.GetExtCacheData()
 	}
+
+	elapsedTime = time.Since(startTime)
+	util.Logf("[TIMETRACK] getExtCacheInstructions | getExtTargetData | GetExtCacheData took %s", elapsedTime)
+
 	responseDebugAllow, accountDebugAllow, debugLog := getDebugInfo(r.BidRequestWrapper.BidRequest, requestExt, r.Account.DebugAllow, debugLog)
 	if responseDebugAllow {
 		//save incoming request with stored requests (if applicable) to return in debug logs
@@ -226,6 +242,8 @@ func (e *exchange) HoldAuction(ctx context.Context, r AuctionRequest, debugLog *
 		r.ResolvedBidRequest = resolvedBidReq
 	}
 	e.me.RecordDebugRequest(responseDebugAllow || accountDebugAllow, r.PubID)
+	elapsedTime = time.Since(startTime)
+	util.Logf("[TIMETRACK] getDebugInfo | RecordDebugRequest took %s", elapsedTime)
 
 	if r.RequestType == metrics.ReqTypeORTB2Web || r.RequestType == metrics.ReqTypeORTB2App {
 		//Extract First party data for auction endpoint only
@@ -251,12 +269,18 @@ func (e *exchange) HoldAuction(ctx context.Context, r AuctionRequest, debugLog *
 				return nil, err
 			}
 		}
+
+		elapsedTime = time.Since(startTime)
+		util.Logf("[TIMETRACK] ExtractFPDForBidders | RebuildRequest | extractBidRequestExt  took %s", elapsedTime)
 	}
 
 	bidAdjustmentFactors := getExtBidAdjustmentFactors(requestExt)
 
 	// Get currency rates conversions for the auction
 	conversions := e.getAuctionCurrencyRates(requestExt.Prebid.CurrencyConversions)
+
+	elapsedTime = time.Since(startTime)
+	util.Logf("[TIMETRACK] getExtBidAdjustmentFactors | getAuctionCurrencyRates took %s", elapsedTime)
 
 	// If floors feature is enabled at server and request level, Update floors values in impression object
 	floorErrs := selectFloorsAndModifyImp(&r, e.floor, conversions, responseDebugAllow)
@@ -267,14 +291,23 @@ func (e *exchange) HoldAuction(ctx context.Context, r AuctionRequest, debugLog *
 	// Make our best guess if GDPR applies
 	gdprDefaultValue := e.parseGDPRDefaultValue(r.BidRequestWrapper.BidRequest)
 
+	elapsedTime = time.Since(startTime)
+	util.Logf("[TIMETRACK] selectFloorsAndModifyImp | recordImpMetrics | parseGDPRDefaultValue took %s", elapsedTime)
+
 	// Slice of BidRequests, each a copy of the original cleaned to only contain bidder data for the named bidder
 	bidderRequests, privacyLabels, errs := cleanOpenRTBRequests(ctx, r, requestExt, e.bidderToSyncerKey, e.me, gdprDefaultValue, e.privacyConfig, e.gdprPermsBuilder, e.tcf2ConfigBuilder, e.hostSChainNode)
+
+	elapsedTime = time.Since(startTime)
+	util.Logf("[TIMETRACK] cleanOpenRTBRequests took %s", elapsedTime)
 
 	e.me.RecordRequestPrivacy(privacyLabels)
 
 	if len(r.StoredAuctionResponses) > 0 || len(r.StoredBidResponses) > 0 {
 		e.me.RecordStoredResponse(r.PubID)
 	}
+
+	elapsedTime = time.Since(startTime)
+	util.Logf("[TIMETRACK] RecordRequestPrivacy | RecordStoredResponse took %s", elapsedTime)
 
 	// If we need to cache bids, then it will take some time to call prebid cache.
 	// We should reduce the amount of time the bidders have, to compensate.
@@ -290,6 +323,9 @@ func (e *exchange) HoldAuction(ctx context.Context, r AuctionRequest, debugLog *
 
 	if len(r.StoredAuctionResponses) > 0 {
 		adapterBids, liveAdapters, err = buildStoredAuctionResponse(r.StoredAuctionResponses)
+		elapsedTime = time.Since(startTime)
+		util.Logf("[TIMETRACK] buildStoredAuctionResponse took %s", elapsedTime)
+
 		if err != nil {
 			return nil, err
 		}
@@ -298,7 +334,13 @@ func (e *exchange) HoldAuction(ctx context.Context, r AuctionRequest, debugLog *
 	} else {
 		// List of bidders we have requests for.
 		liveAdapters = listBiddersWithRequests(bidderRequests)
+		elapsedTime = time.Since(startTime)
+		util.Logf("[TIMETRACK] listBiddersWithRequests took %s", elapsedTime)
+
 		adapterBids, adapterExtra, anyBidsReturned = e.getAllBids(auctionCtx, bidderRequests, bidAdjustmentFactors, conversions, accountDebugAllow, r.GlobalPrivacyControlHeader, debugLog.DebugOverride, r.Account.AlternateBidderCodes, requestExt.Prebid.Experiment)
+		elapsedTime = time.Since(startTime)
+		util.Logf("[TIMETRACK] getAllBids took %s", elapsedTime)
+
 	}
 
 	var auc *auction
@@ -309,6 +351,9 @@ func (e *exchange) HoldAuction(ctx context.Context, r AuctionRequest, debugLog *
 		//If floor enforcement config enabled then filter bids
 		adapterBids, enforceErrs, rejectedBids := enforceFloors(&r, adapterBids, e.floor, conversions, responseDebugAllow)
 		errs = append(errs, enforceErrs...)
+
+		elapsedTime = time.Since(startTime)
+		util.Logf("[TIMETRACK] enforceFloors took %s", elapsedTime)
 
 		if floors.RequestHasFloors(r.BidRequestWrapper.BidRequest) {
 			// Record request count with non-zero imp.bidfloor value
@@ -321,6 +366,9 @@ func (e *exchange) HoldAuction(ctx context.Context, r AuctionRequest, debugLog *
 				for _, rejectedBid := range rejectedBids {
 					e.me.RecordRejectedBidsForBidder(openrtb_ext.BidderName(rejectedBid.BidderName))
 				}
+
+				elapsedTime = time.Since(startTime)
+				util.Logf("[TIMETRACK] RecordFloorsRequestForAccount | RecordRejectedBidsForAccount | RecordRejectedBidsForBidder took %s", elapsedTime)
 			}
 		}
 
@@ -330,6 +378,10 @@ func (e *exchange) HoldAuction(ctx context.Context, r AuctionRequest, debugLog *
 		for _, message := range rejections {
 			errs = append(errs, errors.New(message))
 		}
+
+		elapsedTime = time.Since(startTime)
+		util.Logf("[TIMETRACK] applyAdvertiserBlocking took %s", elapsedTime)
+
 		var bidCategory map[string]string
 		//If includebrandcategory is present in ext then CE feature is on.
 		if requestExt.Prebid.Targeting != nil && requestExt.Prebid.Targeting.IncludeBrandCategory != nil {
@@ -341,6 +393,8 @@ func (e *exchange) HoldAuction(ctx context.Context, r AuctionRequest, debugLog *
 			for _, message := range rejections {
 				errs = append(errs, errors.New(message))
 			}
+			elapsedTime = time.Since(startTime)
+			util.Logf("[TIMETRACK] applyCategoryMapping took %s", elapsedTime)
 		}
 
 		if e.bidIDGenerator.Enabled() {
@@ -358,14 +412,22 @@ func (e *exchange) HoldAuction(ctx context.Context, r AuctionRequest, debugLog *
 		evTracking := getEventTracking(&requestExt.Prebid, r.StartTime, &r.Account, e.bidderInfo, e.externalURL)
 		adapterBids = evTracking.modifyBidsForEvents(adapterBids, r.BidRequestWrapper.BidRequest, e.trakerURL)
 
+		elapsedTime = time.Since(startTime)
+		util.Logf("[TIMETRACK] modifyBidsForEvents took %s", elapsedTime)
+
 		if targData != nil {
 			// A non-nil auction is only needed if targeting is active. (It is used below this block to extract cache keys)
 			auc = newAuction(adapterBids, len(r.BidRequestWrapper.BidRequest.Imp), targData.preferDeals)
 			auc.setRoundedPrices(targData.priceGranularity)
 
+			elapsedTime = time.Since(startTime)
+			util.Logf("[TIMETRACK] newAuction | setRoundedPrices took %s", elapsedTime)
+
 			if requestExt.Prebid.SupportDeals {
 				dealErrs := applyDealSupport(r.BidRequestWrapper.BidRequest, auc, bidCategory)
 				errs = append(errs, dealErrs...)
+				elapsedTime = time.Since(startTime)
+				util.Logf("[TIMETRACK] newAuction | applyDealSupport took %s", elapsedTime)
 			}
 
 			bidResponseExt = e.makeExtBidResponse(adapterBids, adapterExtra, r, responseDebugAllow, requestExt.Prebid.Passthrough, errs)
@@ -377,16 +439,24 @@ func (e *exchange) HoldAuction(ctx context.Context, r AuctionRequest, debugLog *
 					errs = append(errs, err)
 				}
 			}
+			elapsedTime = time.Since(startTime)
+			util.Logf("[TIMETRACK] makeExtBidResponse took %s", elapsedTime)
 
 			cacheErrs = auc.doCache(ctx, e.cache, targData, evTracking, r.BidRequestWrapper.BidRequest, 60, &r.Account.CacheTTL, bidCategory, debugLog)
 			if len(cacheErrs) > 0 {
 				errs = append(errs, cacheErrs...)
 			}
+			elapsedTime = time.Since(startTime)
+			util.Logf("[TIMETRACK] doCache took %s", elapsedTime)
 
 			targData.setTargeting(auc, r.BidRequestWrapper.BidRequest.App != nil, bidCategory, r.Account.TruncateTargetAttribute)
 
+			elapsedTime = time.Since(startTime)
+			util.Logf("[TIMETRACK] setTargeting took %s", elapsedTime)
 		}
 		bidResponseExt = e.makeExtBidResponse(adapterBids, adapterExtra, r, responseDebugAllow, requestExt.Prebid.Passthrough, errs)
+		elapsedTime = time.Since(startTime)
+		util.Logf("[TIMETRACK] makeExtBidResponse took %s", elapsedTime)
 	} else {
 		bidResponseExt = e.makeExtBidResponse(adapterBids, adapterExtra, r, responseDebugAllow, requestExt.Prebid.Passthrough, errs)
 
@@ -399,6 +469,8 @@ func (e *exchange) HoldAuction(ctx context.Context, r AuctionRequest, debugLog *
 				errs = append(errs, err)
 			}
 		}
+		elapsedTime = time.Since(startTime)
+		util.Logf("[TIMETRACK] makeExtBidResponse took %s", elapsedTime)
 	}
 
 	if !accountDebugAllow && !debugLog.DebugOverride {
@@ -579,6 +651,8 @@ func (e *exchange) getAllBids(
 			if len(seatBids) != 0 {
 				ae.HttpCalls = seatBids[0].httpCalls
 			}
+
+			util.Logf("[TIMETRACK] %s requestBid took %s", bidder.BidderName, elapsed)
 
 			// Timing statistics
 			e.me.RecordAdapterTime(bidderRequest.BidderLabels, time.Since(start))

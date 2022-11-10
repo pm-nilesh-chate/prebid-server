@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	ctvutil "github.com/PubMatic-OpenWrap/prebid-server/endpoints/openrtb2/ctv/util"
 	"github.com/golang/glog"
 	"github.com/prebid/prebid-server/config/util"
 	"github.com/prebid/prebid-server/currency"
@@ -160,6 +161,7 @@ type bidderAdapterConfig struct {
 
 func (bidder *bidderAdapter) requestBid(ctx context.Context, bidderRequest BidderRequest, conversions currency.Conversions, reqInfo *adapters.ExtraRequestInfo, adsCertSigner adscert.Signer, bidRequestOptions bidRequestOptions, alternateBidderCodes config.AlternateBidderCodes) ([]*pbsOrtbSeatBid, []error) {
 
+	startTime := time.Now()
 	var reqData []*adapters.RequestData
 	var errs []error
 	var responseChannel chan *httpCallInfo
@@ -176,7 +178,12 @@ func (bidder *bidderAdapter) requestBid(ctx context.Context, bidderRequest Bidde
 			}
 			return nil, errs
 		}
+		elapsedTime := time.Since(startTime)
+		ctvutil.Logf("[TIMETRACK] MakeRequests took %s", elapsedTime)
+
 		xPrebidHeader := version.BuildXPrebidHeaderForRequest(bidderRequest.BidRequest, version.Ver)
+		elapsedTime = time.Since(startTime)
+		ctvutil.Logf("[TIMETRACK] BuildXPrebidHeaderForRequest took %s", elapsedTime)
 
 		for i := 0; i < len(reqData); i++ {
 			if reqData[i].Headers != nil {
@@ -203,6 +210,9 @@ func (bidder *bidderAdapter) requestBid(ctx context.Context, bidderRequest Bidde
 			}
 
 		}
+		elapsedTime = time.Since(startTime)
+		ctvutil.Logf("[TIMETRACK] len=%d record* took %s", len(reqData), elapsedTime)
+
 		// Make any HTTP requests in parallel.
 		// If the bidder only needs to make one, save some cycles by just using the current one.
 		dataLen = len(reqData) + len(bidderRequest.BidderStoredResponses)
@@ -549,6 +559,8 @@ func (bidder *bidderAdapter) doRequest(ctx context.Context, req *adapters.Reques
 func (bidder *bidderAdapter) doRequestImpl(ctx context.Context, req *adapters.RequestData, logger util.LogMsg) *httpCallInfo {
 	var requestBody []byte
 
+	startTime := time.Now()
+
 	switch strings.ToUpper(bidder.config.EndpointCompression) {
 	case Gzip:
 		requestBody = compressToGZIP(req.Body)
@@ -571,8 +583,12 @@ func (bidder *bidderAdapter) doRequestImpl(ctx context.Context, req *adapters.Re
 		ctx = bidder.addClientTrace(ctx)
 	}
 	httpResp, err := ctxhttp.Do(ctx, bidder.Client, httpReq)
+	elapsedTime := time.Since(startTime)
+	ctvutil.Logf("[TIMETRACK] ctxhttp.Do took %s", elapsedTime)
+
 	if err != nil {
 		if err == context.DeadlineExceeded {
+			ctvutil.Logf("[TIMETRACK] DeadlineExceeded!! ")
 			err = &errortypes.Timeout{Message: err.Error()}
 			var corebidder adapters.Bidder = bidder.Bidder
 			// The bidder adapter normally stores an info-aware bidder (a bidder wrapper)
@@ -609,6 +625,9 @@ func (bidder *bidderAdapter) doRequestImpl(ctx context.Context, req *adapters.Re
 			Message: fmt.Sprintf("Server responded with failure status: %d. Set request.test = 1 for debugging info.", httpResp.StatusCode),
 		}
 	}
+
+	elapsedTime = time.Since(startTime)
+	ctvutil.Logf("[TIMETRACK] ReadAll took %s", elapsedTime)
 
 	return &httpCallInfo{
 		request: req,
