@@ -808,8 +808,6 @@ func (cfg *Configuration) GetCachedAssetURL(uuid string) string {
 
 // Set the default config values for the viper object we are using.
 func SetupViper(v *viper.Viper, filename string, bidderInfos BidderInfos) {
-	defer setupViperOW(v)
-
 	if filename != "" {
 		v.SetConfigName(filename)
 		v.AddConfigPath(".")
