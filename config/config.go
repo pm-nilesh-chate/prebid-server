@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -99,6 +100,23 @@ type Configuration struct {
 	// BidderInfos supports adapter overrides in extra configs like pbs.json, pbs.yaml, etc.
 	// Refers to main.go `configFileName` constant
 	BidderInfos BidderInfos `mapstructure:"adapters"`
+
+	TrackerURL          string              `mapstructure:"tracker_url"`
+	VendorListScheduler VendorListScheduler `mapstructure:"vendor_list_scheduler"`
+	PriceFloors         PriceFloors         `mapstructure:"price_floors"`
+}
+
+type PriceFloors struct {
+	Enabled           bool `mapstructure:"enabled"`
+	UseDynamicData    bool `mapstructure:"use_dynamic_data"`
+	EnforceFloorsRate int  `mapstructure:"enforce_floors_rate"`
+	EnforceDealFloors bool `mapstructure:"enforce_deal_floors"`
+}
+
+type VendorListScheduler struct {
+	Enabled  bool   `mapstructure:"enabled"`
+	Interval string `mapstructure:"interval"`
+	Timeout  string `mapstructure:"timeout"`
 }
 
 const MIN_COOKIE_SIZE_BYTES = 500
@@ -108,6 +126,11 @@ type HTTPClient struct {
 	MaxIdleConns        int `mapstructure:"max_idle_connections"`
 	MaxIdleConnsPerHost int `mapstructure:"max_idle_connections_per_host"`
 	IdleConnTimeout     int `mapstructure:"idle_connection_timeout_seconds"`
+
+	TLSHandshakeTimeout   int `mapstructure:"tls_handshake_timeout"`
+	ResponseHeaderTimeout int `mapstructure:"response_header_timeout"`
+	DialTimeout           int `mapstructure:"dial_timeout"`
+	DialKeepAlive         int `mapstructure:"dial_keepalive"`
 }
 
 func (cfg *Configuration) validate(v *viper.Viper) []error {
@@ -126,6 +149,7 @@ func (cfg *Configuration) validate(v *viper.Viper) []error {
 	errs = cfg.CurrencyConverter.validate(errs)
 	errs = cfg.Debug.validate(errs)
 	errs = cfg.ExtCacheURL.validate(errs)
+	errs = cfg.AccountDefaults.PriceFloors.validate(errs)
 	if cfg.AccountDefaults.Disabled {
 		glog.Warning(`With account_defaults.disabled=true, host-defined accounts must exist and have "disabled":false. All other requests will be rejected.`)
 	}
@@ -134,6 +158,11 @@ func (cfg *Configuration) validate(v *viper.Viper) []error {
 	}
 	errs = cfg.Experiment.validate(errs)
 	errs = cfg.BidderInfos.validate(errs)
+
+	if cfg.PriceFloors.Enabled {
+		glog.Warning(`PriceFloors.Enabled will enforce floor feature which is still under development.`)
+	}
+
 	return errs
 }
 
@@ -142,6 +171,38 @@ type AuctionTimeouts struct {
 	Default uint64 `mapstructure:"default"`
 	// The max timeout is used as an absolute cap, to prevent excessively long ones. Use 0 for no cap
 	Max uint64 `mapstructure:"max"`
+}
+
+func (pf *AccountPriceFloors) validate(errs []error) []error {
+
+	if !(pf.EnforceFloorRate >= 0 && pf.EnforceFloorRate <= 100) {
+		errs = append(errs, fmt.Errorf(`account_defaults.price_floors.enforce_floors_rate should be between 0 and 100`))
+	}
+
+	if pf.Fetch.Period > pf.Fetch.MaxAge {
+		errs = append(errs, fmt.Errorf(`account_defaults.price_floors.fetch.period_sec should be less than account_defaults.price_floors.fetch.max_age_sec`))
+	}
+
+	if pf.Fetch.Period < 300 {
+		errs = append(errs, fmt.Errorf(`account_defaults.price_floors.fetch.period_sec should not be less than 300 seconds`))
+	}
+
+	if !(pf.Fetch.MaxAge > 600 && pf.Fetch.MaxAge < math.MaxInt32) {
+		errs = append(errs, fmt.Errorf(`account_defaults.price_floors.fetch.max_age_sec should not be less than 600 seconds and greater than maximum integer value`))
+	}
+
+	if !(pf.Fetch.Timeout > 10 && pf.Fetch.Timeout < 10000) {
+		errs = append(errs, fmt.Errorf(`account_defaults.price_floors.fetch.timeout_ms should be between 10 to 10,000 mili seconds`))
+	}
+
+	if !(pf.Fetch.MaxRules >= 0 && pf.Fetch.MaxRules < math.MaxInt32) {
+		errs = append(errs, fmt.Errorf(`account_defaults.price_floors.fetch.max_rules should not be less than 0 seconds and greater than maximum integer value`))
+	}
+
+	if !(pf.Fetch.MaxFileSize >= 0 && pf.Fetch.MaxFileSize < math.MaxInt32) {
+		errs = append(errs, fmt.Errorf(`account_defaults.price_floors.fetch.max_file_size_kb should not be less than 0 seconds and greater than maximum integer value`))
+	}
+	return errs
 }
 
 func (cfg *AuctionTimeouts) validate(errs []error) []error {
@@ -977,8 +1038,21 @@ func SetupViper(v *viper.Viper, filename string, bidderInfos BidderInfos) {
 	v.SetDefault("blacklisted_apps", []string{""})
 	v.SetDefault("blacklisted_accts", []string{""})
 	v.SetDefault("account_required", false)
+
 	v.SetDefault("account_defaults.disabled", false)
 	v.SetDefault("account_defaults.debug_allow", true)
+	v.SetDefault("account_defaults.price_floors.enabled", true)
+	v.SetDefault("account_defaults.price_floors.enforce_floors_rate", 100)
+	v.SetDefault("account_defaults.price_floors.adjust_for_bid_adjustment", true)
+	v.SetDefault("account_defaults.price_floors.enforce_deal_floors", false)
+	v.SetDefault("account_defaults.price_floors.use_dynamic_data", true)
+	v.SetDefault("account_defaults.price_floors.fetch.enabled", false)
+	v.SetDefault("account_defaults.price_floors.fetch.timeout_ms", 3000)
+	v.SetDefault("account_defaults.price_floors.fetch.max_file_size_kb", 100)
+	v.SetDefault("account_defaults.price_floors.fetch.max_rules", 1000)
+	v.SetDefault("account_defaults.price_floors.fetch.max_age_sec", 86400)
+	v.SetDefault("account_defaults.price_floors.fetch.period_sec", 3600)
+
 	v.SetDefault("certificates_file", "")
 	v.SetDefault("auto_gen_source_tid", true)
 	v.SetDefault("generate_bid_id", false)
@@ -1057,6 +1131,10 @@ func SetupViper(v *viper.Viper, filename string, bidderInfos BidderInfos) {
 	v.SetDefault("gdpr.tcf2.purpose_one_treatment.access_allowed", true)
 	v.SetDefault("gdpr.tcf2.special_feature1.enforce", true)
 	v.SetDefault("gdpr.tcf2.special_feature1.vendor_exceptions", []openrtb_ext.BidderName{})
+	v.SetDefault("price_floors.enabled", false)
+	v.SetDefault("price_floors.use_dynamic_data", false)
+	v.SetDefault("price_floors.enforce_floors_rate", 100)
+	v.SetDefault("price_floors.enforce_deal_floors", false)
 
 	// Defaults for account_defaults.events.default_url
 	v.SetDefault("account_defaults.events.default_url", "https://PBS_HOST/event?t=##PBS-EVENTTYPE##&vtype=##PBS-VASTEVENT##&b=##PBS-BIDID##&f=i&a=##PBS-ACCOUNTID##&ts=##PBS-TIMESTAMP##&bidder=##PBS-BIDDER##&int=##PBS-INTEGRATION##&mt=##PBS-MEDIATYPE##&ch=##PBS-CHANNEL##&aid=##PBS-AUCTIONID##&l=##PBS-LINEID##")

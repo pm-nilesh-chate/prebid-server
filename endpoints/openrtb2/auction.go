@@ -1235,7 +1235,11 @@ func (deps *endpointDeps) validateImpExt(imp *openrtb_ext.ImpWrapper, aliases ma
 
 		if coreBidderNormalized, isValid := deps.bidderMap[coreBidder]; isValid {
 			if err := deps.paramsValidator.Validate(coreBidderNormalized, ext); err != nil {
-				return []error{fmt.Errorf("request.imp[%d].ext.%s failed validation.\n%v", impIndex, bidder, err)}
+				msg := fmt.Sprintf("request.imp[%d].ext.%s failed validation.\n%v", impIndex, bidder, err)
+
+				delete(prebid.Bidder, bidder)
+				glog.Errorf("BidderSchemaValidationError: %s", msg)
+				errL = append(errL, &errortypes.BidderFailedSchemaValidation{Message: msg})
 			}
 		} else {
 			if msg, isDisabled := deps.disabledBidders[bidder]; isDisabled {
