@@ -1,7 +1,6 @@
 package prebidServer
 
 import (
-	"flag"
 	"math/rand"
 	"net/http"
 	"path/filepath"
@@ -20,12 +19,12 @@ import (
 	"github.com/spf13/viper"
 )
 
+var InfoDirectory = "/home/http/GO_SERVER/dmhbserver/static/bidder-info"
+
 func InitPrebidServer(configFile string) {
 	rand.Seed(time.Now().UnixNano())
 
-	flag.Parse() // required for glog flags and testing package flags
-
-	bidderInfoPath, err := filepath.Abs(infoDirectory)
+	bidderInfoPath, err := filepath.Abs(InfoDirectory)
 	if err != nil {
 		glog.Exitf("Unable to build configuration directory path: %v", err)
 	}
@@ -34,7 +33,7 @@ func InitPrebidServer(configFile string) {
 	if err != nil {
 		glog.Exitf("Unable to load bidder configurations: %v", err)
 	}
-	cfg, err := loadConfig(bidderInfos)
+	cfg, err := loadConfig(bidderInfos, configFile)
 	if err != nil {
 		glog.Exitf("Configuration could not be loaded or did not pass validation: %v", err)
 	}
@@ -53,10 +52,7 @@ func InitPrebidServer(configFile string) {
 	}
 }
 
-const configFileName = "pbs"
-const infoDirectory = "./static/bidder-info"
-
-func loadConfig(bidderInfos config.BidderInfos) (*config.Configuration, error) {
+func loadConfig(bidderInfos config.BidderInfos, configFileName string) (*config.Configuration, error) {
 	v := viper.New()
 	config.SetupViper(v, configFileName, bidderInfos)
 	return config.New(v, bidderInfos, openrtb_ext.NormalizeBidderName)
