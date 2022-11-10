@@ -128,6 +128,13 @@ func (me *MultiMetricsEngine) RecordAdapterRequest(labels metrics.AdapterLabels)
 	}
 }
 
+// RecordRejectedBidsForBidder across all engines
+func (me *MultiMetricsEngine) RecordRejectedBidsForBidder(bidder openrtb_ext.BidderName) {
+	for _, thisME := range *me {
+		thisME.RecordRejectedBidsForBidder(bidder)
+	}
+}
+
 // Keeps track of created and reused connections to adapter bidders and the time from the
 // connection request, to the connection creation, or reuse from the pool across all engines
 func (me *MultiMetricsEngine) RecordAdapterConnections(bidderName openrtb_ext.BidderName, connWasReused bool, connWaitTime time.Duration) {
@@ -143,9 +150,9 @@ func (me *MultiMetricsEngine) RecordDNSTime(dnsLookupTime time.Duration) {
 	}
 }
 
-func (me *MultiMetricsEngine) RecordTLSHandshakeTime(tlsHandshakeTime time.Duration) {
+func (me *MultiMetricsEngine) RecordTLSHandshakeTime(adapterName openrtb_ext.BidderName, tlsHandshakeTime time.Duration) {
 	for _, thisME := range *me {
-		thisME.RecordTLSHandshakeTime(tlsHandshakeTime)
+		thisME.RecordTLSHandshakeTime(adapterName, tlsHandshakeTime)
 	}
 }
 
@@ -247,6 +254,52 @@ func (me *MultiMetricsEngine) RecordRequestPrivacy(privacy metrics.PrivacyLabels
 	}
 }
 
+// RecordAdapterDuplicateBidID across all engines
+func (me *MultiMetricsEngine) RecordAdapterDuplicateBidID(adaptor string, collisions int) {
+	for _, thisME := range *me {
+		thisME.RecordAdapterDuplicateBidID(adaptor, collisions)
+	}
+}
+
+// RecordRequestHavingDuplicateBidID across all engines
+func (me *MultiMetricsEngine) RecordRequestHavingDuplicateBidID() {
+	for _, thisME := range *me {
+		thisME.RecordRequestHavingDuplicateBidID()
+	}
+}
+
+// RecordPodImpGenTime across all engines
+func (me *MultiMetricsEngine) RecordPodImpGenTime(labels metrics.PodLabels, startTime time.Time) {
+	for _, thisME := range *me {
+		thisME.RecordPodImpGenTime(labels, startTime)
+	}
+}
+
+// RecordRejectedBidsForBidder as a noop
+func (me *NilMetricsEngine) RecordRejectedBidsForBidder(bidder openrtb_ext.BidderName) {
+}
+
+// RecordPodCombGenTime as a noop
+func (me *MultiMetricsEngine) RecordPodCombGenTime(labels metrics.PodLabels, elapsedTime time.Duration) {
+	for _, thisME := range *me {
+		thisME.RecordPodCombGenTime(labels, elapsedTime)
+	}
+}
+
+// RecordPodCompititveExclusionTime as a noop
+func (me *MultiMetricsEngine) RecordPodCompititveExclusionTime(labels metrics.PodLabels, elapsedTime time.Duration) {
+	for _, thisME := range *me {
+		thisME.RecordPodCompititveExclusionTime(labels, elapsedTime)
+	}
+}
+
+// RecordAdapterVideoBidDuration as a noop
+func (me *MultiMetricsEngine) RecordAdapterVideoBidDuration(labels metrics.AdapterLabels, videoBidDuration int) {
+	for _, thisME := range *me {
+		thisME.RecordAdapterVideoBidDuration(labels, videoBidDuration)
+	}
+}
+
 // RecordAdapterGDPRRequestBlocked across all engines
 func (me *MultiMetricsEngine) RecordAdapterGDPRRequestBlocked(adapter openrtb_ext.BidderName) {
 	for _, thisME := range *me {
@@ -267,6 +320,18 @@ func (me *MultiMetricsEngine) RecordStoredResponse(pubId string) {
 	}
 }
 
+func (me *MultiMetricsEngine) RecordRejectedBidsForAccount(pubId string) {
+	for _, thisME := range *me {
+		thisME.RecordRejectedBidsForAccount(pubId)
+	}
+}
+
+func (me *MultiMetricsEngine) RecordFloorsRequestForAccount(pubId string) {
+	for _, thisME := range *me {
+		thisME.RecordFloorsRequestForAccount(pubId)
+	}
+}
+
 func (me *MultiMetricsEngine) RecordAdsCertReq(success bool) {
 	for _, thisME := range *me {
 		thisME.RecordAdsCertReq(success)
@@ -282,6 +347,24 @@ func (me *MultiMetricsEngine) RecordAdsCertSignTime(adsCertSignTime time.Duratio
 // NilMetricsEngine implements the MetricsEngine interface where no metrics are actually captured. This is
 // used if no metric backend is configured and also for tests.
 type NilMetricsEngine struct{}
+
+func (me *NilMetricsEngine) RecordAdapterDuplicateBidID(adaptor string, collisions int) {
+}
+
+func (me *NilMetricsEngine) RecordRequestHavingDuplicateBidID() {
+}
+
+func (me *NilMetricsEngine) RecordPodImpGenTime(labels metrics.PodLabels, startTime time.Time) {
+}
+
+func (me *NilMetricsEngine) RecordPodCombGenTime(labels metrics.PodLabels, elapsedTime time.Duration) {
+}
+
+func (me *NilMetricsEngine) RecordPodCompititveExclusionTime(labels metrics.PodLabels, elapsedTime time.Duration) {
+}
+
+func (me *NilMetricsEngine) RecordAdapterVideoBidDuration(labels metrics.AdapterLabels, videoBidDuration int) {
+}
 
 // RecordRequest as a noop
 func (me *NilMetricsEngine) RecordRequest(labels metrics.Labels) {
@@ -328,7 +411,7 @@ func (me *NilMetricsEngine) RecordDNSTime(dnsLookupTime time.Duration) {
 }
 
 // RecordTLSHandshakeTime as a noop
-func (me *NilMetricsEngine) RecordTLSHandshakeTime(tlsHandshakeTime time.Duration) {
+func (me *NilMetricsEngine) RecordTLSHandshakeTime(adapterName openrtb_ext.BidderName, tlsHandshakeTime time.Duration) {
 }
 
 // RecordAdapterBidReceived as a noop
@@ -396,6 +479,12 @@ func (me *NilMetricsEngine) RecordDebugRequest(debugEnabled bool, pubId string) 
 }
 
 func (me *NilMetricsEngine) RecordStoredResponse(pubId string) {
+}
+
+func (me *NilMetricsEngine) RecordRejectedBidsForAccount(pubId string) {
+}
+
+func (me *NilMetricsEngine) RecordFloorsRequestForAccount(pubId string) {
 }
 
 func (me *NilMetricsEngine) RecordAdsCertReq(success bool) {
