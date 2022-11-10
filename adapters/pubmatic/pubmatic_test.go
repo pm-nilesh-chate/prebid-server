@@ -293,6 +293,7 @@ func TestPubmaticAdapter_MakeBids(t *testing.T) {
 					StatusCode: http.StatusOK,
 					Body:       []byte(`{"id": "test-request-id", "seatbid":[{"seat": "958", "bid":[{"id": "7706636740145184841", "impid": "test-imp-id", "price": 0.500000, "adid": "29681110", "adm": "some-test-ad", "adomain":["pubmatic.com"], "crid": "29681110", "h": 250, "w": 300, "dealid": "testdeal", "ext":{"dspid": 6, "deal_channel": 1, "prebiddealpriority": 1}}]}], "bidid": "5778926625248726496", "cur": "USD"}`),
 				},
+				externalRequest: &adapters.RequestData{BidderName: openrtb_ext.BidderPubmatic},
 			},
 			wantErr: nil,
 			wantResp: &adapters.BidderResponse{
@@ -314,6 +315,7 @@ func TestPubmaticAdapter_MakeBids(t *testing.T) {
 						DealPriority: 1,
 						BidType:      openrtb_ext.BidTypeBanner,
 						BidVideo:     &openrtb_ext.ExtBidPrebidVideo{},
+						BidTargets:   map[string]string{},
 					},
 				},
 				Currency: "USD",
@@ -326,6 +328,7 @@ func TestPubmaticAdapter_MakeBids(t *testing.T) {
 					StatusCode: http.StatusOK,
 					Body:       []byte(`{"id": "test-request-id", "seatbid":[{"seat": "958", "bid":[{"id": "7706636740145184841", "impid": "test-imp-id", "price": 0.500000, "adid": "29681110", "adm": "some-test-ad", "adomain":["pubmatic.com"], "crid": "29681110", "h": 250, "w": 300, "dealid": "testdeal", "ext":{"dspid": 6, "deal_channel": 1, "prebiddealpriority": -1}}]}], "bidid": "5778926625248726496", "cur": "USD"}`),
 				},
+				externalRequest: &adapters.RequestData{BidderName: openrtb_ext.BidderPubmatic},
 			},
 			wantErr: nil,
 			wantResp: &adapters.BidderResponse{
@@ -344,8 +347,9 @@ func TestPubmaticAdapter_MakeBids(t *testing.T) {
 							DealID:  "testdeal",
 							Ext:     json.RawMessage(`{"dspid": 6, "deal_channel": 1, "prebiddealpriority": -1}`),
 						},
-						BidType:  openrtb_ext.BidTypeBanner,
-						BidVideo: &openrtb_ext.ExtBidPrebidVideo{},
+						BidType:    openrtb_ext.BidTypeBanner,
+						BidVideo:   &openrtb_ext.ExtBidPrebidVideo{},
+						BidTargets: map[string]string{},
 					},
 				},
 				Currency: "USD",
@@ -360,8 +364,6 @@ func TestPubmaticAdapter_MakeBids(t *testing.T) {
 			gotResp, gotErr := a.MakeBids(tt.args.internalRequest, tt.args.externalRequest, tt.args.response)
 			assert.Equal(t, tt.wantErr, gotErr, gotErr)
 			assert.Equal(t, tt.wantResp, gotResp)
-			got := getMapFromJSON(tt.input)
-			assert.Equal(t, tt.output, got)
 		})
 	}
 }
@@ -593,9 +595,6 @@ func TestGetMapFromJSON(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := &PubmaticAdapter{
-				URI: tt.fields.URI,
-			}
 			got := getMapFromJSON(tt.input)
 			assert.Equal(t, tt.output, got)
 		})
