@@ -21,6 +21,7 @@ require (
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/prebid/go-gdpr v1.11.0
 	github.com/prebid/openrtb/v17 v17.0.0
+	github.com/prebid/prebid-server v0.0.0-00010101000000-000000000000
 	github.com/prometheus/client_golang v1.12.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
@@ -32,7 +33,6 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/yudai/gojsondiff v1.0.0
 	github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 // indirect
-	github.com/yudai/pp v2.0.1+incompatible // indirect
 	golang.org/x/net v0.0.0-20220909164309-bea034e7d591
 	golang.org/x/text v0.3.7
 	google.golang.org/grpc v1.46.2
@@ -42,6 +42,6 @@ require (
 
 replace github.com/prebid/prebid-server => ./
 
-replace github.com/prebid/openrtb/v17 => github.com/PubMatic-OpenWrap/prebid-openrtb/v17 044ec760b89f2ba067463a5a2e91178ac8e28c95
+replace github.com/prebid/openrtb/v17 => github.com/PubMatic-OpenWrap/prebid-openrtb/v17 v17.0.0-20221031060308-044ec760b89f
 
 replace github.com/beevik/etree v1.0.2 => github.com/PubMatic-OpenWrap/etree v1.0.2-0.20210129100623-8f30cfecf9f4

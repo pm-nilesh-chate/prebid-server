@@ -393,7 +393,6 @@ func parseImpressionObject(imp *openrtb2.Imp, extractWrapperExtFromImp, extractP
 // extractPubmaticExtFromRequest parse the req.ext to fetch wrapper and acat params
 func extractPubmaticExtFromRequest(request *openrtb2.BidRequest) (extRequestAdServer, []string, error) {
 	var cookies []string
-
 	// req.ext.prebid would always be there and Less nil cases to handle, more safe!
 	var pmReqExt extRequestAdServer
 
@@ -404,7 +403,7 @@ func extractPubmaticExtFromRequest(request *openrtb2.BidRequest) (extRequestAdSe
 	reqExt := &openrtb_ext.ExtRequest{}
 	err := json.Unmarshal(request.Ext, &reqExt)
 	if err != nil {
-		return pmReqExt, fmt.Errorf("error decoding Request.ext : %s", err.Error())
+		return pmReqExt, cookies, fmt.Errorf("error decoding Request.ext : %s", err.Error())
 	}
 	pmReqExt.ExtRequest = *reqExt
 
@@ -412,7 +411,7 @@ func extractPubmaticExtFromRequest(request *openrtb2.BidRequest) (extRequestAdSe
 	if reqExt.Prebid.BidderParams != nil {
 		err = json.Unmarshal(reqExt.Prebid.BidderParams, &reqExtBidderParams)
 		if err != nil {
-			return pmReqExt, cookies, nil
+			return pmReqExt, cookies, err
 		}
 	}
 
@@ -421,7 +420,7 @@ func extractPubmaticExtFromRequest(request *openrtb2.BidRequest) (extRequestAdSe
 		wrpExt := &pubmaticWrapperExt{}
 		err = json.Unmarshal(wrapperObj, wrpExt)
 		if err != nil {
-			return pmReqExt, cookies, nil
+			return pmReqExt, cookies, err
 		}
 		pmReqExt.Wrapper = wrpExt
 	}
@@ -430,7 +429,7 @@ func extractPubmaticExtFromRequest(request *openrtb2.BidRequest) (extRequestAdSe
 		var acat []string
 		err = json.Unmarshal(acatBytes, &acat)
 		if err != nil {
-			return pmReqExt, cookies, nil
+			return pmReqExt, cookies, err
 		}
 		for i := 0; i < len(acat); i++ {
 			acat[i] = strings.TrimSpace(acat[i])
@@ -536,10 +535,9 @@ func (a *PubmaticAdapter) MakeBids(internalRequest *openrtb2.BidRequest, externa
 			}
 
 			typedBid := &adapters.TypedBid{
-				Bid:      &bid,
-				BidType:  openrtb_ext.BidTypeBanner,
-				BidVideo: &openrtb_ext.ExtBidPrebidVideo{},
-
+				Bid:        &bid,
+				BidType:    openrtb_ext.BidTypeBanner,
+				BidVideo:   &openrtb_ext.ExtBidPrebidVideo{},
 				BidTargets: targets,
 			}
 

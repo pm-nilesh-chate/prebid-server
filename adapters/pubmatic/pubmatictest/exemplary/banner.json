@@ -94,7 +94,8 @@
                 "acat": ["drg","dlu","ssr"],
                 "prebid": {
                   "bidderparams": {
-                    "acat": ["drg","dlu","ssr"]
+                    "acat": ["drg","dlu","ssr"],
+                    "wiid": "dwzafakjflan-tygannnvlla-mlljvj"
                   }
                 }
             }

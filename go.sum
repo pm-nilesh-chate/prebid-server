@@ -79,8 +79,8 @@ github.com/OneOfOne/xxhash v1.2.2 h1:KMrpdQIwFcEqXDklaen+P1axHaj9BSKzvpUUfnHldSE
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/PubMatic-OpenWrap/etree v1.0.2-0.20210129100623-8f30cfecf9f4 h1:EhiijwjoKTx7FVP8p2wwC/z4n5l4c8l2CGmsrFv2uhI=
 github.com/PubMatic-OpenWrap/etree v1.0.2-0.20210129100623-8f30cfecf9f4/go.mod h1:5Y8qgcuDoy3XXG907UXkGnVTwihF16rXyJa4zRT7hOE=
-github.com/PubMatic-OpenWrap/openrtb/v16 v16.0.0-ow2 h1:NaKQYOnNyWBEiL1S8t4Xin4e+8UM8W/88ww718a5UEI=
-github.com/PubMatic-OpenWrap/openrtb/v16 v16.0.0-ow2/go.mod h1:wjir/n1D39qF0bj1jKjUQJ9oTpdQ53wvvVW7p3Q0qq8=
+github.com/PubMatic-OpenWrap/prebid-openrtb/v17 v17.0.0-20221031060308-044ec760b89f h1:CJeb/Pn/+TwdwuaA1NQzdjor92aUXx47W2J6PLJK7QM=
+github.com/PubMatic-OpenWrap/prebid-openrtb/v17 v17.0.0-20221031060308-044ec760b89f/go.mod h1:nMj7j6aTIopCG91Wv3nuzcFTc7YRSOzuzdPxal+FY50=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 h1:JYp7IbQjafoB+tBA3gMyHYHrpOtNuDiK/uB5uXxq5wM=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
@@ -533,8 +533,6 @@ github.com/posener/complete v1.2.3 h1:NP0eAhjcjImqslEwo/1hq7gpajME0fTLTezBKDqfXq
 github.com/posener/complete v1.2.3/go.mod h1:WZIdtGGp+qx0sLrYKtIRAruyNpv6hFCicSgv7Sy7s/s=
 github.com/prebid/go-gdpr v1.11.0 h1:QbMjscuw3Ul0mDVWeMy5tP0Kii6lmTSSVhV6fm8rY9s=
 github.com/prebid/go-gdpr v1.11.0/go.mod h1:mPZAdkRxn+iuSjaUuJAi9+0SppBOdM1PCzv/55UH3pY=
-github.com/prebid/openrtb/v17 v17.0.0 h1:Amh79/sT/sQeGI7q1gq89hKljBI9DhwhSBKZHUA2Q7s=
-github.com/prebid/openrtb/v17 v17.0.0/go.mod h1:nMj7j6aTIopCG91Wv3nuzcFTc7YRSOzuzdPxal+FY50=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
 github.com/prometheus/client_golang v1.0.0/go.mod h1:db9x61etRT2tGnBNRi70OPL5FsnadC4Ky3P0J6CfImo=
 github.com/prometheus/client_golang v1.4.0/go.mod h1:e9GMxYsXl05ICDXkRhurwBS4Q3OK1iX/F2sw+iXX5zU=

@@ -10,7 +10,7 @@ func getTargetingKeys(bidExt json.RawMessage, bidderName string) map[string]stri
 		bidExtMap := make(map[string]interface{})
 		err := json.Unmarshal(bidExt, &bidExtMap)
 		if err == nil && bidExtMap[buyId] != nil {
-			targets[buyIdTargetingKey+bidderName] = string(bidExtMap[buyId].(string))
+			targets[buyIdTargetingKey+bidderName], _ = bidExtMap[buyId].(string)
 		}
 	}
 	return targets
