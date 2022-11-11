@@ -226,6 +226,10 @@ func (bidder *bidderAdapter) requestBid(ctx context.Context, bidderRequest Bidde
 				}(oneReqData) // Method arg avoids a race condition on oneReqData
 			}
 		}
+
+		elapsedTime = time.Since(startTime)
+		ctvutil.Logf("[TIMETRACK] doRequest took %s", elapsedTime)
+
 	}
 	if len(bidderRequest.BidderStoredResponses) > 0 {
 		//if stored bid responses are present - replace impIds and add them as is to responseChannel <- stored responses
@@ -238,6 +242,9 @@ func (bidder *bidderAdapter) requestBid(ctx context.Context, bidderRequest Bidde
 				responseChannel <- prepareStoredResponse(id, resp)
 			}(impId, bidResp)
 		}
+
+		elapsedTime := time.Since(startTime)
+		ctvutil.Logf("[TIMETRACK] prepareStoredResponse took %s", elapsedTime)
 	}
 
 	defaultCurrency := "USD"
@@ -431,7 +438,6 @@ func (bidder *bidderAdapter) requestBid(ctx context.Context, bidderRequest Bidde
 	for _, seatBid := range seatBidMap {
 		seatBids = append(seatBids, seatBid)
 	}
-
 	return seatBids, errs
 }
 
