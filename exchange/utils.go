@@ -455,6 +455,11 @@ func createSanitizedImpExt(impExt, impExtPrebid map[string]json.RawMessage) (map
 		sanitizedImpPrebidExt["options"] = v
 	}
 
+	// Dont send this to adapters
+	// if v, exists := impExtPrebid["floors"]; exists {
+	// 	sanitizedImpPrebidExt["floors"] = v
+	// }
+
 	// marshal sanitized imp[].ext.prebid
 	if len(sanitizedImpPrebidExt) > 0 {
 		if impExtPrebidJSON, err := json.Marshal(sanitizedImpPrebidExt); err == nil {
