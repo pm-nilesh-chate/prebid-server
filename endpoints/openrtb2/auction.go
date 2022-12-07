@@ -132,8 +132,12 @@ func (deps *endpointDeps) Auction(w http.ResponseWriter, r *http.Request, _ http
 	start := time.Now()
 
 	ao := analytics.AuctionObject{
-		Status:    http.StatusOK,
-		Errors:    make([]error, 0),
+		LoggableAuctionObject: analytics.LoggableAuctionObject{
+			Context:      r.Context(),
+			Status:       http.StatusOK,
+			Errors:       make([]error, 0),
+			RejectedBids: []analytics.RejectedBid{},
+		},
 		StartTime: start,
 	}
 
@@ -156,6 +160,13 @@ func (deps *endpointDeps) Auction(w http.ResponseWriter, r *http.Request, _ http
 	if errortypes.ContainsFatalError(errL) && writeError(errL, w, &labels) {
 		return
 	}
+
+	defer func() {
+		glog.Infof("Logging Rejected Bids for RequestID: %v", req.BidRequest.ID)
+		for index, rejectedBid := range ao.RejectedBids {
+			glog.Infof(" Rejected Bid no: %v | RejectedBid: %+v", index+1, *rejectedBid.Bid)
+		}
+	}()
 
 	ctx := context.Background()
 
@@ -214,6 +225,7 @@ func (deps *endpointDeps) Auction(w http.ResponseWriter, r *http.Request, _ http
 		StoredBidResponses:         storedBidResponses,
 		BidderImpReplaceImpID:      bidderImpReplaceImp,
 		PubID:                      labels.PubID,
+		LoggableObject:             &ao.LoggableAuctionObject,
 	}
 	response, err := deps.ex.HoldAuction(ctx, auctionRequest, nil)
 	ao.Request = req.BidRequest

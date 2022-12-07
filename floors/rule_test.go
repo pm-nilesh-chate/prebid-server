@@ -103,14 +103,14 @@ func TestUpdateImpExtWithFloorDetails(t *testing.T) {
 			matchedRule:  "test|123|xyz",
 			floorRuleVal: 5.5,
 			imp:          openrtb2.Imp{ID: "1234", Video: &openrtb2.Video{W: 300, H: 250}},
-			expected:     json.RawMessage{},
+			expected:     json.RawMessage(`{"prebid":{"floors":{"floorRule":"test|123|xyz","floorRuleValue":5.5}}}`),
 		},
 		{
 			name:         "Empty ImpExt",
 			matchedRule:  "test|123|xyz",
 			floorRuleVal: 5.5,
 			imp:          openrtb2.Imp{ID: "1234", Video: &openrtb2.Video{W: 300, H: 250}, Ext: json.RawMessage{}},
-			expected:     json.RawMessage{},
+			expected:     json.RawMessage(`{"prebid":{"floors":{"floorRule":"test|123|xyz","floorRuleValue":5.5}}}`),
 		},
 		{
 			name:         "With prebid Ext",
