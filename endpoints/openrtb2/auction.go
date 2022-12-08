@@ -164,7 +164,7 @@ func (deps *endpointDeps) Auction(w http.ResponseWriter, r *http.Request, _ http
 	defer func() {
 		glog.Infof("Logging Rejected Bids for RequestID: %v", req.BidRequest.ID)
 		for index, rejectedBid := range ao.RejectedBids {
-			glog.Infof(" Rejected Bid no: %v | RejectedBid: %+v", index+1, *rejectedBid.Bid)
+			glog.Infof("Rejected Bid no: %v | BidderName: %v | Seat: %v | Rejection Reason: %v | RejectedBid: %+v", index+1, rejectedBid.BidderName, rejectedBid.Seat, rejectedBid.RejectionReason, *rejectedBid.Bid)
 		}
 	}()
 
