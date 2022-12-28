@@ -150,6 +150,7 @@ func (deps *endpointDeps) Auction(w http.ResponseWriter, r *http.Request, _ http
 	}
 	defer func() {
 		deps.metricsEngine.RecordRequest(labels)
+		recordRejectedBids(labels.PubID, ao.LoggableAuctionObject.RejectedBids, deps.metricsEngine)
 		deps.metricsEngine.RecordRequestTime(labels, time.Since(start))
 		deps.analytics.LogAuctionObject(&ao)
 	}()
@@ -160,13 +161,6 @@ func (deps *endpointDeps) Auction(w http.ResponseWriter, r *http.Request, _ http
 	if errortypes.ContainsFatalError(errL) && writeError(errL, w, &labels) {
 		return
 	}
-
-	defer func() {
-		glog.Infof("Logging Rejected Bids for RequestID: %v", req.BidRequest.ID)
-		for index, rejectedBid := range ao.RejectedBids {
-			glog.Infof("Rejected Bid no: %v | BidderName: %v | Seat: %v | Rejection Reason: %v | RejectedBid: %+v", index+1, rejectedBid.BidderName, rejectedBid.Seat, rejectedBid.RejectionReason, *rejectedBid.Bid)
-		}
-	}()
 
 	ctx := context.Background()
 

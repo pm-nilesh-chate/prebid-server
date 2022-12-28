@@ -334,10 +334,6 @@ func (e *exchange) HoldAuction(ctx context.Context, r AuctionRequest, debugLog *
 			if e.floor.Enabled && r.LoggableObject != nil && len(r.LoggableObject.RejectedBids) > 0 {
 				// Record rejected bid count at account level
 				e.me.RecordRejectedBidsForAccount(r.PubID)
-				// Record rejected bid count at adaptor/bidder level
-				for _, rejectedBid := range r.LoggableObject.RejectedBids {
-					e.me.RecordRejectedBidsForBidder(openrtb_ext.BidderName(rejectedBid.BidderName))
-				}
 			}
 		}
 
@@ -986,7 +982,6 @@ func applyCategoryMapping(ctx context.Context, r *AuctionRequest, requestExt *op
 							Bid:             bid.bid,
 							RejectionReason: openrtb3.LossCategoryExclusions,
 							Seat:            seatBid.seat,
-							BidderName:      string(bidderName),
 						})
 					}
 				}
@@ -1000,7 +995,6 @@ func applyCategoryMapping(ctx context.Context, r *AuctionRequest, requestExt *op
 							Bid:             bids[remInd].bid,
 							RejectionReason: openrtb3.LossCategoryExclusions,
 							Seat:            seatBid.seat,
-							BidderName:      string(bidderName),
 						})
 					}
 					bids = append(bids[:remInd], bids[remInd+1:]...)
