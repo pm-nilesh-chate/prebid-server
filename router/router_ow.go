@@ -3,11 +3,14 @@ package router
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/prebid/prebid-server/analytics"
+
+	analyticCfg "github.com/prebid/prebid-server/analytics/config"
 	"github.com/prebid/prebid-server/config"
 	"github.com/prebid/prebid-server/endpoints"
 	"github.com/prebid/prebid-server/endpoints/openrtb2"
@@ -85,6 +88,19 @@ func GetPrebidCacheURL() string {
 	return g_cfg.ExternalURL
 }
 
+//RegisterAnalyticsModule function registers the PBSAnalyticsModule
+func RegisterAnalyticsModule(anlt analytics.PBSAnalyticsModule) error {
+	if g_analytics == nil {
+		return fmt.Errorf("g_analytics is nil")
+	}
+	modules, err := analyticCfg.EnableAnalyticsModule(anlt, *g_analytics)
+	if err != nil {
+		return err
+	}
+	g_analytics = &modules
+	return nil
+}
+
 //OrtbAuctionEndpointWrapper Openwrap wrapper method for calling /openrtb2/auction endpoint
 func OrtbAuctionEndpointWrapper(w http.ResponseWriter, r *http.Request) error {
 	ortbAuctionEndpoint, err := openrtb2.NewEndpoint(uuidutil.UUIDRandomGenerator{}, *g_ex, *g_paramsValidator, *g_storedReqFetcher, *g_accounts, g_cfg, g_metrics, *g_analytics, g_disabledBidders, g_defReqJSON, g_activeBidders, *g_storedRespFetcher)
@@ -135,4 +151,11 @@ func GetPrometheusGatherer() *prometheus.Registry {
 	}
 
 	return mEngine.PrometheusMetrics.Gatherer
+}
+
+// CallRecordRejectedBids calls RecordRejectedBids function on prebid's metric-engine
+func CallRecordRejectedBids(pubId, bidder, code string) {
+	if g_metrics != nil {
+		g_metrics.RecordRejectedBids(pubId, bidder, code)
+	}
 }

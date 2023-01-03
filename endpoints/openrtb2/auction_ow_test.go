@@ -3,16 +3,21 @@ package openrtb2
 import (
 	"encoding/json"
 	"fmt"
+
 	"testing"
 
-	"github.com/mxmCherry/openrtb/v16/openrtb2"
+	"github.com/prebid/openrtb/v17/openrtb2"
+	"github.com/prebid/openrtb/v17/openrtb3"
+	"github.com/prebid/prebid-server/analytics"
 	analyticsConf "github.com/prebid/prebid-server/analytics/config"
 	"github.com/prebid/prebid-server/config"
 	"github.com/prebid/prebid-server/errortypes"
+	"github.com/prebid/prebid-server/metrics"
 	metricsConfig "github.com/prebid/prebid-server/metrics/config"
 	"github.com/prebid/prebid-server/openrtb_ext"
 	"github.com/prebid/prebid-server/stored_requests/backends/empty_fetcher"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestValidateImpExtOW(t *testing.T) {
@@ -37,27 +42,27 @@ func TestValidateImpExtOW(t *testing.T) {
 				{
 					description:    "Impression dropped for bidder with invalid bidder params",
 					impExt:         json.RawMessage(`{"appnexus":{"placement_id":"A"}}`),
-					expectedImpExt: `{}`,
+					expectedImpExt: `{"appnexus":{"placement_id":"A"}}`,
 					expectedErrs: []error{&errortypes.BidderFailedSchemaValidation{Message: "request.imp[0].ext.appnexus failed validation.\nplacement_id: Invalid type. Expected: integer, given: string"},
 						fmt.Errorf("request.imp[%d].ext must contain at least one bidder", 0)},
 				},
 				{
 					description:    "Valid Bidder params + Invalid bidder params",
 					impExt:         json.RawMessage(`{"appnexus":{"placement_id":"A"},"pubmatic":{"publisherId":"156209"}}`),
-					expectedImpExt: `{"pubmatic":{"publisherId":"156209"}}`,
+					expectedImpExt: `{"appnexus":{"placement_id":"A"},"pubmatic":{"publisherId":"156209"}}`,
 					expectedErrs:   []error{&errortypes.BidderFailedSchemaValidation{Message: "request.imp[0].ext.appnexus failed validation.\nplacement_id: Invalid type. Expected: integer, given: string"}},
 				},
 				{
 					description:    "Valid Bidder + Disabled Bidder + Invalid bidder params",
 					impExt:         json.RawMessage(`{"pubmatic":{"publisherId":156209},"appnexus":{"placement_id":555},"disabledbidder":{"foo":"bar"}}`),
-					expectedImpExt: `{"appnexus":{"placement_id":555}}`,
+					expectedImpExt: `{"pubmatic":{"publisherId":156209},"appnexus":{"placement_id":555},"disabledbidder":{"foo":"bar"}}`,
 					expectedErrs: []error{&errortypes.BidderTemporarilyDisabled{Message: "The bidder 'disabledbidder' has been disabled."},
 						&errortypes.BidderFailedSchemaValidation{Message: "request.imp[0].ext.pubmatic failed validation.\npublisherId: Invalid type. Expected: string, given: integer"}},
 				},
 				{
 					description:    "Valid Bidder + Disabled Bidder + Invalid bidder params",
 					impExt:         json.RawMessage(`{"pubmatic":{"publisherId":156209},"disabledbidder":{"foo":"bar"}}`),
-					expectedImpExt: `{}`,
+					expectedImpExt: `{"pubmatic":{"publisherId":156209},"disabledbidder":{"foo":"bar"}}`,
 					expectedErrs: []error{&errortypes.BidderFailedSchemaValidation{Message: "request.imp[0].ext.pubmatic failed validation.\npublisherId: Invalid type. Expected: string, given: integer"},
 						&errortypes.BidderTemporarilyDisabled{Message: "The bidder 'disabledbidder' has been disabled."},
 						fmt.Errorf("request.imp[%d].ext must contain at least one bidder", 0)},
@@ -88,16 +93,79 @@ func TestValidateImpExtOW(t *testing.T) {
 
 	for _, group := range testGroups {
 		for _, test := range group.testCases {
-			imp := &openrtb2.Imp{Ext: test.impExt}
+			impWrapper := &openrtb_ext.ImpWrapper{Imp: &openrtb2.Imp{Ext: test.impExt}}
 
-			errs := deps.validateImpExt(imp, nil, 0, false, nil)
+			errs := deps.validateImpExt(impWrapper, nil, 0, false, nil)
 
 			if len(test.expectedImpExt) > 0 {
-				assert.JSONEq(t, test.expectedImpExt, string(imp.Ext), "imp.ext JSON does not match expected. Test: %s. %s\n", group.description, test.description)
+				assert.JSONEq(t, test.expectedImpExt, string(impWrapper.Ext), "imp.ext JSON does not match expected. Test: %s. %s\n", group.description, test.description)
 			} else {
-				assert.Empty(t, imp.Ext, "imp.ext expected to be empty but was: %s. Test: %s. %s\n", string(imp.Ext), group.description, test.description)
+				assert.Empty(t, impWrapper.Ext, "imp.ext expected to be empty but was: %s. Test: %s. %s\n", string(impWrapper.Ext), group.description, test.description)
 			}
 			assert.ElementsMatch(t, test.expectedErrs, errs, "errs slice does not match expected. Test: %s. %s\n", group.description, test.description)
 		}
+	}
+}
+
+func TestRecordRejectedBids(t *testing.T) {
+
+	type args struct {
+		pubid   string
+		rejBids []analytics.RejectedBid
+	}
+
+	type want struct {
+		expectedCalls int
+	}
+
+	tests := []struct {
+		description string
+		args        args
+		want        want
+	}{
+		{
+			description: "empty rejected bids",
+			args: args{
+				rejBids: []analytics.RejectedBid{},
+			},
+			want: want{
+				expectedCalls: 0,
+			},
+		},
+		{
+			description: "rejected bids",
+			args: args{
+				pubid: "1010",
+				rejBids: []analytics.RejectedBid{
+					{
+						Seat:            "pubmatic",
+						RejectionReason: openrtb3.LossAdvertiserExclusions,
+					},
+					{
+						Seat:            "pubmatic",
+						RejectionReason: openrtb3.LossBelowDealFloor,
+					},
+					{
+						Seat:            "pubmatic",
+						RejectionReason: openrtb3.LossAdvertiserExclusions,
+					},
+					{
+						Seat:            "appnexus",
+						RejectionReason: openrtb3.LossBelowDealFloor,
+					},
+				},
+			},
+			want: want{
+				expectedCalls: 4,
+			},
+		},
+	}
+
+	for _, test := range tests {
+		me := &metrics.MetricsEngineMock{}
+		me.On("RecordRejectedBids", mock.Anything, mock.Anything, mock.Anything).Return()
+
+		recordRejectedBids(test.args.pubid, test.args.rejBids, me)
+		me.AssertNumberOfCalls(t, "RecordRejectedBids", test.want.expectedCalls)
 	}
 }
