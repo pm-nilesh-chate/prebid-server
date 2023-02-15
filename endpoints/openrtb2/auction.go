@@ -398,7 +398,6 @@ func (deps *endpointDeps) parseRequest(httpRequest *http.Request, labels *metric
 	if len(errs) > 0 {
 		return nil, nil, nil, nil, nil, nil, errs
 	}
-
 	storedBidRequestId, hasStoredBidRequest, storedRequests, storedImps, errs := deps.getStoredRequests(ctx, requestJson, impInfo)
 	if len(errs) > 0 {
 		return
