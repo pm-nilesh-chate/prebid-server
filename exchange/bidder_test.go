@@ -1068,7 +1068,7 @@ func TestMultiCurrencies_RequestCurrencyPick(t *testing.T) {
 			bidRequestCurrencies:   []string{"EUR", "USD", "JPY"},
 			bidResponsesCurrency:   "EUR",
 			expectedPickedCurrency: "EUR",
-			expectedError:          false,
+			expectedError:          true, //conversionRateUSD fails as currency conversion in this test is default.
 			rates: currency.Rates{
 				Conversions: map[string]map[string]float64{
 					"JPY": {
@@ -1088,7 +1088,7 @@ func TestMultiCurrencies_RequestCurrencyPick(t *testing.T) {
 			bidRequestCurrencies:   []string{"JPY"},
 			bidResponsesCurrency:   "JPY",
 			expectedPickedCurrency: "JPY",
-			expectedError:          false,
+			expectedError:          true, //conversionRateUSD fails as currency conversion in this test is default.
 			rates: currency.Rates{
 				Conversions: map[string]map[string]float64{
 					"JPY": {
@@ -1972,7 +1972,7 @@ func TestCallRecordDNSTime(t *testing.T) {
 func TestCallRecordTLSHandshakeTime(t *testing.T) {
 	// setup a mock metrics engine and its expectation
 	metricsMock := &metrics.MetricsEngineMock{}
-	metricsMock.Mock.On("RecordTLSHandshakeTime", mock.Anything).Return()
+	metricsMock.Mock.On("RecordTLSHandshakeTime", mock.Anything, mock.Anything).Return()
 
 	// Instantiate the bidder that will send the request. We'll make sure to use an
 	// http.Client that runs our mock RoundTripper so DNSDone(httptrace.DNSDoneInfo{})
