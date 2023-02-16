@@ -42,7 +42,8 @@ func getCurrencyConversionRate(seatBidCur, reqImpCur string, conversions currenc
 }
 
 // enforceFloorToBids function does floors enforcement for each bid.
-//  The bids returned by each partner below bid floor price are rejected and remaining eligible bids are considered for further processing
+//
+//	The bids returned by each partner below bid floor price are rejected and remaining eligible bids are considered for further processing
 func enforceFloorToBids(bidRequest *openrtb2.BidRequest, seatBids map[openrtb_ext.BidderName]*pbsOrtbSeatBid, conversions currency.Conversions, enforceDealFloors bool) (map[openrtb_ext.BidderName]*pbsOrtbSeatBid, []error, []analytics.RejectedBid) {
 	errs := []error{}
 	rejectedBids := []analytics.RejectedBid{}
