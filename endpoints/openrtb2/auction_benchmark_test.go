@@ -10,11 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prebid/prebid-server/experiment/adscert"
+	"github.com/prebid/prebid-server/floors"
+
 	analyticsConf "github.com/prebid/prebid-server/analytics/config"
 	"github.com/prebid/prebid-server/config"
 	"github.com/prebid/prebid-server/currency"
 	"github.com/prebid/prebid-server/exchange"
-	"github.com/prebid/prebid-server/experiment/adscert"
 	"github.com/prebid/prebid-server/gdpr"
 	"github.com/prebid/prebid-server/hooks"
 	metricsConfig "github.com/prebid/prebid-server/metrics/config"
@@ -98,6 +100,7 @@ func BenchmarkOpenrtbEndpoint(b *testing.B) {
 		currency.NewRateConverter(&http.Client{}, "", time.Duration(0)),
 		empty_fetcher.EmptyFetcher{},
 		&adscert.NilSigner{},
+		&floors.PriceFloorFetcher{},
 	)
 
 	endpoint, _ := NewEndpoint(
