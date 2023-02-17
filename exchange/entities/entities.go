@@ -22,6 +22,8 @@ type PbsOrtbSeatBid struct {
 	HttpCalls []*openrtb_ext.ExtHttpCall
 	// Seat defines whom these extra Bids belong to.
 	Seat string
+	// bidderCoreName represents the core bidder id.
+	BidderCoreName openrtb_ext.BidderName
 }
 
 // PbsOrtbBid is a Bid returned by an AdaptedBidder.
@@ -47,4 +49,5 @@ type PbsOrtbBid struct {
 	GeneratedBidID    string
 	OriginalBidCPM    float64
 	OriginalBidCur    string
+	OriginalBidCPMUSD float64
 }
