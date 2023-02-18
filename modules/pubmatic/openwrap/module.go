@@ -13,6 +13,7 @@ import (
 	"github.com/prebid/prebid-server/hooks/hookstage"
 	"github.com/prebid/prebid-server/modules/moduledeps"
 	ow_config "github.com/prebid/prebid-server/modules/pubmatic/openwrap/config"
+	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/constant"
 	ow_db "github.com/prebid/prebid-server/modules/pubmatic/openwrap/db"
 )
 
@@ -188,13 +189,13 @@ func (m Module) HandleEntrypointHook(
 }
 
 // Han rejects bids for a specific bidder if they fail the attribute check.
-func (m Module) HandleProcessedAuctionHook(
+func (m Module) HandleBeforeValidationHook(
 	_ context.Context,
 	miCtx hookstage.ModuleInvocationContext,
-	payload hookstage.ProcessedAuctionRequestPayload,
-) (hookstage.HookResult[hookstage.ProcessedAuctionRequestPayload], error) {
-	result := hookstage.HookResult[hookstage.ProcessedAuctionRequestPayload]{}
-	result.ChangeSet = hookstage.ChangeSet[hookstage.ProcessedAuctionRequestPayload]{}
+	payload hookstage.BeforeValidationRequestPayload,
+) (hookstage.HookResult[hookstage.BeforeValidationRequestPayload], error) {
+	result := hookstage.HookResult[hookstage.BeforeValidationRequestPayload]{}
+	result.ChangeSet = hookstage.ChangeSet[hookstage.BeforeValidationRequestPayload]{}
 
 	profileId := miCtx.ModuleContext["profileid"].(int)
 	pubId := miCtx.ModuleContext["pubid"].(int)
@@ -231,15 +232,14 @@ func (m Module) HandleProcessedAuctionHook(
 			return slotMappingList[i].OrderID < slotMappingList[j].OrderID
 		})
 		for _, slotMapping := range slotMappingList {
-
-			m.ProfileCache[profileId][versionID][partnerId]["mappingJson"] = slotMapping.MappingJson
+			m.ProfileCache[profileId][versionID][partnerId][slotMapping.SlotName] = slotMapping.MappingJson
 		}
 	}
 
 	miCtx.ModuleContext["profileMeta"] = m.ProfileCache[profileId][versionID]
 	miCtx.ModuleContext["publisherMeta"] = m.PublisherCache[pubId]
 
-	result.ChangeSet.AddMutation(func(parp hookstage.ProcessedAuctionRequestPayload) (hookstage.ProcessedAuctionRequestPayload, error) {
+	result.ChangeSet.AddMutation(func(parp hookstage.BeforeValidationRequestPayload) (hookstage.BeforeValidationRequestPayload, error) {
 		// parp.BidRequest.Site.Page = "dummy.updated.by.pubmatic.module"
 		// platform := m.ProfileCache[profileId][versionID][-1]["platform"]
 
@@ -254,9 +254,26 @@ func (m Module) HandleProcessedAuctionHook(
 		// prebid timeout, etc
 
 		for i := 0; i < len(parp.BidRequest.Imp); i++ {
-			if status, ok := pm[-1]["serverSideEnabled"]; ok && status == "1" {
+			bidderParams := make(map[string]json.RawMessage)
+			for _, p := range pm {
+				if p["serverSideEnabled"] == "1" {
+					partnerId, err := strconv.Atoi(p["partnerId"])
+					if err != nil {
+						continue
+					}
 
+					bidderCode := p[constant.BidderCode]
+
+					slotMappingJSON := m.prepareBidderParamsJSON(pubId, profileId, versionID, partnerId, p, parp.BidRequest.Imp[i])
+
+					bidderParams[bidderCode] = json.RawMessage(slotMappingJSON)
+				}
 			}
+			impExt, err := json.Marshal(bidderParams)
+			if err != nil {
+				fmt.Println("error creating impExt", bidderParams)
+			}
+			parp.BidRequest.Imp[i].Ext = impExt
 		}
 
 		return parp, nil
