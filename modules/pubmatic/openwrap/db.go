@@ -12,14 +12,13 @@ import (
 
 /*SlotMapping object contains information for a given slot*/
 type SlotMapping struct {
-	PartnerId    int64
-	AdapterId    int64
-	VersionId    int64
-	SlotName     string
-	MappingJson  string
-	SlotMappings map[string]interface{}
-	Hash         string
-	OrderID      int64
+	PartnerId   int64
+	AdapterId   int64
+	VersionId   int64
+	SlotName    string
+	MappingJson string
+	Hash        string
+	OrderID     int64
 }
 
 func (m Module) getActivePartnerConfigurations(pubId, profileId int, versionID int) (map[int]map[string]string, error) {
