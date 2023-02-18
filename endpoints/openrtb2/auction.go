@@ -449,6 +449,13 @@ func (deps *endpointDeps) parseRequest(httpRequest *http.Request, labels *metric
 	if len(storedAuctionResponses) > 0 {
 		hasStoredResponses = true
 	}
+
+	err = deps.hookExecutor.ExecuteBeforeRequestValidationStage(req.BidRequest)
+	if err != nil {
+		errs = append(errs, err)
+		return
+	}
+
 	errL := deps.validateRequest(req, false, hasStoredResponses, storedBidResponses, hasStoredBidRequest)
 	if len(errL) > 0 {
 		errs = append(errs, errL...)
