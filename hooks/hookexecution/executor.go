@@ -33,6 +33,7 @@ const (
 type StageExecutor interface {
 	ExecuteEntrypointStage(req *http.Request, body []byte) ([]byte, *RejectError)
 	ExecuteRawAuctionStage(body []byte) ([]byte, *RejectError)
+	ExecuteBeforeRequestValidationStage(req *openrtb2.BidRequest) *RejectError
 	ExecuteProcessedAuctionStage(req *openrtb2.BidRequest) *RejectError
 	ExecuteBidderRequestStage(req *openrtb2.BidRequest, bidder string) *RejectError
 	ExecuteRawBidderResponseStage(response *adapters.BidderResponse, bidder string) *RejectError
@@ -137,6 +138,35 @@ func (e *hookExecutor) ExecuteRawAuctionStage(requestBody []byte) ([]byte, *Reje
 	e.pushStageOutcome(outcome)
 
 	return payload, reject
+}
+
+func (e *hookExecutor) BeforeValidationRequest(request *openrtb2.BidRequest) *RejectError {
+	plan := e.planBuilder.PlanForValidationStage(e.endpoint, e.account)
+	if len(plan) == 0 {
+		return nil
+	}
+
+	handler := func(
+		ctx context.Context,
+		moduleCtx hookstage.ModuleInvocationContext,
+		hook hookstage.BeforeValidationRequest,
+		payload hookstage.BeforeValidationRequestPayload,
+	) (hookstage.HookResult[hookstage.BeforeValidationRequestPayload], error) {
+		return hook.HandleBeforeValidationHook(ctx, moduleCtx, payload)
+	}
+
+	stageName := hooks.StageBeforeValidationRequest.String()
+	executionCtx := e.newContext(stageName)
+	payload := hookstage.BeforeValidationRequestPayload{BidRequest: request}
+
+	outcome, _, contexts, reject := executeStage(executionCtx, plan, payload, handler, e.metricEngine)
+	outcome.Entity = entityAuctionRequest
+	outcome.Stage = stageName
+
+	e.saveModuleContexts(contexts)
+	e.pushStageOutcome(outcome)
+
+	return reject
 }
 
 func (e *hookExecutor) ExecuteProcessedAuctionStage(request *openrtb2.BidRequest) *RejectError {
@@ -317,6 +347,10 @@ func (executor *EmptyHookExecutor) ExecuteEntrypointStage(_ *http.Request, body 
 
 func (executor *EmptyHookExecutor) ExecuteRawAuctionStage(body []byte) ([]byte, *RejectError) {
 	return body, nil
+}
+
+func (executor *EmptyHookExecutor) BeforeValidationRequestStage(_ *openrtb2.BidRequest) *RejectError {
+	return nil
 }
 
 func (executor *EmptyHookExecutor) ExecuteProcessedAuctionStage(_ *openrtb2.BidRequest) *RejectError {
