@@ -461,6 +461,12 @@ func (deps *endpointDeps) parseRequest(httpRequest *http.Request, labels *metric
 		return
 	}
 
+	rejectErr = deps.hookExecutor.ExecuteBeforeRequestValidationStage(req.BidRequest)
+	if rejectErr != nil {
+		errs = append(errs, rejectErr)
+		return
+	}
+
 	if err := mergeBidderParams(req); err != nil {
 		errs = []error{err}
 		return
