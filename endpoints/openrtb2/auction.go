@@ -436,6 +436,12 @@ func (deps *endpointDeps) parseRequest(httpRequest *http.Request, labels *metric
 		return
 	}
 
+	rejectErr = deps.hookExecutor.ExecuteBeforeRequestValidationStage(req.BidRequest)
+	if rejectErr != nil {
+		errs = append(errs, rejectErr)
+		return
+	}
+
 	if err := mergeBidderParams(req); err != nil {
 		errs = []error{err}
 		return
@@ -454,12 +460,6 @@ func (deps *endpointDeps) parseRequest(httpRequest *http.Request, labels *metric
 	var hasStoredResponses bool
 	if len(storedAuctionResponses) > 0 {
 		hasStoredResponses = true
-	}
-
-	err = deps.hookExecutor.ExecuteBeforeRequestValidationStage(req.BidRequest)
-	if err != nil {
-		errs = append(errs, err)
-		return
 	}
 
 	errL := deps.validateRequest(req, false, hasStoredResponses, storedBidResponses, hasStoredBidRequest)
