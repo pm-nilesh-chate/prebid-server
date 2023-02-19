@@ -13,8 +13,8 @@ import (
 	"github.com/prebid/prebid-server/hooks/hookstage"
 	"github.com/prebid/prebid-server/modules/moduledeps"
 	ow_config "github.com/prebid/prebid-server/modules/pubmatic/openwrap/config"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/constant"
 	ow_db "github.com/prebid/prebid-server/modules/pubmatic/openwrap/db"
+	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
 func Builder(rawCfg json.RawMessage, _ moduledeps.ModuleDeps) (interface{}, error) {
@@ -240,6 +240,9 @@ func (m Module) HandleBeforeValidationHook(
 	miCtx.ModuleContext["publisherMeta"] = m.PublisherCache[pubId]
 
 	result.ChangeSet.AddMutation(func(parp hookstage.BeforeValidationRequestPayload) (hookstage.BeforeValidationRequestPayload, error) {
+		// TODO: mov all declartion here to avoid race condition.
+		// ex. pubId
+
 		// parp.BidRequest.Site.Page = "dummy.updated.by.pubmatic.module"
 		// platform := m.ProfileCache[profileId][versionID][-1]["platform"]
 
@@ -257,23 +260,40 @@ func (m Module) HandleBeforeValidationHook(
 			bidderParams := make(map[string]json.RawMessage)
 			for _, p := range pm {
 				if p["serverSideEnabled"] == "1" {
-					partnerId, err := strconv.Atoi(p["partnerId"])
-					if err != nil {
+					partnerId, err := strconv.Atoi(p["partnerid"])
+					if err != nil && partnerId > 0 {
 						continue
 					}
 
-					bidderCode := p[constant.BidderCode]
+					bidderCode := p["bidder"]
 
 					slotMappingJSON := m.prepareBidderParamsJSON(pubId, profileId, versionID, partnerId, p, parp.BidRequest.Imp[i])
+
+					if bidderCode == string(openrtb_ext.BidderPubmatic) {
+						slotMappingJSON = slotMappingJSON[:len(slotMappingJSON)-1] + `,"publisherId":"` + fmt.Sprintf("%d", pubId) + `"}`
+					}
 
 					bidderParams[bidderCode] = json.RawMessage(slotMappingJSON)
 				}
 			}
-			impExt, err := json.Marshal(bidderParams)
-			if err != nil {
-				fmt.Println("error creating impExt", bidderParams)
+
+			if len(bidderParams) != 0 {
+				impExt := make(map[string]json.RawMessage)
+				_ = json.Unmarshal(parp.BidRequest.Imp[i].Ext, &impExt)
+
+				var prebid openrtb_ext.ExtImpPrebid
+				if _, ok := impExt["prebid"]; ok {
+					_ = json.Unmarshal(impExt["prebid"], &prebid)
+				}
+				prebid.Bidder = bidderParams
+				impExt["prebid"], _ = json.Marshal(prebid)
+
+				newImpExt, err := json.Marshal(impExt)
+				if err != nil {
+					fmt.Println("error creating impExt", bidderParams)
+				}
+				parp.BidRequest.Imp[i].Ext = newImpExt
 			}
-			parp.BidRequest.Imp[i].Ext = impExt
 		}
 
 		return parp, nil
