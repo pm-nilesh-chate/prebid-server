@@ -140,7 +140,7 @@ func (e *hookExecutor) ExecuteRawAuctionStage(requestBody []byte) ([]byte, *Reje
 	return payload, reject
 }
 
-func (e *hookExecutor) BeforeValidationRequest(request *openrtb2.BidRequest) *RejectError {
+func (e *hookExecutor) ExecuteBeforeRequestValidationStage(request *openrtb2.BidRequest) *RejectError {
 	plan := e.planBuilder.PlanForValidationStage(e.endpoint, e.account)
 	if len(plan) == 0 {
 		return nil
@@ -349,7 +349,7 @@ func (executor *EmptyHookExecutor) ExecuteRawAuctionStage(body []byte) ([]byte, 
 	return body, nil
 }
 
-func (executor *EmptyHookExecutor) BeforeValidationRequestStage(_ *openrtb2.BidRequest) *RejectError {
+func (executor *EmptyHookExecutor) ExecuteBeforeRequestValidationStage(_ *openrtb2.BidRequest) *RejectError {
 	return nil
 }
 
