@@ -2,14 +2,13 @@ package openwrap
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
 )
 
 func (m Module) prepareBidderParamsJSON(pubId, profileId, versionId, partnerId int, pm map[string]string, imp openrtb2.Imp) string {
 	kgp := pm["kgp"]
-	isRegex := kgp != "_AU_@_DIV_@_W_x_H_"
+	isRegex := kgp == "_AU_@_DIV_@_W_x_H_"
 
 	var wh [][2]int64
 	if imp.Banner != nil {
@@ -48,7 +47,7 @@ func (m Module) prepareBidderParamsJSON(pubId, profileId, versionId, partnerId i
 			// 	hashValue = slotMappingInfo.HashValueMap[matchingRegex]
 			// }
 		} else {
-			bidderParamsJSON, _ = m.ProfileCache[profileId][versionId][partnerId][strings.ToLower(slot)]
+			bidderParamsJSON, _ = m.ProfileCache[profileId][versionId][partnerId][slot]
 		}
 	}
 
@@ -75,7 +74,7 @@ func (m Module) prepareBidderParamsJSON(pubId, profileId, versionId, partnerId i
 // 6 rows in set (0.21 sec)
 func generateSlotName(kgp, div, tagid, domain, page, appbundle string, h, w int64) string {
 	// func (H, W, Div), no need to validate, will always be non-nil
-	switch strings.ToUpper(kgp) {
+	switch kgp {
 	case "_AU_@_W_x_H_":
 		return fmt.Sprintf("%s@%dx%d", tagid, w, h)
 	case "_DIV_@_W_x_H_":
@@ -86,9 +85,9 @@ func generateSlotName(kgp, div, tagid, domain, page, appbundle string, h, w int6
 		return div
 	case "_AU_@_DIV_@_W_x_H_":
 		if div == "" {
-			return fmt.Sprintf("%s@%d@s%dx%d", tagid, div, w, h)
+			return fmt.Sprintf("%s@%s@s%dx%d", tagid, div, w, h)
 		}
-		return fmt.Sprintf("%s@%d@s%d", tagid, div, w, h)
+		return fmt.Sprintf("%s@%s@s%dx%d", tagid, div, w, h)
 	case "_AU_@_SRC_@_VASTTAG_":
 		var src string
 		if domain != "" {
