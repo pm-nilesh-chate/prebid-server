@@ -12,6 +12,8 @@ import (
 	analyticsConf "github.com/prebid/prebid-server/analytics/config"
 	"github.com/prebid/prebid-server/config"
 	"github.com/prebid/prebid-server/errortypes"
+	"github.com/prebid/prebid-server/hooks"
+	"github.com/prebid/prebid-server/hooks/hookexecution"
 	"github.com/prebid/prebid-server/metrics"
 	metricsConfig "github.com/prebid/prebid-server/metrics/config"
 	"github.com/prebid/prebid-server/openrtb_ext"
@@ -89,7 +91,7 @@ func TestValidateImpExtOW(t *testing.T) {
 		nil,
 		hardcodedResponseIPValidator{response: true},
 		empty_fetcher.EmptyFetcher{},
-		nil,
+		hookexecution.NewHookExecutor(hooks.EmptyPlanBuilder{}, hookexecution.EndpointAuction, &metricsConfig.NilMetricsEngine{}),
 	}
 
 	for _, group := range testGroups {
