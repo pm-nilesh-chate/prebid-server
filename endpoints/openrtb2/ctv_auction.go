@@ -71,8 +71,7 @@ func NewCTVEndpoint(
 	pbsAnalytics analytics.PBSAnalyticsModule,
 	disabledBidders map[string]string,
 	defReqJSON []byte,
-	bidderMap map[string]openrtb_ext.BidderName,
-	hookExecutionPlanBuilder hooks.ExecutionPlanBuilder) (httprouter.Handle, error) {
+	bidderMap map[string]openrtb_ext.BidderName) (httprouter.Handle, error) {
 
 	if ex == nil || validator == nil || requestsByID == nil || accounts == nil || cfg == nil || met == nil {
 		return nil, errors.New("NewCTVEndpoint requires non-nil arguments")
