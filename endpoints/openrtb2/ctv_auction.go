@@ -32,7 +32,6 @@ import (
 	"github.com/prebid/prebid-server/endpoints/openrtb2/ctv/util"
 	"github.com/prebid/prebid-server/errortypes"
 	"github.com/prebid/prebid-server/exchange"
-	"github.com/prebid/prebid-server/hooks"
 	"github.com/prebid/prebid-server/hooks/hookexecution"
 	"github.com/prebid/prebid-server/metrics"
 	"github.com/prebid/prebid-server/openrtb_ext"
@@ -70,8 +69,7 @@ func NewCTVEndpoint(
 	pbsAnalytics analytics.PBSAnalyticsModule,
 	disabledBidders map[string]string,
 	defReqJSON []byte,
-	bidderMap map[string]openrtb_ext.BidderName,
-	hookExecutionPlanBuilder hooks.ExecutionPlanBuilder) (httprouter.Handle, error) {
+	bidderMap map[string]openrtb_ext.BidderName) (httprouter.Handle, error) {
 
 	if ex == nil || validator == nil || requestsByID == nil || accounts == nil || cfg == nil || met == nil {
 		return nil, errors.New("NewCTVEndpoint requires non-nil arguments")
@@ -82,8 +80,6 @@ func NewCTVEndpoint(
 		IPv4PrivateNetworks: cfg.RequestValidation.IPv4PrivateNetworksParsed,
 		IPv6PrivateNetworks: cfg.RequestValidation.IPv6PrivateNetworksParsed,
 	}
-
-	hookExecutor := hookexecution.NewHookExecutor(hookExecutionPlanBuilder, hookexecution.EndpointAuction, met)
 
 	var uuidGenerator uuidutil.UUIDGenerator
 	return httprouter.Handle((&ctvEndpointDeps{
@@ -105,7 +101,7 @@ func NewCTVEndpoint(
 			nil,
 			ipValidator,
 			nil,
-			hookExecutor,
+			&hookexecution.EmptyHookExecutor{},
 		},
 	}).CTVAuctionEndpoint), nil
 }
@@ -222,6 +218,7 @@ func (deps *ctvEndpointDeps) CTVAuctionEndpoint(w http.ResponseWriter, r *http.R
 		LegacyLabels:      deps.labels,
 		PubID:             deps.labels.PubID,
 		LoggableObject:    &ao.LoggableAuctionObject,
+		HookExecutor:      deps.hookExecutor,
 	}
 
 	response, err = deps.holdAuction(ctx, auctionRequest)
