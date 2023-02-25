@@ -1,4 +1,4 @@
-package constant
+package models
 
 const (
 	DEFAULT_PUB_ID             = 34576 // Default PubID to get generic data like regex for browsers etc

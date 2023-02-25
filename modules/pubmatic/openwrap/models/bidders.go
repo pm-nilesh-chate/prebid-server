@@ -1,0 +1,65 @@
+package models
+
+// Bidder Names
+const (
+	Bidder33Across        = "33across"
+	BidderAdagio          = "adagio"
+	BidderAdf             = "adf"
+	BidderAdForm          = "adform"
+	BidderAdGeneration    = "adgeneration"
+	BidderAdKernel        = "adkernel"
+	BidderAppnexus        = "appnexus"
+	BidderBeachfront      = "beachfront"
+	BidderConversant      = "conversant"
+	BidderCriteo          = "criteo"
+	BidderDistrictmDMX    = "dmx"
+	BidderEngagebdr       = "engagebdr"
+	BidderFacebook        = "audienceNetwork"
+	BidderGrid            = "grid"
+	BidderGroupM          = "groupm"
+	BidderGumGum          = "gumgum"
+	BidderImproveDigitial = "improvedigital"
+	BidderIndex           = "ix"
+	BidderInMobi          = "inmobi"
+	BidderLifeStreet      = "lifestreet"
+	BidderNobid           = "nobid"
+	BidderOpenX           = "openx"
+	BidderOutbrain        = "outbrain"
+	BidderPangle          = "pangle"
+	BidderPulsePoint      = "pulsepoint"
+	BidderRhythmOne       = "rhythmone"
+	BidderRubicon         = "rubicon"
+	BidderShareThrough    = "sharethrough"
+	BidderSmaato          = "smaato"
+	BidderSmartAdServer   = "smartadserver"
+	BidderSonobi          = "sonobi"
+	BidderSovrn           = "sovrn"
+	BidderSpotx           = "spotx"
+	BidderSynacorMedia    = "synacormedia"
+	BidderTappx           = "tappx"
+	BidderTelaria         = "telaria"
+	BidderTripleLift      = "triplelift"
+	BidderUnruly          = "unruly"
+	BidderVASTBidder      = "vastbidder"
+	BidderVrtcal          = "vrtcal"
+	BidderYieldone        = "yieldone"
+	BidderPubMatic        = "pubmatic"
+	BidderApacdex         = "apacdex"
+)
+
+// S2S Hard Coded Alias Bidder Name
+const (
+	BidderAdGenerationAlias      = "adg"
+	BidderAndBeyondAlias         = "andbeyond"
+	BidderDistrictmAlias         = "districtm"
+	BidderDistrictmDMXAlias      = "districtmDMX"
+	BidderPubMaticSecondaryAlias = "pubmatic2"
+)
+
+const (
+	SS_PM_ADSLOT     = "adSlot"
+	SS_PM_WRAPPER    = "wrapper"
+	SS_PM_PUBID      = "publisherId"
+	SS_PM_PROFILE_ID = "profile"
+	SS_PM_VERSION_ID = "version"
+)
