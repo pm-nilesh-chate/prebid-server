@@ -166,27 +166,7 @@ func parseBidderSchemaDefinitions() map[string]*BidderParamJSON {
 }
 
 func getBidderParamsDirectory() string {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return ""
-	}
-
-	schemaDirectory := fmt.Sprintf("%s/%s", currentDir, "resource/static/bidder-params")
-	if isDirectoryExists(schemaDirectory) {
-		return schemaDirectory
-	}
-
-	schemaDirectory = fmt.Sprintf("%s/%s", currentDir, "../resource/static/bidder-params")
-	if isDirectoryExists(schemaDirectory) {
-		return schemaDirectory
-	}
-
-	schemaDirectory = fmt.Sprintf("%s/%s", currentDir, "../../resource/static/bidder-params")
-	if isDirectoryExists(schemaDirectory) {
-		return schemaDirectory
-	}
-
-	schemaDirectory = "/home/http/GO_SERVER/dmhbserver/static/bidder-params"
+	schemaDirectory := "../../../static/bidder-params"
 	if isDirectoryExists(schemaDirectory) {
 		return schemaDirectory
 	}
@@ -202,7 +182,7 @@ func parseOpenWrapParameterMappings() map[string]map[string]*ParameterMapping {
 		return owParameterMappings
 	}
 
-	fileBytes, err := os.ReadFile(fmt.Sprintf("%s/../%s", schemaDirectory, "parameterMappings.json"))
+	fileBytes, err := os.ReadFile("parameterMappings.json")
 	if err != nil {
 		return owParameterMappings
 	}
