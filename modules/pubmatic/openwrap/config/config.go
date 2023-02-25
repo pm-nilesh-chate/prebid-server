@@ -24,6 +24,13 @@ type Database struct {
 	IdleConnection, MaxConnection, ConnMaxLifeTime, MaxDbContextTimeout int
 }
 
+type Cache struct {
+	CacheConTimeout int // Connection timeout for cache
+
+	CacheDefaultExpiry int           // in seconds
+	VASTTagCacheExpiry time.Duration // in seconds
+}
+
 // Config contains the values read from the config file at boot time
 type SSHB struct {
 	OpenWrap struct {
@@ -77,10 +84,7 @@ type SSHB struct {
 			RespTimeout    int
 		}
 
-		Cache struct {
-			CacheDefaultExpiry int           // in seconds
-			VASTTagCacheExpiry time.Duration // in seconds
-		}
+		Cache Cache
 
 		Timeout struct {
 			MaxTimeout          int
