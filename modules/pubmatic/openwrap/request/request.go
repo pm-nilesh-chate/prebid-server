@@ -1,4 +1,4 @@
-package ortb
+package request
 
 import (
 	"encoding/json"
@@ -68,7 +68,7 @@ type ExtVideo struct {
 
 // ExtRequest Request Extension
 type ExtRequest struct {
-	Wrapper *ExtRequestWrapper                `json:"wrapper,omitempty"`
+	Wrapper *RequestExtWrapper                `json:"wrapper,omitempty"`
 	Bidder  map[string]map[string]interface{} `json:"bidder,omitempty"`
 	AdPod   *ExtRequestAdPod                  `json:"adpod,omitempty"`
 	Prebid  *ExtRequestPrebid                 `json:"prebid"`
@@ -115,17 +115,17 @@ type KeyVal struct {
 	Values []string `json:"value,omitempty"`
 }
 
-// ExtRequestWrapper holds wrapper specific extension parameters
-type ExtRequestWrapper struct {
-	ProfileId            *int    `json:"profileid,omitempty"`
-	VersionId            *int    `json:"versionid,omitempty"`
-	SSAuctionFlag        *int    `json:"ssauction,omitempty"`
-	SumryDisableFlag     *int    `json:"sumry_disable,omitempty"`
-	ClientConfigFlag     *int    `json:"clientconfig,omitempty"`
-	LogInfoFlag          *int    `json:"loginfo,omitempty"`
-	SupportDeals         bool    `json:"supportdeals,omitempty"`
-	IncludeBrandCategory *int    `json:"includebrandcategory,omitempty"`
-	ABTestConfig         *int    `json:"abtest,omitempty"`
-	LoggerImpressionID   *string `json:"wiid,omitempty"`
-	SSAI                 *string `json:"ssai,omitempty"`
+// RequestExtWrapper holds wrapper specific extension parameters
+type RequestExtWrapper struct {
+	ProfileId            int    `json:"profileid,omitempty"`
+	VersionId            int    `json:"versionid,omitempty"`
+	SSAuctionFlag        int    `json:"ssauction,omitempty"`
+	SumryDisableFlag     int    `json:"sumry_disable,omitempty"`
+	ClientConfigFlag     int    `json:"clientconfig,omitempty"`
+	LogInfoFlag          int    `json:"loginfo,omitempty"`
+	SupportDeals         bool   `json:"supportdeals,omitempty"`
+	IncludeBrandCategory int    `json:"includebrandcategory,omitempty"`
+	ABTestConfig         int    `json:"abtest,omitempty"`
+	LoggerImpressionID   string `json:"wiid,omitempty"`
+	SSAI                 string `json:"ssai,omitempty"`
 }
