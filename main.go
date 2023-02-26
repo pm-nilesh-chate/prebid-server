@@ -54,7 +54,7 @@ func main() {
 	}
 }
 
-const configFileName = "pbs"
+const configFileName = "pbs.yaml"
 const infoDirectory = "./static/bidder-info"
 
 func loadConfig(bidderInfos config.BidderInfos) (*config.Configuration, error) {

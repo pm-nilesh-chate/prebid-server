@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/database"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/request"
 
@@ -16,11 +15,10 @@ import (
 func PrepareVASTBidderParamJSON(request *openrtb2.BidRequest, imp *openrtb2.Imp,
 	pubVASTTags models.PublisherVASTTags,
 	matchedSlotKeys []string, slotMap map[string]models.SlotMapping,
-	adpod *request.AdPod,
-	db database.Database) string {
+	adpod *request.AdPod) json.RawMessage {
 
 	if nil == imp.Video {
-		return ""
+		return nil
 	}
 
 	bidderExt := openrtb_ext.ExtImpVASTBidder{}
@@ -37,10 +35,12 @@ func PrepareVASTBidderParamJSON(request *openrtb2.BidRequest, imp *openrtb2.Imp,
 			continue
 		}
 
-		mapping, err := db.GetMappings(slotKey, slotMap)
-		if err != nil {
+		slotMappingObj, ok := slotMap[strings.ToLower(slotKey)]
+		if !ok {
 			continue
 		}
+
+		mapping := slotMappingObj.SlotMappings
 
 		//adding mapping parameters as it is in ext.bidder
 		params := mapping
@@ -68,9 +68,9 @@ func PrepareVASTBidderParamJSON(request *openrtb2.BidRequest, imp *openrtb2.Imp,
 		//If any vast tags found then create impression ext for vast bidder.
 		bidderExt.Tags = bidderExt.Tags[:tagIndex]
 		bidParamBuf, _ := json.Marshal(bidderExt)
-		return string(bidParamBuf)
+		return bidParamBuf
 	}
-	return ""
+	return nil
 }
 
 // getVASTTagID returns VASTTag ID details from slot key

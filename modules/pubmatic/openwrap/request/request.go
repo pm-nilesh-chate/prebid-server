@@ -3,6 +3,8 @@ package request
 import (
 	"encoding/json"
 
+	"github.com/prebid/openrtb/v17/openrtb2"
+	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
@@ -38,26 +40,20 @@ type ImpExtension struct {
 	Wrapper     *ExtImpWrapper              `json:"wrapper,omitempty"`
 	Bidder      map[string]*BidderExtension `json:"bidder,omitempty"`
 	SKAdnetwork json.RawMessage             `json:"skadn,omitempty"`
-	Reward      *int                        `json:"reward,omitempty"`
+	Reward      *int8                       `json:"reward,omitempty"`
 	Data        json.RawMessage             `json:"data,omitempty"`
 	Prebid      *openrtb_ext.ExtImpPrebid   `json:"prebid,omitempty"`
 }
 
 // BidderExtension - Bidder specific items
 type BidderExtension struct {
-	KeyWords []KeyVal  `json:"keywords,omitempty"`
-	DealTier *DealTier `json:"dealtier,omitempty"`
-}
-
-// DealTier - Deal information for individual bidders
-type DealTier struct {
-	Prefix      string `json:"prefix,omitempty"`
-	MinDealTier int    `json:"mindealtier,omitempty"`
+	KeyWords []KeyVal              `json:"keywords,omitempty"`
+	DealTier *openrtb_ext.DealTier `json:"dealtier,omitempty"`
 }
 
 // ExtImpWrapper - Impression wrapper Extension
 type ExtImpWrapper struct {
-	Div *string `json:"div,omitempty"`
+	Div string `json:"div,omitempty"`
 }
 
 // ExtVideo structure to accept video specific more parameters like adpod
@@ -71,28 +67,7 @@ type ExtRequest struct {
 	Wrapper *RequestExtWrapper                `json:"wrapper,omitempty"`
 	Bidder  map[string]map[string]interface{} `json:"bidder,omitempty"`
 	AdPod   *ExtRequestAdPod                  `json:"adpod,omitempty"`
-	Prebid  *ExtRequestPrebid                 `json:"prebid"`
-}
-
-// ExtRequestPrebid defines the contract for bidrequest.ext.prebid
-type ExtRequestPrebid struct {
-	Aliases              interface{} `json:"aliases,omitempty"`
-	BidAdjustmentFactors interface{} `json:"bidadjustmentfactors,omitempty"`
-	Cache                interface{} `json:"cache,omitempty"`
-	Data                 interface{} `json:"data,omitempty"`
-	Debug                bool        `json:"debug,omitempty"`
-	Events               interface{} `json:"events,omitempty"`
-	SChains              interface{} `json:"schains,omitempty"`
-	StoredRequest        interface{} `json:"storedrequest,omitempty"`
-	SupportDeals         bool        `json:"supportdeals,omitempty"`
-	Targeting            interface{} `json:"targeting,omitempty"`
-
-	// NoSale specifies bidders with whom the publisher has a legal relationship where the
-	// passing of personally identifiable information doesn't constitute a sale per CCPA law.
-	// The array may contain a single sstar ('*') entry to represent all bidders.
-	NoSale       []string         `json:"nosale,omitempty"`
-	Transparency *ExtTransparency `json:"transparency,omitempty"`
-	// Floors       *PriceFloorRules `json:"floors,omitempty"`
+	Prebid  openrtb_ext.ExtRequestPrebid      `json:"prebid"`
 }
 
 // pbopenrtb_ext alias for prebid server openrtb_ext
@@ -128,4 +103,16 @@ type RequestExtWrapper struct {
 	ABTestConfig         int    `json:"abtest,omitempty"`
 	LoggerImpressionID   string `json:"wiid,omitempty"`
 	SSAI                 string `json:"ssai,omitempty"`
+}
+
+type BidderWrapper struct {
+	Flag        bool
+	VASTagFlags map[string]bool
+}
+
+// TODO move this file to opertb package
+type ImpWrapper struct {
+	Imp         *openrtb2.Imp
+	Bidder      map[string]*BidderWrapper
+	BidderError errorcodes.IError
 }

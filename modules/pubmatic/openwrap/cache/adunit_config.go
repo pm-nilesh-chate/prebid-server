@@ -11,9 +11,6 @@ import (
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
-// AdUnitConfig type definition for Ad Unit config parsed from stored config JSON
-type AdUnitConfig map[string]interface{}
-
 func (c *cache) populateCacheWithAdunitConfig(pubID int, profileID, displayVersion int) {
 
 	adunitConfigJSON, err := c.db.GetAdunitConfig(profileID, displayVersion)
@@ -22,7 +19,7 @@ func (c *cache) populateCacheWithAdunitConfig(pubID int, profileID, displayVersi
 		return
 	}
 
-	adUnitConfig := make(AdUnitConfig, 0)
+	adUnitConfig := make(models.AdUnitConfig, 0)
 
 	if adunitConfigJSON != "" {
 
@@ -65,14 +62,14 @@ func (c *cache) populateCacheWithAdunitConfig(pubID int, profileID, displayVersi
 }
 
 // GetAdunitConfigFromCache this function gets adunit config from cache for a given request
-func (c *cache) GetAdunitConfigFromCache(request *openrtb2.BidRequest, pubID int, profileID, displayVersion int) AdUnitConfig {
+func (c *cache) GetAdunitConfigFromCache(request *openrtb2.BidRequest, pubID int, profileID, displayVersion int) models.AdUnitConfig {
 	if request.Test == 2 {
 		return nil
 	}
 
 	cacheKey := key(PubAdunitConfig, pubID, profileID, displayVersion)
 	if obj, ok := c.cache.Get(cacheKey); ok {
-		return obj.(AdUnitConfig)
+		return obj.(models.AdUnitConfig)
 	}
 
 	return nil

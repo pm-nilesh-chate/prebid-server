@@ -10,9 +10,8 @@ import (
 )
 
 // PrepareBidParamJSONForPartner preparing bid params json for partner
-func PrepareBidParamJSONForPartner(reqID string, width *int, height *int, fieldMap map[string]interface{}, slotKey, adapterName, bidderCode string, impExt *request.ImpExtension) string {
+func PrepareBidParamJSONForPartner(width *int64, height *int64, fieldMap map[string]interface{}, slotKey, adapterName, bidderCode string, impExt *request.ImpExtension) (json.RawMessage, error) {
 	params := BidderParameters{
-		ReqID:       reqID,
 		AdapterName: adapterName,
 		BidderCode:  bidderCode,
 		ImpExt:      impExt,
@@ -24,12 +23,7 @@ func PrepareBidParamJSONForPartner(reqID string, width *int, height *int, fieldM
 
 	//get callback function and execute it
 	callback := getBuilder(params.AdapterName)
-	result, err := callback(params)
-	if err != nil {
-	}
-
-	jsonStrBuf := string(result)
-	return jsonStrBuf
+	return callback(params)
 }
 
 // defaultBuilder for building json object for all other bidder
@@ -193,7 +187,9 @@ func builderIndex(params BidderParameters) (json.RawMessage, error) {
 		if len(size) != 2 || !ok {
 			return nil, fmt.Errorf(errMandatoryParameterMissingFormat, params.AdapterName, "size")
 		}
-		width, height = &size[0], &size[1]
+		w := int64(size[0])
+		h := int64(size[1])
+		width, height = &w, &h
 	}
 
 	fmt.Fprintf(&jsonStr, `{"siteId":"%s","size":[%d,%d]}`, siteID, *width, *height)
@@ -332,8 +328,10 @@ func builderImproveDigital(params BidderParameters) (json.RawMessage, error) {
 			w, ok1 := getInt(size["w"])
 			h, ok2 := getInt(size["h"])
 			if ok1 && ok2 {
-				width = &w
-				height = &h
+				_w := int64(w)
+				_h := int64(h)
+				width = &(_w)
+				height = &(_h)
 			}
 		}
 	}

@@ -50,3 +50,6 @@ func (t BySlotName) Compare(i int, element interface{}) int {
 	slotname := element.(string)
 	return strings.Compare(t[i].SlotName, slotname)
 }
+
+// AdUnitConfig type definition for Ad Unit config parsed from stored config JSON
+type AdUnitConfig map[string]interface{}
