@@ -151,22 +151,22 @@ func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]
 			// 	continue
 			// }
 
-			switch partnerConfig[models.PREBID_PARTNER_NAME] {
+			bidder := partnerConfig[models.PREBID_PARTNER_NAME]
+			var bidderParams json.RawMessage
+			switch bidder {
 			case models.BidderPubMatic, models.BidderPubMaticSecondaryAlias:
-				prebidBidderParams[models.PREBID_PARTNER_NAME], err = bidderparams.PreparePubMaticParamsV25(rctx, m.cache, *bidRequest, *eachImp, *impExt, partnerID)
+				bidderParams, err = bidderparams.PreparePubMaticParamsV25(rctx, m.cache, *bidRequest, *eachImp, *impExt, partnerID)
 			case models.BidderVASTBidder:
-				prebidBidderParams[models.PREBID_PARTNER_NAME], err = bidderparams.PrepareVASTBidderParams(rctx, m.cache, *bidRequest, *eachImp, *impExt, partnerID, adpodExt)
+				bidderParams, err = bidderparams.PrepareVASTBidderParams(rctx, m.cache, *bidRequest, *eachImp, *impExt, partnerID, adpodExt)
 			default:
-				prebidBidderParams[models.PREBID_PARTNER_NAME], err = bidderparams.PrepareAdapterParamsV25(rctx, m.cache, *bidRequest, *eachImp, *impExt, partnerID)
+				bidderParams, err = bidderparams.PrepareAdapterParamsV25(rctx, m.cache, *bidRequest, *eachImp, *impExt, partnerID)
 			}
 
-			if err != nil {
+			if err != nil || len(bidderParams) == 0 {
 				continue
 			}
 
-			if v, ok := prebidBidderParams[bidderCode]; !ok || len(v) == 0 {
-				continue
-			}
+			prebidBidderParams[bidder] = bidderParams
 
 			if alias, ok := partnerConfig[models.IsAlias]; ok && alias == "1" {
 				if reqExt.Prebid.Aliases == nil {
