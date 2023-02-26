@@ -23,3 +23,13 @@ func (c *cache) populatePublisherVASTTags(pubid int) {
 
 	c.cache.Set(cacheKey, publisherVASTTags, c.cfg.VASTTagCacheExpiry)
 }
+
+// GetPublisherVASTTagsFromCache read publisher level vast tag details from cache
+func (c *cache) GetPublisherVASTTagsFromCache(pubID int) models.PublisherVASTTags {
+	cacheKey := key(PubVASTTags, pubID)
+	if value, ok := c.cache.Get(cacheKey); ok && value != nil {
+		return value.(models.PublisherVASTTags)
+	}
+	//if found then return actual value or else return empty
+	return models.PublisherVASTTags{}
+}

@@ -24,13 +24,6 @@ type OpenWrap struct {
 	cache ow_cache.Cache
 }
 
-type RequestCtx struct {
-	pubid, profileid, displayid, versionid int
-	ssauction                              int
-	summarydisable                         int
-	loginfoflag                            int
-}
-
 func initOpenWrap(rawCfg json.RawMessage, deps moduledeps.ModuleDeps) (OpenWrap, error) {
 	cfg := ow_config.SSHB{}
 

@@ -17,7 +17,7 @@ type BidderParameters struct {
 
 	//bidder specific parameters
 	FieldMap      JSONObject
-	Width, Height *int
+	Width, Height *int64
 	SlotKey       string
 }
 

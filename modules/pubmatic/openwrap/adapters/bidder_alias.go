@@ -3,9 +3,10 @@ package adapters
 import "github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 
 // Alias will return copy of exisiting alias
-func Alias() map[string]string {
+var Alias map[string]string
 
-	return map[string]string{
+func init() {
+	Alias = map[string]string{
 		models.BidderAdGenerationAlias:      models.BidderAdGeneration,
 		models.BidderDistrictmDMXAlias:      models.BidderDistrictmDMX,
 		models.BidderPubMaticSecondaryAlias: models.BidderPubMatic,

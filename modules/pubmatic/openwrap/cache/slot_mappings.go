@@ -86,3 +86,23 @@ func (c *cache) populateCacheWithWrapperSlotMappings(pubid int, partnerConfigMap
 		c.cache.Set(cacheKey, slotMappingInfoObj, time.Duration(c.cfg.CacheDefaultExpiry))
 	}
 }
+
+// GetMappingsFromCacheV25 will return mapping of each partner in partnerConf map
+func (c *cache) GetMappingsFromCacheV25(rctx models.RequestCtx, partnerID int) map[string]models.SlotMapping {
+	cacheKey := key(PUB_SLOT_INFO, rctx.PubID, rctx.ProfileID, rctx.DisplayID, partnerID)
+	if value, ok := c.cache.Get(cacheKey); ok {
+		return value.(map[string]models.SlotMapping)
+	}
+
+	return nil
+}
+
+/*GetSlotToHashValueMapFromCacheV25 returns SlotMappingInfo object from cache that contains and ordered list of slot names by order_id field and a map of slot names to their hash values*/
+func (c *cache) GetSlotToHashValueMapFromCacheV25(rctx models.RequestCtx, partnerID int) models.SlotMappingInfo {
+	cacheKey := key(PubSlotHashInfo, rctx.PubID, rctx.ProfileID, rctx.DisplayID, partnerID)
+	if value, ok := c.cache.Get(cacheKey); ok {
+		return value.(models.SlotMappingInfo)
+	}
+
+	return models.SlotMappingInfo{}
+}

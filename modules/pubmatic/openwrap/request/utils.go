@@ -9,6 +9,17 @@ import (
 	"github.com/buger/jsonparser"
 )
 
+func GetRequestExt(ext []byte) (ExtRequest, error) {
+	extRequest := ExtRequest{}
+
+	err := json.Unmarshal(ext, &extRequest)
+	if err != nil {
+		return extRequest, fmt.Errorf("failed to decode request.ext : %v", err)
+	}
+
+	return extRequest, nil
+}
+
 func GetWrapperExt(request []byte) (RequestExtWrapper, error) {
 	extWrapper := RequestExtWrapper{}
 

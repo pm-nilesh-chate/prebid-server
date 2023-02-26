@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"errors"
+
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/hooks/hookstage"
+	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	ow_request "github.com/prebid/prebid-server/modules/pubmatic/openwrap/request"
 )
 
@@ -28,17 +31,18 @@ func (m OpenWrap) handleEntrypointHook(
 		return result, err
 	}
 
-	rCtx := RequestCtx{
-		pubid:          accountID,
-		profileid:      requestExtWrapper.ProfileId,
-		displayid:      requestExtWrapper.VersionId,
-		ssauction:      requestExtWrapper.SSAuctionFlag,
-		summarydisable: requestExtWrapper.SumryDisableFlag,
-		loginfoflag:    requestExtWrapper.LogInfoFlag,
+	rCtx := models.RequestCtx{
+		PubID:          accountID,
+		ProfileID:      requestExtWrapper.ProfileId,
+		DisplayID:      requestExtWrapper.VersionId,
+		SSAuction:      requestExtWrapper.SSAuctionFlag,
+		SummaryDisable: requestExtWrapper.SumryDisableFlag,
+		LogInfoFlag:    requestExtWrapper.LogInfoFlag,
+		IsCTVRequest:   models.IsCTVAPIRequest(payload.Request.URL.Path),
+		UA:             payload.Request.Header.Get("User-Agent"),
+		Cookies:        payload.Request.Header.Get(models.COOKIE),
+		// IsTestRequest:  payload.Request.Test == 2,
 	}
-
-	result.ModuleContext = make(hookstage.ModuleContext)
-	result.ModuleContext["rctx"] = rCtx
 
 	// Start------------------------------------------------------------------------------------------------------------------------
 	// Move this to BeforeValidationHook where we have already unmarshaled request.
@@ -49,14 +53,25 @@ func (m OpenWrap) handleEntrypointHook(
 		return result, fmt.Errorf("failed to decode request %v", err)
 	}
 
-	m.cache.GetPartnerConfigMap(bidRequest, rCtx.pubid, rCtx.profileid, rCtx.displayid)
+	rCtx.IsTestRequest = bidRequest.Test == 2
+
+	partnerConfigMap := m.cache.GetPartnerConfigMap(bidRequest, rCtx.PubID, rCtx.ProfileID, rCtx.DisplayID)
+	if len(partnerConfigMap) == 0 {
+		return result, errors.New("failed to get profile data")
+	}
+	rCtx.PartnerConfigMap = partnerConfigMap
 	// End--------------------------------------------------------------------------------------------------------------------------
+
+	result.ModuleContext = make(hookstage.ModuleContext)
+	result.ModuleContext["rctx"] = rCtx
 
 	result.ChangeSet.AddMutation(func(ep hookstage.EntrypointPayload) (hookstage.EntrypointPayload, error) {
 		//NYC_TODO: convert /2.5 redirect request to auction
-
-		return ep, nil
-	}, hookstage.MutationUpdate, "-")
+		rctx := result.ModuleContext["rctx"].(models.RequestCtx)
+		var err error
+		ep.Body, err = m.updateORTBV25Request(rctx, payload.Body)
+		return ep, err
+	}, hookstage.MutationUpdate, "request-body-with-profile-data")
 
 	return result, nil
 }
