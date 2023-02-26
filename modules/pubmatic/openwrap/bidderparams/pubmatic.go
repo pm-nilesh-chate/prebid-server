@@ -13,64 +13,8 @@ import (
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
-func getSlotMeta(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt request.ImpExtension, partnerID int) ([]string, map[string]models.SlotMapping, models.SlotMappingInfo) {
-	var slotMap map[string]models.SlotMapping
-	var slotMappingInfo models.SlotMappingInfo
-
-	//don't read mappings from cache in case of test=2
-	if rctx.IsTestRequest {
-		slotMap = cache.GetMappingsFromCacheV25(rctx, partnerID)
-		if slotMap == nil {
-			return nil, nil, models.SlotMappingInfo{}
-		}
-		slotMappingInfo = cache.GetSlotToHashValueMapFromCacheV25(rctx, partnerID)
-		if len(slotMappingInfo.OrderedSlotList) == 0 {
-			return nil, nil, models.SlotMappingInfo{}
-		}
-	}
-
-	var wh [][2]int64
-	if imp.Banner != nil {
-		if imp.Banner.W != nil && imp.Banner.H != nil {
-			wh = append(wh, [2]int64{*imp.Banner.H, *imp.Banner.W})
-		}
-
-		for _, format := range imp.Banner.Format {
-			wh = append(wh, [2]int64{format.H, format.W})
-		}
-	}
-
-	if imp.Video != nil {
-		wh = append(wh, [2]int64{0, 0})
-	}
-
-	kgp := rctx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN]
-
-	var src string
-	if bidRequest.Site != nil {
-		if bidRequest.Site.Domain != "" {
-			src = bidRequest.Site.Domain
-		} else if bidRequest.Site.Page != "" {
-			src = bidRequest.Site.Page
-		}
-	} else if bidRequest.App != nil && bidRequest.App.Bundle != "" {
-		src = bidRequest.App.Bundle
-	}
-
-	var slots []string
-	for _, format := range wh {
-		slot := generateSlotName(format[0], format[1], kgp, imp.TagID, impExt.Wrapper.Div, src)
-		if slot != "" {
-			slots = append(slots, slot)
-			// NYC_TODO: break at i=0 for pubmatic?
-		}
-	}
-
-	return slots, slotMap, slotMappingInfo
-}
-
 func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt request.ImpExtension, partnerID int) ([]byte, errorcodes.IError) {
-	slots, slotMap, slotMappingInfo := getSlotMeta(rctx, cache, bidRequest, imp, impExt, partnerID)
+	slots, slotMap, slotMappingInfo, _ := getSlotMeta(rctx, cache, bidRequest, imp, impExt, partnerID)
 	for _, slot := range slots {
 		params, err := prepareBidParamForPubmaticV25(rctx, slot, slotMap, slotMappingInfo, bidRequest, imp, impExt, partnerID, false)
 		if err != nil || params == nil {

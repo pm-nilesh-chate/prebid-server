@@ -3,7 +3,6 @@ package cache
 import (
 	"encoding/json"
 	"strings"
-	"time"
 
 	"github.com/buger/jsonparser"
 	"github.com/prebid/openrtb/v17/openrtb2"
@@ -58,7 +57,7 @@ func (c *cache) populateCacheWithAdunitConfig(pubID int, profileID, displayVersi
 	}
 
 	cacheKey := key(PubAdunitConfig, pubID, profileID, displayVersion)
-	c.cache.Set(cacheKey, adUnitConfig, time.Duration(c.cfg.CacheDefaultExpiry))
+	c.cache.Set(cacheKey, adUnitConfig, getSeconds(c.cfg.CacheDefaultExpiry))
 }
 
 // GetAdunitConfigFromCache this function gets adunit config from cache for a given request

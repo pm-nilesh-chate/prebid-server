@@ -16,7 +16,7 @@ import (
 )
 
 // updateORTBV25Request copies and updates BidRequest with required values from http header and partnetConfigMap
-func (m OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]byte, error) {
+func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]byte, error) {
 	bidRequest := &openrtb2.BidRequest{}
 	err := json.Unmarshal(body, bidRequest)
 	if err != nil {
@@ -120,9 +120,11 @@ func (m OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]b
 		// }
 
 		impExt := &request.ImpExtension{}
-		err = json.Unmarshal(eachImp.Ext, impExt)
-		if err != nil {
-			return body, err
+		if len(eachImp.Ext) != 0 {
+			err = json.Unmarshal(eachImp.Ext, impExt)
+			if err != nil {
+				return body, err
+			}
 		}
 
 		prebidBidderParams := make(map[string]json.RawMessage)
@@ -175,6 +177,10 @@ func (m OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]b
 				}
 			}
 		} // rctx.PartnerConfigMap
+
+		if impExt.Prebid == nil {
+			impExt.Prebid = &openrtb_ext.ExtImpPrebid{}
+		}
 
 		impExt.Prebid.Bidder = prebidBidderParams
 		impExt.Prebid.IsRewardedInventory = impExt.Reward
