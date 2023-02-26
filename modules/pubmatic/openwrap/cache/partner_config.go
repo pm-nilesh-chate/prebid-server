@@ -2,7 +2,6 @@ package cache
 
 import (
 	"strconv"
-	"time"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
@@ -73,7 +72,7 @@ func (c *cache) getActivePartnerConfigMap(bidRequest *openrtb2.BidRequest, pubid
 
 	partnerConfigMap := c.db.GetActivePartnerConfigurations(pubid, profileid, displayversion)
 	if len(partnerConfigMap) != 0 {
-		c.cache.Set(cacheKey, partnerConfigMap, time.Duration(c.cfg.CacheDefaultExpiry))
+		c.cache.Set(cacheKey, partnerConfigMap, getSeconds(c.cfg.CacheDefaultExpiry))
 
 		c.populateCacheWithWrapperSlotMappings(pubid, partnerConfigMap, profileid, displayversion)
 		c.populateCacheWithAdunitConfig(pubid, profileid, displayversion)

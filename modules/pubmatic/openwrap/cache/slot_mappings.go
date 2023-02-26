@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	"github.com/prebid/prebid-server/openrtb_ext"
@@ -20,7 +19,7 @@ func (c *cache) populateCacheWithPubSlotNameHash(pubid int) {
 
 	publisherSlotNameHashMap := c.db.GetPublisherSlotNameHash(pubid)
 	if publisherSlotNameHashMap != nil {
-		c.cache.Set(cacheKey, publisherSlotNameHashMap, time.Duration(c.cfg.CacheDefaultExpiry))
+		c.cache.Set(cacheKey, publisherSlotNameHashMap, getSeconds(c.cfg.CacheDefaultExpiry))
 	}
 }
 
@@ -30,13 +29,13 @@ func (c *cache) populateCacheWithWrapperSlotMappings(pubid int, partnerConfigMap
 
 	//put a version level dummy entry in cache denoting mappings are present for this version
 	cacheKey := key(PUB_SLOT_INFO, pubid, profileId, displayVersion, 0)
-	c.cache.Set(cacheKey, make(map[string]models.SlotMapping, 0), time.Duration(c.cfg.CacheDefaultExpiry))
+	c.cache.Set(cacheKey, make(map[string]models.SlotMapping, 0), getSeconds(c.cfg.CacheDefaultExpiry))
 
 	if len(partnerSlotMappingMap) == 0 {
 		for _, partnerConf := range partnerConfigMap {
 			partnerID, _ := strconv.Atoi(partnerConf[models.PARTNER_ID])
 			cacheKey = key(PUB_SLOT_INFO, pubid, profileId, displayVersion, partnerID)
-			c.cache.Set(cacheKey, make(map[string]models.SlotMapping, 0), time.Duration(c.cfg.CacheDefaultExpiry))
+			c.cache.Set(cacheKey, make(map[string]models.SlotMapping, 0), getSeconds(c.cfg.CacheDefaultExpiry))
 		}
 		return
 	}
@@ -76,14 +75,14 @@ func (c *cache) populateCacheWithWrapperSlotMappings(pubid int, partnerConfigMap
 			slotNameOrderedList = append(slotNameOrderedList, slotMapping.SlotName)
 		}
 		cacheKey = key(PUB_SLOT_INFO, pubid, profileId, displayVersion, partnerID)
-		c.cache.Set(cacheKey, slotNameToMappingMap, time.Duration(c.cfg.CacheDefaultExpiry))
+		c.cache.Set(cacheKey, slotNameToMappingMap, getSeconds(c.cfg.CacheDefaultExpiry))
 
 		slotMappingInfoObj := models.SlotMappingInfo{
 			OrderedSlotList: slotNameOrderedList,
 			HashValueMap:    slotNameToHashValueMap,
 		}
 		cacheKey = key(PubSlotHashInfo, pubid, profileId, displayVersion, partnerID)
-		c.cache.Set(cacheKey, slotMappingInfoObj, time.Duration(c.cfg.CacheDefaultExpiry))
+		c.cache.Set(cacheKey, slotMappingInfoObj, getSeconds(c.cfg.CacheDefaultExpiry))
 	}
 }
 

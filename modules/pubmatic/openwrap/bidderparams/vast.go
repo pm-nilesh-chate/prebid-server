@@ -54,7 +54,7 @@ func PrepareVASTBidderParams(rctx models.RequestCtx, cache cache.Cache, bidReque
 		return nil, nil
 	}
 
-	slots, slotMap, _ := getSlotMeta(rctx, cache, bidRequest, imp, impExt, partnerID)
+	slots, slotMap, _, _ := getSlotMeta(rctx, cache, bidRequest, imp, impExt, partnerID)
 	if len(slots) == 0 {
 		return nil, nil
 	}
