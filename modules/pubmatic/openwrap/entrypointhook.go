@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
+	"github.com/prebid/prebid-server/hooks/hookexecution"
 	"github.com/prebid/prebid-server/hooks/hookstage"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	ow_request "github.com/prebid/prebid-server/modules/pubmatic/openwrap/request"
@@ -19,6 +20,10 @@ func (m OpenWrap) handleEntrypointHook(
 	payload hookstage.EntrypointPayload,
 ) (hookstage.HookResult[hookstage.EntrypointPayload], error) {
 	result := hookstage.HookResult[hookstage.EntrypointPayload]{}
+	if miCtx.Endpoint == hookexecution.EndpointAuction {
+		return result, nil
+	}
+
 	result.ChangeSet = hookstage.ChangeSet[hookstage.EntrypointPayload]{}
 
 	requestExtWrapper, err := ow_request.GetWrapperExt(payload.Body)
