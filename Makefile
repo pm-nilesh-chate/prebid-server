@@ -28,4 +28,4 @@ build: test
 
 # image will build a docker image
 image:
-	docker build -t prebid-server .
+	docker build --platform linux/amd64 -t prebid-server --build-arg TEST=false .
