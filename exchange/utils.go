@@ -86,6 +86,7 @@ func cleanOpenRTBRequests(ctx context.Context,
 			errs = append(errs, err)
 		}
 	}
+	updateContentObjectForBidder(allBidderRequests, requestExt)
 
 	gdprSignal, err := extractGDPR(req.BidRequest)
 	if err != nil {
@@ -474,6 +475,11 @@ func createSanitizedImpExt(impExt, impExtPrebid map[string]json.RawMessage) (map
 			sanitizedImpPrebidExt[k] = v
 		}
 	}
+
+	// Dont send this to adapters
+	// if v, exists := impExtPrebid["floors"]; exists {
+	// 	sanitizedImpPrebidExt["floors"] = v
+	// }
 
 	// marshal sanitized imp[].ext.prebid
 	if len(sanitizedImpPrebidExt) > 0 {
