@@ -105,13 +105,16 @@ func (deps *endpointDeps) AmpAuction(w http.ResponseWriter, r *http.Request, _ h
 	start := time.Now()
 
 	ao := analytics.AmpObject{
-		Status:    http.StatusOK,
-		Errors:    make([]error, 0),
+		LoggableAuctionObject: analytics.LoggableAuctionObject{
+			Context:      r.Context(),
+			Status:       http.StatusOK,
+			Errors:       make([]error, 0),
+			RejectedBids: []analytics.RejectedBid{},
+		},
 		StartTime: start,
 	}
 
 	// Set this as an AMP request in Metrics.
-
 	labels := metrics.Labels{
 		Source:        metrics.DemandWeb,
 		RType:         metrics.ReqTypeAMP,
@@ -215,10 +218,11 @@ func (deps *endpointDeps) AmpAuction(w http.ResponseWriter, r *http.Request, _ h
 		StoredBidResponses:         storedBidResponses,
 		BidderImpReplaceImpID:      bidderImpReplaceImp,
 		PubID:                      labels.PubID,
+		LoggableObject:             &ao.LoggableAuctionObject,
 	}
 
 	response, err := deps.ex.HoldAuction(ctx, auctionRequest, nil)
-	ao.AuctionResponse = response
+	ao.Response = response
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
