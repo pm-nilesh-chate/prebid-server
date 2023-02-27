@@ -20,7 +20,7 @@ func (m OpenWrap) handleEntrypointHook(
 	payload hookstage.EntrypointPayload,
 ) (hookstage.HookResult[hookstage.EntrypointPayload], error) {
 	result := hookstage.HookResult[hookstage.EntrypointPayload]{}
-	if miCtx.Endpoint == hookexecution.EndpointAuction {
+	if payload.Request.URL.Path == hookexecution.EndpointAuction {
 		return result, nil
 	}
 
