@@ -3,6 +3,8 @@ package pubmatic
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
@@ -86,6 +88,7 @@ func TestParseImpressionObject(t *testing.T) {
 		expectedPublisherId string
 		wantErr             bool
 		expectedBidfloor    float64
+		expectedImpExt      json.RawMessage
 	}{
 		{
 			name: "imp.bidfloor empty and kadfloor set",
@@ -96,6 +99,7 @@ func TestParseImpressionObject(t *testing.T) {
 				},
 			},
 			expectedBidfloor: 0.12,
+			expectedImpExt:   json.RawMessage(nil),
 		},
 		{
 			name: "imp.bidfloor set and kadfloor empty",
@@ -107,6 +111,7 @@ func TestParseImpressionObject(t *testing.T) {
 				},
 			},
 			expectedBidfloor: 0.12,
+			expectedImpExt:   json.RawMessage(nil),
 		},
 		{
 			name: "imp.bidfloor set and kadfloor invalid",
@@ -118,6 +123,7 @@ func TestParseImpressionObject(t *testing.T) {
 				},
 			},
 			expectedBidfloor: 0.12,
+			expectedImpExt:   json.RawMessage(nil),
 		},
 		{
 			name: "imp.bidfloor set and kadfloor set, preference to kadfloor",
@@ -129,6 +135,7 @@ func TestParseImpressionObject(t *testing.T) {
 				},
 			},
 			expectedBidfloor: 0.11,
+			expectedImpExt:   json.RawMessage(nil),
 		},
 		{
 			name: "kadfloor string set with whitespace",
@@ -140,6 +147,17 @@ func TestParseImpressionObject(t *testing.T) {
 				},
 			},
 			expectedBidfloor: 0.13,
+			expectedImpExt:   json.RawMessage(nil),
+		},
+		{
+			name: "bidViewability Object is set in imp.ext.prebid.pubmatic, pass to imp.ext",
+			args: args{
+				imp: &openrtb2.Imp{
+					Video: &openrtb2.Video{},
+					Ext:   json.RawMessage(`{"bidder":{"bidViewability":{"rendered":131,"viewed":80,"createdAt":1666155076240,"updatedAt":1666296333802,"lastViewed":3171.100000023842,"totalViewTime":15468}}}`),
+				},
+			},
+			expectedImpExt: json.RawMessage(`{"bidViewability":{"rendered":131,"viewed":80,"createdAt":1666155076240,"updatedAt":1666296333802,"lastViewed":3171.100000023842,"totalViewTime":15468}}`),
 		},
 	}
 	for _, tt := range tests {
@@ -149,6 +167,7 @@ func TestParseImpressionObject(t *testing.T) {
 			assert.Equal(t, tt.expectedWrapperExt, receivedWrapperExt)
 			assert.Equal(t, tt.expectedPublisherId, receivedPublisherId)
 			assert.Equal(t, tt.expectedBidfloor, tt.args.imp.BidFloor)
+			assert.Equal(t, tt.expectedImpExt, tt.args.imp.Ext)
 		})
 	}
 }
@@ -161,6 +180,7 @@ func TestExtractPubmaticExtFromRequest(t *testing.T) {
 		name           string
 		args           args
 		expectedReqExt extRequestAdServer
+		expectedCookie []string
 		wantErr        bool
 	}{
 		{
@@ -276,9 +296,10 @@ func TestExtractPubmaticExtFromRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotReqExt, err := extractPubmaticExtFromRequest(tt.args.request)
+			gotReqExt, gotCookie, err := extractPubmaticExtFromRequest(tt.args.request)
 			assert.Equal(t, tt.wantErr, err != nil)
 			assert.Equal(t, tt.expectedReqExt, gotReqExt)
+			assert.Equal(t, tt.expectedCookie, gotCookie)
 		})
 	}
 }
@@ -341,8 +362,9 @@ func TestPubmaticAdapter_MakeBids(t *testing.T) {
 			args: args{
 				response: &adapters.ResponseData{
 					StatusCode: http.StatusOK,
-					Body:       []byte(`{"id": "test-request-id", "seatbid":[{"seat": "958", "bid":[{"id": "7706636740145184841", "impid": "test-imp-id", "price": 0.500000, "adid": "29681110", "adm": "some-test-ad", "adomain":["pubmatic.com"], "crid": "29681110", "h": 250, "w": 300, "dealid": "testdeal", "ext":{"dspid": 6, "deal_channel": 1, "prebiddealpriority": 1}}]}], "bidid": "5778926625248726496", "cur": "USD"}`),
+					Body:       []byte(`{"id": "test-request-id", "seatbid":[{"seat": "958", "bid":[{"id": "7706636740145184841", "impid": "test-imp-id", "price": 0.500000, "adid": "29681110", "adm": "some-test-ad", "adomain":["pubmatic.com"], "crid": "29681110", "h": 250, "w": 300, "dealid": "testdeal", "ext":{"dspid": 6, "deal_channel": 1, "prebiddealpriority": 1}}], "ext": {"buyid": "testBuyId"}}], "bidid": "5778926625248726496", "cur": "USD"}`),
 				},
+				externalRequest: &adapters.RequestData{BidderName: openrtb_ext.BidderPubmatic},
 			},
 			wantErr: nil,
 			wantResp: &adapters.BidderResponse{
@@ -359,11 +381,19 @@ func TestPubmaticAdapter_MakeBids(t *testing.T) {
 							H:       250,
 							W:       300,
 							DealID:  "testdeal",
-							Ext:     json.RawMessage(`{"dspid": 6, "deal_channel": 1, "prebiddealpriority": 1}`),
+							Ext:     json.RawMessage(`{"buyid":"testBuyId","deal_channel":1,"dspid":6,"prebiddealpriority":1}`),
 						},
 						DealPriority: 1,
 						BidType:      openrtb_ext.BidTypeBanner,
 						BidVideo:     &openrtb_ext.ExtBidPrebidVideo{},
+						BidTargets:   map[string]string{"hb_buyid_pubmatic": "testBuyId"},
+						BidMeta: &openrtb_ext.ExtBidPrebidMeta{
+							AdvertiserID: 958,
+							AgencyID:     958,
+							NetworkID:    6,
+							DemandSource: "6",
+							MediaType:    "banner",
+						},
 					},
 				},
 				Currency: "USD",
@@ -376,6 +406,7 @@ func TestPubmaticAdapter_MakeBids(t *testing.T) {
 					StatusCode: http.StatusOK,
 					Body:       []byte(`{"id": "test-request-id", "seatbid":[{"seat": "958", "bid":[{"id": "7706636740145184841", "impid": "test-imp-id", "price": 0.500000, "adid": "29681110", "adm": "some-test-ad", "adomain":["pubmatic.com"], "crid": "29681110", "h": 250, "w": 300, "dealid": "testdeal", "ext":{"dspid": 6, "deal_channel": 1, "prebiddealpriority": -1}}]}], "bidid": "5778926625248726496", "cur": "USD"}`),
 				},
+				externalRequest: &adapters.RequestData{BidderName: openrtb_ext.BidderPubmatic},
 			},
 			wantErr: nil,
 			wantResp: &adapters.BidderResponse{
@@ -394,8 +425,50 @@ func TestPubmaticAdapter_MakeBids(t *testing.T) {
 							DealID:  "testdeal",
 							Ext:     json.RawMessage(`{"dspid": 6, "deal_channel": 1, "prebiddealpriority": -1}`),
 						},
-						BidType:  openrtb_ext.BidTypeBanner,
-						BidVideo: &openrtb_ext.ExtBidPrebidVideo{},
+						BidType:    openrtb_ext.BidTypeBanner,
+						BidVideo:   &openrtb_ext.ExtBidPrebidVideo{},
+						BidTargets: map[string]string{},
+						BidMeta: &openrtb_ext.ExtBidPrebidMeta{
+							AdvertiserID: 958,
+							AgencyID:     958,
+							NetworkID:    6,
+							DemandSource: "6",
+							MediaType:    "banner",
+						},
+					},
+				},
+				Currency: "USD",
+			},
+		},
+		{
+			name: "BidExt Nil cases",
+			args: args{
+				response: &adapters.ResponseData{
+					StatusCode: http.StatusOK,
+					Body:       []byte(`{"id": "test-request-id", "seatbid":[{"seat": "958", "bid":[{"id": "7706636740145184841", "impid": "test-imp-id", "price": 0.500000, "adid": "29681110", "adm": "some-test-ad", "adomain":["pubmatic.com"], "crid": "29681110", "h": 250, "w": 300, "dealid": "testdeal", "ext":null}]}], "bidid": "5778926625248726496", "cur": "USD"}`),
+				},
+				externalRequest: &adapters.RequestData{BidderName: openrtb_ext.BidderPubmatic},
+			},
+			wantErr: nil,
+			wantResp: &adapters.BidderResponse{
+				Bids: []*adapters.TypedBid{
+					{
+						Bid: &openrtb2.Bid{
+							ID:      "7706636740145184841",
+							ImpID:   "test-imp-id",
+							Price:   0.500000,
+							AdID:    "29681110",
+							AdM:     "some-test-ad",
+							ADomain: []string{"pubmatic.com"},
+							CrID:    "29681110",
+							H:       250,
+							W:       300,
+							DealID:  "testdeal",
+							Ext:     json.RawMessage(`null`),
+						},
+						BidType:    openrtb_ext.BidTypeBanner,
+						BidVideo:   &openrtb_ext.ExtBidPrebidVideo{},
+						BidTargets: map[string]string{},
 					},
 				},
 				Currency: "USD",
@@ -492,6 +565,239 @@ func Test_getAlternateBidderCodesFromRequest(t *testing.T) {
 
 			got := getAlternateBidderCodesFromRequestExt(reqExt)
 			assert.ElementsMatch(t, got, tt.want, tt.name)
+		})
+	}
+}
+
+func TestPopulateFirstPartyDataImpAttributes(t *testing.T) {
+	type args struct {
+		data      json.RawMessage
+		impExtMap map[string]interface{}
+	}
+	tests := []struct {
+		name           string
+		args           args
+		expectedImpExt map[string]interface{}
+	}{
+		{
+			name: "Only Targeting present in imp.ext.data",
+			args: args{
+				data:      json.RawMessage(`{"sport":["rugby","cricket"]}`),
+				impExtMap: map[string]interface{}{},
+			},
+			expectedImpExt: map[string]interface{}{
+				"key_val": "sport=rugby,cricket",
+			},
+		},
+		{
+			name: "Targeting and adserver object present in imp.ext.data",
+			args: args{
+				data:      json.RawMessage(`{"adserver": {"name": "gam","adslot": "/1111/home"},"pbadslot": "/2222/home","sport":["rugby","cricket"]}`),
+				impExtMap: map[string]interface{}{},
+			},
+			expectedImpExt: map[string]interface{}{
+				"dfp_ad_unit_code": "/1111/home",
+				"key_val":          "sport=rugby,cricket",
+			},
+		},
+		{
+			name: "Targeting and pbadslot key present in imp.ext.data ",
+			args: args{
+				data:      json.RawMessage(`{"pbadslot": "/2222/home","sport":["rugby","cricket"]}`),
+				impExtMap: map[string]interface{}{},
+			},
+			expectedImpExt: map[string]interface{}{
+				"dfp_ad_unit_code": "/2222/home",
+				"key_val":          "sport=rugby,cricket",
+			},
+		},
+		{
+			name: "Targeting and Invalid Adserver object in imp.ext.data",
+			args: args{
+				data:      json.RawMessage(`{"adserver": "invalid","sport":["rugby","cricket"]}`),
+				impExtMap: map[string]interface{}{},
+			},
+			expectedImpExt: map[string]interface{}{
+				"key_val": "sport=rugby,cricket",
+			},
+		},
+		{
+			name: "key_val already present in imp.ext.data",
+			args: args{
+				data: json.RawMessage(`{"sport":["rugby","cricket"]}`),
+				impExtMap: map[string]interface{}{
+					"key_val": "k1=v1|k2=v2",
+				},
+			},
+			expectedImpExt: map[string]interface{}{
+				"key_val": "k1=v1|k2=v2|sport=rugby,cricket",
+			},
+		},
+		{
+			name: "int data present in imp.ext.data",
+			args: args{
+				data:      json.RawMessage(`{"age": 25}`),
+				impExtMap: map[string]interface{}{},
+			},
+			expectedImpExt: map[string]interface{}{
+				"key_val": "age=25",
+			},
+		},
+		{
+			name: "float data present in imp.ext.data",
+			args: args{
+				data:      json.RawMessage(`{"floor": 0.15}`),
+				impExtMap: map[string]interface{}{},
+			},
+			expectedImpExt: map[string]interface{}{
+				"key_val": "floor=0.15",
+			},
+		},
+		{
+			name: "bool data present in imp.ext.data",
+			args: args{
+				data:      json.RawMessage(`{"k1": true}`),
+				impExtMap: map[string]interface{}{},
+			},
+			expectedImpExt: map[string]interface{}{
+				"key_val": "k1=true",
+			},
+		},
+		{
+			name: "imp.ext.data is not present",
+			args: args{
+				data:      nil,
+				impExtMap: map[string]interface{}{},
+			},
+			expectedImpExt: map[string]interface{}{},
+		},
+		{
+			name: "string with spaces present in imp.ext.data",
+			args: args{
+				data:      json.RawMessage(`{"  category  ": "   cinema  "}`),
+				impExtMap: map[string]interface{}{},
+			},
+			expectedImpExt: map[string]interface{}{
+				"key_val": "category=cinema",
+			},
+		},
+		{
+			name: "string array with spaces present in imp.ext.data",
+			args: args{
+				data:      json.RawMessage(`{"  country\t": ["  India", "\tChina  "]}`),
+				impExtMap: map[string]interface{}{},
+			},
+			expectedImpExt: map[string]interface{}{
+				"key_val": "country=India,China",
+			},
+		},
+		{
+			name: "Invalid data present in imp.ext.data",
+			args: args{
+				data:      json.RawMessage(`{"country": [1, "India"],"category":"movies"}`),
+				impExtMap: map[string]interface{}{},
+			},
+			expectedImpExt: map[string]interface{}{
+				"key_val": "category=movies",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			populateFirstPartyDataImpAttributes(tt.args.data, tt.args.impExtMap)
+			assert.Equal(t, tt.expectedImpExt, tt.args.impExtMap)
+		})
+	}
+}
+
+func TestPopulateFirstPartyDataImpAttributesForMultipleAttributes(t *testing.T) {
+	impExtMap := map[string]interface{}{
+		"key_val": "k1=v1|k2=v2",
+	}
+	data := json.RawMessage(`{"sport":["rugby","cricket"],"pageType":"article","age":30,"floor":1.25}`)
+	expectedKeyValArr := []string{"age=30", "floor=1.25", "k1=v1", "k2=v2", "pageType=article", "sport=rugby,cricket"}
+
+	populateFirstPartyDataImpAttributes(data, impExtMap)
+
+	//read dctr value and split on "|" for comparison
+	actualKeyValArr := strings.Split(impExtMap[dctrKeyName].(string), "|")
+	sort.Strings(actualKeyValArr)
+	assert.Equal(t, expectedKeyValArr, actualKeyValArr)
+}
+
+func TestGetStringArray(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  interface{}
+		output []string
+	}{
+		{
+			name:   "Valid String Array",
+			input:  append(make([]interface{}, 0), "hello", "world"),
+			output: []string{"hello", "world"},
+		},
+		{
+			name:   "Invalid String Array",
+			input:  "hello",
+			output: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getStringArray(tt.input)
+			assert.Equal(t, tt.output, got)
+		})
+	}
+}
+
+func TestIsStringArray(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  []interface{}
+		output bool
+	}{
+		{
+			name:   "Valid String Array",
+			input:  append(make([]interface{}, 0), "hello", "world"),
+			output: true,
+		},
+		{
+			name:   "Invalid String Array",
+			input:  append(make([]interface{}, 0), 1, 2),
+			output: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isStringArray(tt.input)
+			assert.Equal(t, tt.output, got)
+		})
+	}
+}
+
+func TestGetMapFromJSON(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  json.RawMessage
+		output map[string]interface{}
+	}{
+		{
+			name:  "Valid JSON",
+			input: json.RawMessage("{\"buyid\":\"testBuyId\"}"),
+			output: map[string]interface{}{
+				"buyid": "testBuyId",
+			},
+		},
+		{
+			name:   "Invalid JSON",
+			input:  json.RawMessage("{\"buyid\":}"),
+			output: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getMapFromJSON(tt.input)
+			assert.Equal(t, tt.output, got)
 		})
 	}
 }
