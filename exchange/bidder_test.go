@@ -334,7 +334,7 @@ func TestRequestBidRemovesSensitiveHeaders(t *testing.T) {
 		{
 			Uri:            server.URL,
 			RequestBody:    "requestJson",
-			RequestHeaders: map[string][]string{"Content-Type": {"application/json"}, "X-Prebid": {"pbs-go/test-version"}},
+			RequestHeaders: map[string][]string{"Content-Type": {"application/json"}, "X-Prebid": {"owpbs-go/test-version"}},
 			ResponseBody:   "responseJson",
 			Status:         200,
 		},
@@ -386,7 +386,7 @@ func TestSetGPCHeader(t *testing.T) {
 		{
 			Uri:            server.URL,
 			RequestBody:    "requestJson",
-			RequestHeaders: map[string][]string{"Content-Type": {"application/json"}, "X-Prebid": {"pbs-go/unknown"}, "Sec-Gpc": {"1"}},
+			RequestHeaders: map[string][]string{"Content-Type": {"application/json"}, "X-Prebid": {"owpbs-go/unknown"}, "Sec-Gpc": {"1"}},
 			ResponseBody:   "responseJson",
 			Status:         200,
 		},
@@ -436,7 +436,7 @@ func TestSetGPCHeaderNil(t *testing.T) {
 		{
 			Uri:            server.URL,
 			RequestBody:    "requestJson",
-			RequestHeaders: map[string][]string{"X-Prebid": {"pbs-go/unknown"}, "Sec-Gpc": {"1"}},
+			RequestHeaders: map[string][]string{"X-Prebid": {"owpbs-go/unknown"}, "Sec-Gpc": {"1"}},
 			ResponseBody:   "responseJson",
 			Status:         200,
 		},
@@ -1068,7 +1068,7 @@ func TestMultiCurrencies_RequestCurrencyPick(t *testing.T) {
 			bidRequestCurrencies:   []string{"EUR", "USD", "JPY"},
 			bidResponsesCurrency:   "EUR",
 			expectedPickedCurrency: "EUR",
-			expectedError:          false,
+			expectedError:          true, //conversionRateUSD fails as currency conversion in this test is default.
 			rates: currency.Rates{
 				Conversions: map[string]map[string]float64{
 					"JPY": {
@@ -1088,7 +1088,7 @@ func TestMultiCurrencies_RequestCurrencyPick(t *testing.T) {
 			bidRequestCurrencies:   []string{"JPY"},
 			bidResponsesCurrency:   "JPY",
 			expectedPickedCurrency: "JPY",
-			expectedError:          false,
+			expectedError:          true, //conversionRateUSD fails as currency conversion in this test is default.
 			rates: currency.Rates{
 				Conversions: map[string]map[string]float64{
 					"JPY": {
@@ -1972,7 +1972,7 @@ func TestCallRecordDNSTime(t *testing.T) {
 func TestCallRecordTLSHandshakeTime(t *testing.T) {
 	// setup a mock metrics engine and its expectation
 	metricsMock := &metrics.MetricsEngineMock{}
-	metricsMock.Mock.On("RecordTLSHandshakeTime", mock.Anything).Return()
+	metricsMock.Mock.On("RecordTLSHandshakeTime", mock.Anything, mock.Anything).Return()
 
 	// Instantiate the bidder that will send the request. We'll make sure to use an
 	// http.Client that runs our mock RoundTripper so DNSDone(httptrace.DNSDoneInfo{})
@@ -2762,11 +2762,12 @@ func TestExtraBidWithMultiCurrencies(t *testing.T) {
 					ID:    "groupmImp1",
 					Price: 571.5994430039375,
 				},
-				dealPriority:   5,
-				bidType:        openrtb_ext.BidTypeVideo,
-				originalBidCPM: 7,
-				originalBidCur: "USD",
-				bidMeta:        &openrtb_ext.ExtBidPrebidMeta{AdapterCode: string(openrtb_ext.BidderPubmatic)},
+				dealPriority:      5,
+				bidType:           openrtb_ext.BidTypeVideo,
+				originalBidCPM:    7,
+				originalBidCur:    "USD",
+				originalBidCPMUSD: 7,
+				bidMeta:           &openrtb_ext.ExtBidPrebidMeta{AdapterCode: string(openrtb_ext.BidderPubmatic)},
 			}},
 			seat:     "groupm",
 			currency: "INR",
@@ -2778,11 +2779,12 @@ func TestExtraBidWithMultiCurrencies(t *testing.T) {
 					ID:    "pubmaticImp1",
 					Price: 244.97118985883034,
 				},
-				dealPriority:   4,
-				bidType:        openrtb_ext.BidTypeBanner,
-				originalBidCPM: 3,
-				originalBidCur: "USD",
-				bidMeta:        &openrtb_ext.ExtBidPrebidMeta{AdapterCode: string(openrtb_ext.BidderPubmatic)},
+				dealPriority:      4,
+				bidType:           openrtb_ext.BidTypeBanner,
+				originalBidCPM:    3,
+				originalBidCur:    "USD",
+				originalBidCPMUSD: 3,
+				bidMeta:           &openrtb_ext.ExtBidPrebidMeta{AdapterCode: string(openrtb_ext.BidderPubmatic)},
 			}},
 			seat:     string(openrtb_ext.BidderPubmatic),
 			currency: "INR",
