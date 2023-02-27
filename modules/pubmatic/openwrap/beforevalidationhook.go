@@ -229,11 +229,11 @@ func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]
 
 	// requestExt.Prebid.AliasGVLIDs = aliasgvlids
 
-	// requestExt.Prebid.Targeting = &openrtb_ext.ExtRequestTargeting{
-	// 	PriceGranularity:  pg,
-	// 	IncludeBidderKeys: true,
-	// 	IncludeWinners:    true,
-	// }
+	reqExt.Prebid.Targeting = &openrtb_ext.ExtRequestTargeting{
+		// PriceGranularity:  pg,
+		IncludeBidderKeys: true,
+		IncludeWinners:    true,
+	}
 
 	// setIncludeBrandCategory(wtExt, &requestExt.Prebid, reqWrapper.PartnerConfigMap, IsCTVAPIRequest(reqWrapper.RequestAPI))
 
