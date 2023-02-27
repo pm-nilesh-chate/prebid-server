@@ -19,3 +19,11 @@ func (m OpenWrap) HandleEntrypointHook(
 ) (hookstage.HookResult[hookstage.EntrypointPayload], error) {
 	return m.handleEntrypointHook(ctx, miCtx, payload)
 }
+
+func (m OpenWrap) HandleAuctionResponseHook(
+	ctx context.Context,
+	miCtx hookstage.ModuleInvocationContext,
+	payload hookstage.AuctionResponsePayload,
+) (hookstage.HookResult[hookstage.AuctionResponsePayload], error) {
+	return m.handleAuctionResponseHook(ctx, miCtx, payload)
+}
