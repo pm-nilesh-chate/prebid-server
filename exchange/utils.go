@@ -78,6 +78,8 @@ func cleanOpenRTBRequests(ctx context.Context,
 	//this function should be executed after getAuctionBidderRequests
 	allBidderRequests = mergeBidderRequests(allBidderRequests, bidderNameToBidderReq)
 
+	updateContentObjectForBidder(allBidderRequests, requestExt)
+
 	gdprSignal, err := extractGDPR(req.BidRequest)
 	if err != nil {
 		errs = append(errs, err)
@@ -452,6 +454,11 @@ func createSanitizedImpExt(impExt, impExtPrebid map[string]json.RawMessage) (map
 	if v, exists := impExtPrebid["options"]; exists {
 		sanitizedImpPrebidExt["options"] = v
 	}
+
+	// Dont send this to adapters
+	// if v, exists := impExtPrebid["floors"]; exists {
+	// 	sanitizedImpPrebidExt["floors"] = v
+	// }
 
 	// marshal sanitized imp[].ext.prebid
 	if len(sanitizedImpPrebidExt) > 0 {
