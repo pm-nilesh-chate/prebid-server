@@ -36,6 +36,8 @@ func (m OpenWrap) handleEntrypointHook(
 		return result, err
 	}
 
+	queryParams := payload.Request.URL.Query()
+
 	rCtx := models.RequestCtx{
 		PubID:          accountID,
 		ProfileID:      requestExtWrapper.ProfileId,
@@ -46,7 +48,7 @@ func (m OpenWrap) handleEntrypointHook(
 		IsCTVRequest:   models.IsCTVAPIRequest(payload.Request.URL.Path),
 		UA:             payload.Request.Header.Get("User-Agent"),
 		Cookies:        payload.Request.Header.Get(models.COOKIE),
-		Debug:          payload.Request.Header.Get(models.Debug) == "1",
+		Debug:          queryParams.Get(models.Debug) == "1",
 		// IsTestRequest:  payload.Request.Test == 2,
 	}
 
