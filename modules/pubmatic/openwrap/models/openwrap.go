@@ -13,4 +13,6 @@ type RequestCtx struct {
 
 	UA      string
 	Cookies string
+
+	Debug bool
 }
