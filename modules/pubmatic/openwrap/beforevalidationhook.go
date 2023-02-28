@@ -59,6 +59,7 @@ func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]
 
 	reqExt.Prebid.SupportDeals = reqExt.Wrapper.SupportDeals && rctx.IsCTVRequest
 	// AlternateBidderCodes: getMarketplaceBidders(newReq.Ext, reqWrapper.PartnerConfigMap),
+	reqExt.Prebid.Debug = rctx.Debug
 
 	for i := 0; i < len(bidRequest.Imp); i++ {
 		var adpodExt *ow_request.AdPod
