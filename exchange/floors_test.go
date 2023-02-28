@@ -53,7 +53,7 @@ func ErrToString(Err []error) []string {
 func TestEnforceFloorToBids(t *testing.T) {
 
 	type args struct {
-		bidRequestWrapper *openrtb_ext.RequestWrapper
+		bidRequest        *openrtb2.BidRequest
 		seatBids          map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid
 		conversions       currency.Conversions
 		enforceDealFloors bool
@@ -67,34 +67,28 @@ func TestEnforceFloorToBids(t *testing.T) {
 		{
 			name: "Bids with same currency",
 			args: args{
-				bidRequestWrapper: func() *openrtb_ext.RequestWrapper {
-					bw := openrtb_ext.RequestWrapper{
-						BidRequest: &openrtb2.BidRequest{
-							ID: "some-request-id",
-							Imp: []openrtb2.Imp{
-								{
-									ID:          "some-impression-id-1",
-									Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 300, H: 250}, {W: 300, H: 600}}},
-									Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
-									BidFloor:    1.01,
-									BidFloorCur: "USD",
-								},
-								{
-									ID:          "some-impression-id-2",
-									Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 400, H: 350}, {W: 200, H: 600}}},
-									Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
-									BidFloor:    2.01,
-									BidFloorCur: "USD",
-								},
-							},
-							Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
-							AT:   1,
-							TMax: 500,
+				bidRequest: &openrtb2.BidRequest{
+					ID: "some-request-id",
+					Imp: []openrtb2.Imp{
+						{
+							ID:          "some-impression-id-1",
+							Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 300, H: 250}, {W: 300, H: 600}}},
+							Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
+							BidFloor:    1.01,
+							BidFloorCur: "USD",
 						},
-					}
-					bw.RebuildRequest()
-					return &bw
-				}(),
+						{
+							ID:          "some-impression-id-2",
+							Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 400, H: 350}, {W: 200, H: 600}}},
+							Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
+							BidFloor:    2.01,
+							BidFloorCur: "USD",
+						},
+					},
+					Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
+					AT:   1,
+					TMax: 500,
+				},
 				seatBids: map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid{
 					"pubmatic": {
 						Bids: []*entities.PbsOrtbBid{
@@ -169,34 +163,28 @@ func TestEnforceFloorToBids(t *testing.T) {
 		{
 			name: "Bids with different currency",
 			args: args{
-				bidRequestWrapper: func() *openrtb_ext.RequestWrapper {
-					bw := openrtb_ext.RequestWrapper{
-						BidRequest: &openrtb2.BidRequest{
-							ID: "some-request-id",
-							Imp: []openrtb2.Imp{
-								{
-									ID:          "some-impression-id-1",
-									Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 300, H: 250}, {W: 300, H: 600}}},
-									Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
-									BidFloor:    60,
-									BidFloorCur: "INR",
-								},
-								{
-									ID:          "some-impression-id-2",
-									Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 400, H: 350}, {W: 200, H: 600}}},
-									Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
-									BidFloor:    100,
-									BidFloorCur: "INR",
-								},
-							},
-							Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
-							AT:   1,
-							TMax: 500,
+				bidRequest: &openrtb2.BidRequest{
+					ID: "some-request-id",
+					Imp: []openrtb2.Imp{
+						{
+							ID:          "some-impression-id-1",
+							Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 300, H: 250}, {W: 300, H: 600}}},
+							Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
+							BidFloor:    60,
+							BidFloorCur: "INR",
 						},
-					}
-					bw.RebuildRequest()
-					return &bw
-				}(),
+						{
+							ID:          "some-impression-id-2",
+							Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 400, H: 350}, {W: 200, H: 600}}},
+							Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
+							BidFloor:    100,
+							BidFloorCur: "INR",
+						},
+					},
+					Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
+					AT:   1,
+					TMax: 500,
+				},
 				seatBids: map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid{
 					"pubmatic": {
 						Bids: []*entities.PbsOrtbBid{
@@ -278,34 +266,28 @@ func TestEnforceFloorToBids(t *testing.T) {
 		{
 			name: "Bids with different currency with enforceDealFloor false",
 			args: args{
-				bidRequestWrapper: func() *openrtb_ext.RequestWrapper {
-					bw := openrtb_ext.RequestWrapper{
-						BidRequest: &openrtb2.BidRequest{
-							ID: "some-request-id",
-							Imp: []openrtb2.Imp{
-								{
-									ID:          "some-impression-id-1",
-									Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 300, H: 250}, {W: 300, H: 600}}},
-									Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
-									BidFloor:    60,
-									BidFloorCur: "INR",
-								},
-								{
-									ID:          "some-impression-id-2",
-									Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 400, H: 350}, {W: 200, H: 600}}},
-									Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
-									BidFloor:    100,
-									BidFloorCur: "INR",
-								},
-							},
-							Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
-							AT:   1,
-							TMax: 500,
+				bidRequest: &openrtb2.BidRequest{
+					ID: "some-request-id",
+					Imp: []openrtb2.Imp{
+						{
+							ID:          "some-impression-id-1",
+							Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 300, H: 250}, {W: 300, H: 600}}},
+							Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
+							BidFloor:    60,
+							BidFloorCur: "INR",
 						},
-					}
-					bw.RebuildRequest()
-					return &bw
-				}(),
+						{
+							ID:          "some-impression-id-2",
+							Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 400, H: 350}, {W: 200, H: 600}}},
+							Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
+							BidFloor:    100,
+							BidFloorCur: "INR",
+						},
+					},
+					Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
+					AT:   1,
+					TMax: 500,
+				},
 				seatBids: map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid{
 					"pubmatic": {
 						Bids: []*entities.PbsOrtbBid{
@@ -387,34 +369,28 @@ func TestEnforceFloorToBids(t *testing.T) {
 		{
 			name: "Dealid not empty, enforceDealFloors is true",
 			args: args{
-				bidRequestWrapper: func() *openrtb_ext.RequestWrapper {
-					bw := openrtb_ext.RequestWrapper{
-						BidRequest: &openrtb2.BidRequest{
-							ID: "some-request-id",
-							Imp: []openrtb2.Imp{
-								{
-									ID:          "some-impression-id-1",
-									Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 300, H: 250}, {W: 300, H: 600}}},
-									Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
-									BidFloor:    60,
-									BidFloorCur: "INR",
-								},
-								{
-									ID:          "some-impression-id-2",
-									Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 400, H: 350}, {W: 200, H: 600}}},
-									Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
-									BidFloor:    100,
-									BidFloorCur: "INR",
-								},
-							},
-							Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
-							AT:   1,
-							TMax: 500,
+				bidRequest: &openrtb2.BidRequest{
+					ID: "some-request-id",
+					Imp: []openrtb2.Imp{
+						{
+							ID:          "some-impression-id-1",
+							Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 300, H: 250}, {W: 300, H: 600}}},
+							Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
+							BidFloor:    60,
+							BidFloorCur: "INR",
 						},
-					}
-					bw.RebuildRequest()
-					return &bw
-				}(),
+						{
+							ID:          "some-impression-id-2",
+							Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 400, H: 350}, {W: 200, H: 600}}},
+							Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
+							BidFloor:    100,
+							BidFloorCur: "INR",
+						},
+					},
+					Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
+					AT:   1,
+					TMax: 500,
+				},
 				seatBids: map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid{
 					"pubmatic": {
 						Bids: []*entities.PbsOrtbBid{
@@ -503,34 +479,28 @@ func TestEnforceFloorToBids(t *testing.T) {
 		{
 			name: "Dealid not empty, enforceDealFloors is false",
 			args: args{
-				bidRequestWrapper: func() *openrtb_ext.RequestWrapper {
-					bw := openrtb_ext.RequestWrapper{
-						BidRequest: &openrtb2.BidRequest{
-							ID: "some-request-id",
-							Imp: []openrtb2.Imp{
-								{
-									ID:          "some-impression-id-1",
-									Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 300, H: 250}, {W: 300, H: 600}}},
-									Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
-									BidFloor:    60,
-									BidFloorCur: "INR",
-								},
-								{
-									ID:          "some-impression-id-2",
-									Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 400, H: 350}, {W: 200, H: 600}}},
-									Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
-									BidFloor:    100,
-									BidFloorCur: "INR",
-								},
-							},
-							Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
-							AT:   1,
-							TMax: 500,
+				bidRequest: &openrtb2.BidRequest{
+					ID: "some-request-id",
+					Imp: []openrtb2.Imp{
+						{
+							ID:          "some-impression-id-1",
+							Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 300, H: 250}, {W: 300, H: 600}}},
+							Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
+							BidFloor:    60,
+							BidFloorCur: "INR",
 						},
-					}
-					bw.RebuildRequest()
-					return &bw
-				}(),
+						{
+							ID:          "some-impression-id-2",
+							Banner:      &openrtb2.Banner{Format: []openrtb2.Format{{W: 400, H: 350}, {W: 200, H: 600}}},
+							Ext:         json.RawMessage(`{"appnexus": {"placementId": 1}}`),
+							BidFloor:    100,
+							BidFloorCur: "INR",
+						},
+					},
+					Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
+					AT:   1,
+					TMax: 500,
+				},
 				seatBids: map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid{
 					"pubmatic": {
 						Bids: []*entities.PbsOrtbBid{
@@ -627,33 +597,27 @@ func TestEnforceFloorToBids(t *testing.T) {
 		{
 			name: "Impression does not have currency defined",
 			args: args{
-				bidRequestWrapper: func() *openrtb_ext.RequestWrapper {
-					bw := openrtb_ext.RequestWrapper{
-						BidRequest: &openrtb2.BidRequest{
-							ID:  "some-request-id",
-							Cur: []string{"USD"},
-							Imp: []openrtb2.Imp{
-								{
-									ID:       "some-impression-id-1",
-									Banner:   &openrtb2.Banner{Format: []openrtb2.Format{{W: 300, H: 250}, {W: 300, H: 600}}},
-									Ext:      json.RawMessage(`{"appnexus": {"placementId": 1}}`),
-									BidFloor: 1.01,
-								},
-								{
-									ID:       "some-impression-id-2",
-									Banner:   &openrtb2.Banner{Format: []openrtb2.Format{{W: 400, H: 350}, {W: 200, H: 600}}},
-									Ext:      json.RawMessage(`{"appnexus": {"placementId": 1}}`),
-									BidFloor: 2.01,
-								},
-							},
-							Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
-							AT:   1,
-							TMax: 500,
+				bidRequest: &openrtb2.BidRequest{
+					ID:  "some-request-id",
+					Cur: []string{"USD"},
+					Imp: []openrtb2.Imp{
+						{
+							ID:       "some-impression-id-1",
+							Banner:   &openrtb2.Banner{Format: []openrtb2.Format{{W: 300, H: 250}, {W: 300, H: 600}}},
+							Ext:      json.RawMessage(`{"appnexus": {"placementId": 1}}`),
+							BidFloor: 1.01,
 						},
-					}
-					bw.RebuildRequest()
-					return &bw
-				}(),
+						{
+							ID:       "some-impression-id-2",
+							Banner:   &openrtb2.Banner{Format: []openrtb2.Format{{W: 400, H: 350}, {W: 200, H: 600}}},
+							Ext:      json.RawMessage(`{"appnexus": {"placementId": 1}}`),
+							BidFloor: 2.01,
+						},
+					},
+					Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
+					AT:   1,
+					TMax: 500,
+				},
 				seatBids: map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid{
 					"pubmatic": {
 						Bids: []*entities.PbsOrtbBid{
@@ -728,33 +692,27 @@ func TestEnforceFloorToBids(t *testing.T) {
 		{
 			name: "Impression map does not have imp id",
 			args: args{
-				bidRequestWrapper: func() *openrtb_ext.RequestWrapper {
-					bw := openrtb_ext.RequestWrapper{
-						BidRequest: &openrtb2.BidRequest{
-							ID:  "some-request-id",
-							Cur: []string{"USD"},
-							Imp: []openrtb2.Imp{
-								{
-									ID:       "some-impression-id-1",
-									Banner:   &openrtb2.Banner{Format: []openrtb2.Format{{W: 300, H: 250}, {W: 300, H: 600}}},
-									Ext:      json.RawMessage(`{"appnexus": {"placementId": 1}}`),
-									BidFloor: 1.01,
-								},
-								{
-									ID:       "some-impression-id-2",
-									Banner:   &openrtb2.Banner{Format: []openrtb2.Format{{W: 400, H: 350}, {W: 200, H: 600}}},
-									Ext:      json.RawMessage(`{"appnexus": {"placementId": 1}}`),
-									BidFloor: 2.01,
-								},
-							},
-							Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
-							AT:   1,
-							TMax: 500,
+				bidRequest: &openrtb2.BidRequest{
+					ID:  "some-request-id",
+					Cur: []string{"USD"},
+					Imp: []openrtb2.Imp{
+						{
+							ID:       "some-impression-id-1",
+							Banner:   &openrtb2.Banner{Format: []openrtb2.Format{{W: 300, H: 250}, {W: 300, H: 600}}},
+							Ext:      json.RawMessage(`{"appnexus": {"placementId": 1}}`),
+							BidFloor: 1.01,
 						},
-					}
-					bw.RebuildRequest()
-					return &bw
-				}(),
+						{
+							ID:       "some-impression-id-2",
+							Banner:   &openrtb2.Banner{Format: []openrtb2.Format{{W: 400, H: 350}, {W: 200, H: 600}}},
+							Ext:      json.RawMessage(`{"appnexus": {"placementId": 1}}`),
+							BidFloor: 2.01,
+						},
+					},
+					Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
+					AT:   1,
+					TMax: 500,
+				},
 				seatBids: map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid{
 					"pubmatic": {
 						Bids: []*entities.PbsOrtbBid{
@@ -836,7 +794,7 @@ func TestEnforceFloorToBids(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			seatbids, errs, _ := enforceFloorToBids(tt.args.bidRequestWrapper, tt.args.seatBids, tt.args.conversions, tt.args.enforceDealFloors)
+			seatbids, errs, _ := enforceFloorToBids(tt.args.bidRequest, tt.args.seatBids, tt.args.conversions, tt.args.enforceDealFloors)
 			if !reflect.DeepEqual(seatbids, tt.want) {
 				t.Errorf("enforceFloorToBids() got = %v, want %v", seatbids, tt.want)
 			}
@@ -848,7 +806,7 @@ func TestEnforceFloorToBids(t *testing.T) {
 func TestEnforceFloorToBidsConversion(t *testing.T) {
 
 	type args struct {
-		bidRequestWrapper *openrtb_ext.RequestWrapper
+		bidRequest        *openrtb2.BidRequest
 		seatBids          map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid
 		conversions       currency.Conversions
 		enforceDealFloors bool
@@ -863,33 +821,27 @@ func TestEnforceFloorToBidsConversion(t *testing.T) {
 		{
 			name: "Error in currency conversion",
 			args: args{
-				bidRequestWrapper: func() *openrtb_ext.RequestWrapper {
-					bw := openrtb_ext.RequestWrapper{
-						BidRequest: &openrtb2.BidRequest{
-							ID:  "some-request-id",
-							Cur: []string{"USD"},
-							Imp: []openrtb2.Imp{
-								{
-									ID:       "some-impression-id-1",
-									Banner:   &openrtb2.Banner{Format: []openrtb2.Format{{W: 300, H: 250}, {W: 300, H: 600}}},
-									Ext:      json.RawMessage(`{"appnexus": {"placementId": 1}}`),
-									BidFloor: 1.01,
-								},
-								{
-									ID:       "some-impression-id-2",
-									Banner:   &openrtb2.Banner{Format: []openrtb2.Format{{W: 400, H: 350}, {W: 200, H: 600}}},
-									Ext:      json.RawMessage(`{"appnexus": {"placementId": 1}}`),
-									BidFloor: 2.01,
-								},
-							},
-							Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
-							AT:   1,
-							TMax: 500,
+				bidRequest: &openrtb2.BidRequest{
+					ID:  "some-request-id",
+					Cur: []string{"USD"},
+					Imp: []openrtb2.Imp{
+						{
+							ID:       "some-impression-id-1",
+							Banner:   &openrtb2.Banner{Format: []openrtb2.Format{{W: 300, H: 250}, {W: 300, H: 600}}},
+							Ext:      json.RawMessage(`{"appnexus": {"placementId": 1}}`),
+							BidFloor: 1.01,
 						},
-					}
-					bw.RebuildRequest()
-					return &bw
-				}(),
+						{
+							ID:       "some-impression-id-2",
+							Banner:   &openrtb2.Banner{Format: []openrtb2.Format{{W: 400, H: 350}, {W: 200, H: 600}}},
+							Ext:      json.RawMessage(`{"appnexus": {"placementId": 1}}`),
+							BidFloor: 2.01,
+						},
+					},
+					Site: &openrtb2.Site{Page: "prebid.org", Ext: json.RawMessage(`{"amp":0}`)},
+					AT:   1,
+					TMax: 500,
+				},
 				seatBids: map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid{
 					"pubmatic": {
 						Bids: []*entities.PbsOrtbBid{
@@ -926,7 +878,7 @@ func TestEnforceFloorToBidsConversion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1, _ := enforceFloorToBids(tt.args.bidRequestWrapper, tt.args.seatBids, tt.args.conversions, tt.args.enforceDealFloors)
+			got, got1, _ := enforceFloorToBids(tt.args.bidRequest, tt.args.seatBids, tt.args.conversions, tt.args.enforceDealFloors)
 			assert.Equal(t, tt.want, got)
 			assert.Equal(t, tt.want1, ErrToString(got1))
 		})
@@ -1803,90 +1755,5 @@ func TestEnforceFloors(t *testing.T) {
 
 			assert.Equal(t, tt.want1, ErrToString(errs))
 		})
-	}
-}
-
-func TestUpdateBidExtWithFloors(t *testing.T) {
-	type args struct {
-		reqImp        *openrtb_ext.ImpWrapper
-		bid           *entities.PbsOrtbBid
-		floorCurrency string
-	}
-	tests := []struct {
-		name string
-		args args
-		want json.RawMessage
-	}{
-		{
-			name: "Bid extenison is updated with floors data",
-			args: args{
-				reqImp: func() *openrtb_ext.ImpWrapper {
-					iw := openrtb_ext.ImpWrapper{
-						Imp: &openrtb2.Imp{Ext: json.RawMessage(`{"prebid":{"floors":{"floorRule":"*|*|*","floorRuleValue":26.02,"floorValue":12,"floorMin":5,"FloorMinCur":"INR"}}}`)},
-					}
-					iw.RebuildImpressionExt()
-					return &iw
-				}(),
-				bid: &entities.PbsOrtbBid{
-					Bid: &openrtb2.Bid{Ext: json.RawMessage(`{"prebid":{}}`)},
-				},
-				floorCurrency: "WON",
-			},
-			want: json.RawMessage(`{"prebid":{"type":"","floors":{"floorRule":"*|*|*","floorRuleValue":26.02,"floorValue":12,"floorCurrency":"WON"}}}`),
-		},
-		{
-			name: "Bid extenison is updated with floors data when ext is empty",
-			args: args{
-				reqImp: func() *openrtb_ext.ImpWrapper {
-					iw := openrtb_ext.ImpWrapper{
-						Imp: &openrtb2.Imp{Ext: json.RawMessage(`{"prebid":{"floors":{"floorRule":"*|*|*","floorRuleValue":26.02,"floorValue":12,"floorMin":5,"FloorMinCur":"INR"}}}`)},
-					}
-					iw.RebuildImpressionExt()
-					return &iw
-				}(),
-				bid: &entities.PbsOrtbBid{
-					Bid: &openrtb2.Bid{ID: "123"},
-				},
-				floorCurrency: "WON",
-			},
-			want: json.RawMessage(`{"prebid":{"type":"","floors":{"floorRule":"*|*|*","floorRuleValue":26.02,"floorValue":12,"floorCurrency":"WON"}}}`),
-		},
-		{
-			name: "Empty req impression",
-			args: args{
-				reqImp: func() *openrtb_ext.ImpWrapper {
-					iw := openrtb_ext.ImpWrapper{}
-					return &iw
-				}(),
-				bid: &entities.PbsOrtbBid{
-					Bid: &openrtb2.Bid{Ext: json.RawMessage(`{"prebid":{}}`)},
-				},
-				floorCurrency: "WON",
-			},
-			want: json.RawMessage(`{"prebid":{}}`),
-		},
-		{
-			name: "Floors data is not present in impression",
-			args: args{
-				reqImp: func() *openrtb_ext.ImpWrapper {
-					iw := openrtb_ext.ImpWrapper{
-						Imp: &openrtb2.Imp{Ext: json.RawMessage(`{"prebid":{}}`)},
-					}
-					iw.RebuildImpressionExt()
-					return &iw
-				}(),
-				bid: &entities.PbsOrtbBid{
-					Bid: &openrtb2.Bid{Ext: json.RawMessage(`{"prebid":{}}`)},
-				},
-				floorCurrency: "WON",
-			},
-			want: json.RawMessage(`{"prebid":{}}`),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			updateBidExtWithFloors(tt.args.reqImp, tt.args.bid, tt.args.floorCurrency)
-		})
-		assert.Equal(t, tt.want, tt.args.bid.Bid.Ext, "Bid is not updated with data")
 	}
 }

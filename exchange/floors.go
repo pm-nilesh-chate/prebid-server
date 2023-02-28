@@ -42,55 +42,17 @@ func getCurrencyConversionRate(seatBidCur, reqImpCur string, conversions currenc
 	}
 }
 
-func updateBidExtWithFloors(reqImp *openrtb_ext.ImpWrapper, bid *entities.PbsOrtbBid, floorCurrency string) {
-
-	impExt, err := reqImp.GetImpExt()
-	if err != nil || impExt == nil {
-		return
-	}
-
-	var bidExt openrtb_ext.ExtBid
-	if len(bid.Bid.Ext) != 0 {
-		err = json.Unmarshal([]byte(bid.Bid.Ext), &bidExt)
-		if err != nil {
-			return
-		}
-	}
-
-	var bidExtFloors openrtb_ext.ExtBidFloors
-	prebidExt := impExt.GetPrebid()
-	if prebidExt == nil || prebidExt.Floors == nil {
-		return
-	}
-
-	bidExtFloors.FloorRule = prebidExt.Floors.FloorRule
-	bidExtFloors.FloorRuleValue = prebidExt.Floors.FloorRuleValue
-	bidExtFloors.FloorValue = prebidExt.Floors.FloorValue
-	bidExtFloors.FloorCurrency = floorCurrency
-
-	if bidExt.Prebid == nil {
-		bidExt.Prebid = new(openrtb_ext.ExtBidPrebid)
-	}
-	bidExt.Prebid.Floors = bidExtFloors
-
-	extWithFloors, err := json.Marshal(bidExt)
-	if err != nil {
-		return
-	}
-	bid.Bid.Ext = extWithFloors
-}
-
 // enforceFloorToBids function does floors enforcement for each bid.
 //
 //	The bids returned by each partner below bid floor price are rejected and remaining eligible bids are considered for further processing
-func enforceFloorToBids(bidRequestWrapper *openrtb_ext.RequestWrapper, seatBids map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid, conversions currency.Conversions, enforceDealFloors bool) (map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid, []error, []analytics.RejectedBid) {
+func enforceFloorToBids(bidRequest *openrtb2.BidRequest, seatBids map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid, conversions currency.Conversions, enforceDealFloors bool) (map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid, []error, []analytics.RejectedBid) {
 	errs := []error{}
 	rejectedBids := []analytics.RejectedBid{}
-	impMap := make(map[string]*openrtb_ext.ImpWrapper, bidRequestWrapper.LenImp())
+	impMap := make(map[string]openrtb2.Imp, len(bidRequest.Imp))
 
 	//Maintaining BidRequest Impression Map
-	for _, v := range bidRequestWrapper.GetImp() {
-		impMap[v.ID] = v
+	for i := range bidRequest.Imp {
+		impMap[bidRequest.Imp[i].ID] = bidRequest.Imp[i]
 	}
 
 	for bidderName, seatBid := range seatBids {
@@ -106,8 +68,8 @@ func enforceFloorToBids(bidRequestWrapper *openrtb_ext.RequestWrapper, seatBids 
 			if ok {
 				reqImpCur := reqImp.BidFloorCur
 				if reqImpCur == "" {
-					if bidRequestWrapper.Cur != nil {
-						reqImpCur = bidRequestWrapper.Cur[0]
+					if bidRequest.Cur != nil {
+						reqImpCur = bidRequest.Cur[0]
 					} else {
 						reqImpCur = "USD"
 					}
@@ -127,7 +89,6 @@ func enforceFloorToBids(bidRequestWrapper *openrtb_ext.RequestWrapper, seatBids 
 						rejectedBids = append(rejectedBids, rejectedBid)
 						errs = append(errs, fmt.Errorf("bid rejected [bid ID: %s] reason: bid price value %.4f %s is less than bidFloor value %.4f %s for impression id %s bidder %s", bid.Bid.ID, bidPrice, reqImpCur, reqImp.BidFloor, reqImpCur, bid.Bid.ImpID, bidderName))
 					} else {
-						updateBidExtWithFloors(reqImp, bid, reqImpCur)
 						eligibleBids = append(eligibleBids, bid)
 					}
 				} else {
@@ -184,7 +145,7 @@ func enforceFloors(r *AuctionRequest, seatBids map[openrtb_ext.BidderName]*entit
 
 		if floorsEnfocement {
 			rejectedBids := []analytics.RejectedBid{}
-			seatBids, rejectionsErrs, rejectedBids = enforceFloorToBids(r.BidRequestWrapper, seatBids, conversions, enforceDealFloors)
+			seatBids, rejectionsErrs, rejectedBids = enforceFloorToBids(r.BidRequestWrapper.BidRequest, seatBids, conversions, enforceDealFloors)
 			if r.LoggableObject != nil {
 				r.LoggableObject.RejectedBids = append(r.LoggableObject.RejectedBids, rejectedBids...)
 			}
