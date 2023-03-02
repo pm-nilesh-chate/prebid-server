@@ -689,6 +689,7 @@ func (e *exchange) getAllBids(
 		// record this request count this request if bid collision is detected
 		e.me.RecordRequestHavingDuplicateBidID()
 	}
+
 	return adapterBids, adapterExtra, fledge, bidsFound
 }
 
@@ -1208,6 +1209,7 @@ func (e *exchange) makeBid(bids []*entities.PbsOrtbBid, auc *auction, returnCrea
 			Meta:              bid.BidMeta,
 			Video:             bid.BidVideo,
 			BidId:             bid.GeneratedBidID,
+			Floors:            bid.BidFloors,
 		}
 
 		if cacheInfo, found := e.getBidCacheInfo(bid, auc); found {

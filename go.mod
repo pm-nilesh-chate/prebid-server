@@ -14,7 +14,6 @@ require (
 	github.com/chasex/glog v0.0.0-20160217080310-c62392af379c
 	github.com/coocood/freecache v1.2.1
 	github.com/docker/go-units v0.4.0
-	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/golang/glog v1.0.0
 	github.com/julienschmidt/httprouter v1.3.0
@@ -43,6 +42,8 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.12.0
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+require github.com/go-sql-driver/mysql v1.7.0
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect

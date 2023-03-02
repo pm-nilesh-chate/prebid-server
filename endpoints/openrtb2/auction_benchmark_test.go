@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prebid/prebid-server/experiment/adscert"
 	"github.com/prebid/prebid-server/floors"
 
 	analyticsConf "github.com/prebid/prebid-server/analytics/config"
