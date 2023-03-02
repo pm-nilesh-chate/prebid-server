@@ -37,11 +37,15 @@ func (wlog *WloggerRecord) CreateLoggerRecordFromRequest(uaFromHTTPReq string, a
 	var publisherID int
 	var pageURL, origin string
 	if ao.Request.App != nil {
-		publisherID = ao.Request.App.PublisherID.ID
+		if ao.Request.App.Publisher != nil {
+			publisherID, _ = strconv.Atoi(ao.Request.App.Publisher.ID)
+		}
 		pageURL = ao.Request.App.StoreURL
 		origin = ao.Request.App.Bundle
 	} else if ao.Request.Site != nil {
-		publisherID = ao.Request.Site.PublisherID.ID
+		if ao.Request.Site.Publisher != nil {
+			publisherID, _ = strconv.Atoi(ao.Request.Site.Publisher.ID)
+		}
 		pageURL = ao.Request.Site.Page
 		if len(ao.Request.Site.Domain) != 0 {
 			origin = ao.Request.Site.Domain
