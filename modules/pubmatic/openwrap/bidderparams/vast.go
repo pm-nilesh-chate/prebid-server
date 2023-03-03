@@ -12,14 +12,13 @@ import (
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/cache"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/request"
 )
 
 // setVASTEventMacros populates reqExt.Prebid.Macros with PubMatic specific macros
 // These marcros is used in replacing with actual values of Macros in case of Video Event tracke URLs
 // If this function fails to determine value of any macro then it continues with next macro setup
 // returns true when at least one macro is added to map
-func SetVASTEventMacros(reqExt *request.ExtRequest, bidReq openrtb2.BidRequest, wrapperImpressionID, displayVersionID string, pubmaticPlatform models.DevicePlatform) (bool, error) {
+func SetVASTEventMacros(reqExt *models.ExtRequest, bidReq openrtb2.BidRequest, wrapperImpressionID, displayVersionID string, pubmaticPlatform models.DevicePlatform) (bool, error) {
 	reqExt.Prebid.Macros = make(map[string]string)
 	errMsgs := []string{}
 	reqExt.Prebid.Macros[string(models.MacroProfileID)] = strconv.Itoa(reqExt.Wrapper.ProfileId)
@@ -49,7 +48,7 @@ func SetVASTEventMacros(reqExt *request.ExtRequest, bidReq openrtb2.BidRequest, 
 	return true, err
 }
 
-func PrepareVASTBidderParams(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt request.ImpExtension, partnerID int, adpodExt *request.AdPod) (json.RawMessage, errorcodes.IError) {
+func PrepareVASTBidderParams(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int, adpodExt *models.AdPod) (json.RawMessage, errorcodes.IError) {
 	if imp.Video == nil {
 		return nil, nil
 	}
@@ -94,7 +93,7 @@ func getVASTBidderSlotKeys(imp *openrtb2.Imp,
 	slotKey string,
 	slotMap map[string]models.SlotMapping,
 	pubVASTTags models.PublisherVASTTags,
-	adpodExt *request.AdPod) ([]string, errorcodes.IError) {
+	adpodExt *models.AdPod) ([]string, errorcodes.IError) {
 
 	//TODO: Optimize this function
 	var (
@@ -178,7 +177,7 @@ func formCaseInsensitiveVASTSlotKey(key string) string {
 func validateVASTTag(
 	vastTag *models.VASTTag,
 	videoMinDuration, videoMaxDuration int64,
-	adpod *request.AdPod) error {
+	adpod *models.AdPod) error {
 
 	if nil == vastTag {
 		return fmt.Errorf("Empty vast tag")

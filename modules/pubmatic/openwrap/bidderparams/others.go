@@ -8,10 +8,9 @@ import (
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/cache"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/request"
 )
 
-func PrepareAdapterParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt request.ImpExtension, partnerID int) ([]byte, errorcodes.IError) {
+func PrepareAdapterParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int) ([]byte, errorcodes.IError) {
 	slots, slotMap, _, wh := getSlotMeta(rctx, cache, bidRequest, imp, impExt, partnerID)
 	for i, slot := range slots {
 		slotMappingObj, ok := slotMap[strings.ToLower(slot)]

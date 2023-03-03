@@ -8,12 +8,12 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/request"
+	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 )
 
 const FloatValuePrecision = 2
 
-func getKeywordStringForPartner(impExt *request.ImpExtension, partner string) string {
+func getKeywordStringForPartner(impExt *models.ImpExtension, partner string) string {
 	if impExt != nil && impExt.Bidder != nil {
 		bidder := impExt.Bidder[partner]
 		if nil != bidder && len(bidder.KeyWords) > 0 {

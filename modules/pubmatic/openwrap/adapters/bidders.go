@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/request"
+	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 )
 
 // PrepareBidParamJSONForPartner preparing bid params json for partner
-func PrepareBidParamJSONForPartner(width *int64, height *int64, fieldMap map[string]interface{}, slotKey, adapterName, bidderCode string, impExt *request.ImpExtension) (json.RawMessage, error) {
+func PrepareBidParamJSONForPartner(width *int64, height *int64, fieldMap map[string]interface{}, slotKey, adapterName, bidderCode string, impExt *models.ImpExtension) (json.RawMessage, error) {
 	params := BidderParameters{
 		AdapterName: adapterName,
 		BidderCode:  bidderCode,

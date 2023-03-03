@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
-
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/request"
 )
 
 // BidderParameters provides all properties requires for bidder to generate bidder json
@@ -13,7 +11,7 @@ type BidderParameters struct {
 	//AdapterName, BidderCode should be passed in builder function
 	ReqID                   string
 	AdapterName, BidderCode string
-	ImpExt                  *request.ImpExtension
+	ImpExt                  *models.ImpExtension
 
 	//bidder specific parameters
 	FieldMap      JSONObject

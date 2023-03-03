@@ -8,10 +8,9 @@ import (
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/cache"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/request"
 )
 
-func getSlotMeta(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt request.ImpExtension, partnerID int) ([]string, map[string]models.SlotMapping, models.SlotMappingInfo, [][2]int64) {
+func getSlotMeta(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int) ([]string, map[string]models.SlotMapping, models.SlotMappingInfo, [][2]int64) {
 	var slotMap map[string]models.SlotMapping
 	var slotMappingInfo models.SlotMappingInfo
 
@@ -111,7 +110,7 @@ func generateSlotName(h, w int64, kgp, tagid, div, src string) string {
 
 func CheckSlotName(slotName string, isRegex bool, slotMap map[string]models.SlotMapping) (map[string]interface{}, error) {
 	if isRegex {
-		// fieldMap, matchingRegex = RunRegexMatch(*request.Id, slotMap, slotMappingInfo, slotKey, pubIDInt, partnerID, profileID, versionID, partnerConf[models.BidderCode])
+		// fieldMap, matchingRegex = RunRegexMatch(*models.Id, slotMap, slotMappingInfo, slotKey, pubIDInt, partnerID, profileID, versionID, partnerConf[models.BidderCode])
 	}
 
 	slotMappingObj, ok := slotMap[strings.ToLower(slotName)]

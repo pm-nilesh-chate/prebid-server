@@ -10,8 +10,6 @@ import (
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/adapters"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/bidderparams"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/request"
-	ow_request "github.com/prebid/prebid-server/modules/pubmatic/openwrap/request"
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
@@ -52,7 +50,7 @@ func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]
 	// var isAdPodRequest bool
 	// aliasgvlids := make(map[string]uint16)
 
-	reqExt, err := request.GetRequestExt(bidRequest.Ext)
+	reqExt, err := models.GetRequestExt(bidRequest.Ext)
 	if err != nil {
 		return body, err
 	}
@@ -62,13 +60,13 @@ func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]
 	reqExt.Prebid.Debug = rctx.Debug
 
 	for i := 0; i < len(bidRequest.Imp); i++ {
-		var adpodExt *ow_request.AdPod
+		var adpodExt *models.AdPod
 		// var isAdPodImpression bool
 		eachImp := &bidRequest.Imp[i]
 		// //Wrapper
-		// impWrapper := &request.ImpWrapper{
+		// impWrapper := &models.ImpWrapper{
 		// 	Imp:    eachImp,
-		// 	Bidder: map[string]*request.BidderWrapper{},
+		// 	Bidder: map[string]*models.BidderWrapper{},
 		// }
 
 		updateImpFloorDefaultCurrency(eachImp)
@@ -120,7 +118,7 @@ func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]
 		// 	}
 		// }
 
-		impExt := &request.ImpExtension{}
+		impExt := &models.ImpExtension{}
 		if len(eachImp.Ext) != 0 {
 			err = json.Unmarshal(eachImp.Ext, impExt)
 			if err != nil {
