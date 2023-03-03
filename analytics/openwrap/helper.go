@@ -12,7 +12,7 @@ import (
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
-func CreateCommonLogger(ao *analytics.AuctionObject) {
+func CreateCommonLogger(ao *analytics.AuctionObject) *WloggerRecord {
 	wl := NewRecord()
 	// uaFromHTTPReq := ao.Request.Header.Get("User-Agent")
 	wl.CreateLoggerRecordFromRequest("uaFromHTTPReq", ao)
@@ -23,6 +23,7 @@ func CreateCommonLogger(ao *analytics.AuctionObject) {
 	// if testConfigApplied {
 	// 	controller.LoggerRecord.SetTestConfigApplied(1)
 	// }
+	return wl
 }
 
 // CreateLoggerRecordFromRequest creates logger and tracker records from bidRequest data
@@ -109,22 +110,21 @@ func (wlog *WloggerRecord) CreateLoggerRecordFromRequest(uaFromHTTPReq string, a
 }
 
 // Send method
-func Send(rtbReqID string, loggerURL string, gdprEnabled int) error {
-	loggerURL = PrepareLoggerURL(wlog, loggerURL, gdprEnabled)
-	hc, err := http.NewRequest(http.MethodPost, loggerURL)
+func Send(client http.Client, loggerURL string, wl *WloggerRecord, gdprEnabled int) error {
+	loggerURL = PrepareLoggerURL(wl, loggerURL, gdprEnabled)
+	hc, err := http.NewRequest(http.MethodGet, loggerURL, nil)
 	if err != nil {
 		return err
 	}
 
-	hc.Header.Add(models.USER_AGENT_HEADER, wlog.UserAgent)
-	hc.Header.Add(models.IP_HEADER, wlog.IP)
-	if wlog.UID != "" {
-		hc.AddCookie(models.KADUSERCOOKIE, wl.UID)
+	hc.Header.Add(models.USER_AGENT_HEADER, wl.UserAgent)
+	hc.Header.Add(models.IP_HEADER, wl.IP)
+	if wl.UID != "" {
+		hc.Header.Add(models.KADUSERCOOKIE, wl.UID)
 	}
 
-	mhc.AddHttpCall(hc)
-	_, erc := mhc.Execute()
-	if erc != 0 {
+	_, err = client.Do(hc)
+	if err != nil {
 		return errors.New("error in sending logger pixel")
 	}
 	return nil
