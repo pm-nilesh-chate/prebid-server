@@ -9,11 +9,10 @@ import (
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/cache"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/request"
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
-func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt request.ImpExtension, partnerID int) ([]byte, errorcodes.IError) {
+func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int) ([]byte, errorcodes.IError) {
 	slots, slotMap, slotMappingInfo, _ := getSlotMeta(rctx, cache, bidRequest, imp, impExt, partnerID)
 	for _, slot := range slots {
 		params, err := prepareBidParamForPubmaticV25(rctx, slot, slotMap, slotMappingInfo, bidRequest, imp, impExt, partnerID, false)
@@ -33,7 +32,7 @@ func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequ
 	return nil, nil
 }
 
-func prepareBidParamForPubmaticV25(rctx models.RequestCtx, slot string, slotMap map[string]models.SlotMapping, slotMappingInfo models.SlotMappingInfo, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt request.ImpExtension, partnerID int, isRegex bool) ([]byte, error) {
+func prepareBidParamForPubmaticV25(rctx models.RequestCtx, slot string, slotMap map[string]models.SlotMapping, slotMappingInfo models.SlotMappingInfo, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int, isRegex bool) ([]byte, error) {
 	var fieldMap map[string]interface{}
 	var err error
 	if !rctx.IsTestRequest && !isRegex {
@@ -68,7 +67,7 @@ func prepareBidParamForPubmaticV25(rctx models.RequestCtx, slot string, slotMap 
 	return json.Marshal(extImpPubMatic)
 }
 
-func getDealTier(impExt request.ImpExtension, bidderCode string) *openrtb_ext.DealTier {
+func getDealTier(impExt models.ImpExtension, bidderCode string) *openrtb_ext.DealTier {
 	if len(impExt.Bidder) != 0 {
 		if bidderExt, ok := impExt.Bidder[bidderCode]; ok && bidderExt != nil && bidderExt.DealTier != nil {
 			return bidderExt.DealTier
@@ -77,7 +76,7 @@ func getDealTier(impExt request.ImpExtension, bidderCode string) *openrtb_ext.De
 	return nil
 }
 
-func getImpExtPubMaticKeyWords(impExt request.ImpExtension, bidderCode string) []*openrtb_ext.ExtImpPubmaticKeyVal {
+func getImpExtPubMaticKeyWords(impExt models.ImpExtension, bidderCode string) []*openrtb_ext.ExtImpPubmaticKeyVal {
 	if len(impExt.Bidder) != 0 {
 		if bidderExt, ok := impExt.Bidder[bidderCode]; ok && bidderExt != nil && len(bidderExt.KeyWords) != 0 {
 			keywords := make([]*openrtb_ext.ExtImpPubmaticKeyVal, 0)

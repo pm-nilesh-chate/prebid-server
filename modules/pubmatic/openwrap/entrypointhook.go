@@ -11,7 +11,6 @@ import (
 	"github.com/prebid/prebid-server/hooks/hookexecution"
 	"github.com/prebid/prebid-server/hooks/hookstage"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
-	ow_request "github.com/prebid/prebid-server/modules/pubmatic/openwrap/request"
 )
 
 func (m OpenWrap) handleEntrypointHook(
@@ -26,12 +25,12 @@ func (m OpenWrap) handleEntrypointHook(
 
 	result.ChangeSet = hookstage.ChangeSet[hookstage.EntrypointPayload]{}
 
-	requestExtWrapper, err := ow_request.GetWrapperExt(payload.Body)
+	requestExtWrapper, err := models.GetWrapperExt(payload.Body)
 	if err != nil {
 		return result, err
 	}
 
-	accountID, err := ow_request.GetAccountID(payload.Body)
+	accountID, err := models.GetAccountID(payload.Body)
 	if err != nil {
 		return result, err
 	}
@@ -54,7 +53,7 @@ func (m OpenWrap) handleEntrypointHook(
 
 	// Start------------------------------------------------------------------------------------------------------------------------
 	// Move this to BeforeValidationHook where we have already unmarshaled request.
-	// test, _ := ow_request.GetTest(payload.Body)
+	// test, _ := models.GetTest(payload.Body)
 	bidRequest := &openrtb2.BidRequest{}
 	err = json.Unmarshal(payload.Body, bidRequest)
 	if err != nil {

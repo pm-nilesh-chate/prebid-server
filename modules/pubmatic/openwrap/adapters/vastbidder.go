@@ -7,7 +7,6 @@ import (
 
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/request"
 
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
@@ -15,7 +14,7 @@ import (
 func PrepareVASTBidderParamJSON(request *openrtb2.BidRequest, imp *openrtb2.Imp,
 	pubVASTTags models.PublisherVASTTags,
 	matchedSlotKeys []string, slotMap map[string]models.SlotMapping,
-	adpod *request.AdPod) json.RawMessage {
+	adpod *models.AdPod) json.RawMessage {
 
 	if nil == imp.Video {
 		return nil
