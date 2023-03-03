@@ -9,7 +9,6 @@ import (
 
 	"github.com/prebid/prebid-server/analytics"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/request"
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
@@ -28,7 +27,7 @@ func CreateCommonLogger(ao *analytics.AuctionObject) {
 
 // CreateLoggerRecordFromRequest creates logger and tracker records from bidRequest data
 func (wlog *WloggerRecord) CreateLoggerRecordFromRequest(uaFromHTTPReq string, ao *analytics.AuctionObject) {
-	extWrapper := request.RequestExtWrapper{}
+	extWrapper := models.RequestExtWrapper{}
 	err := json.Unmarshal(ao.Request.Ext, &extWrapper)
 	if err != nil {
 		return
