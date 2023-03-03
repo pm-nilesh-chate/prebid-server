@@ -3,6 +3,7 @@ package openwrap
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math"
 	"regexp"
 	"strconv"
@@ -11,7 +12,6 @@ import (
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/hooks/hookstage"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
-	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
 func (m OpenWrap) handleAuctionResponseHook(
@@ -30,15 +30,34 @@ func (m OpenWrap) handleAuctionResponseHook(
 	return result, nil
 }
 
-type bidExtOW struct {
-	openrtb_ext.ExtBid
+type owBid struct {
+	*openrtb2.Bid
+	netEcpm              float64
+	bidDealTierSatisfied bool
 }
 
 func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) error {
-	for _, seatBid := range bidResponse.SeatBid {
-		for _, bid := range seatBid.Bid {
+	winningBids := make(map[string]owBid, 0)
+	// winningBidsByBidder := make(map[string]map[openrtb_ext.BidderName]owBid, 0)
+	partnerNameMap := make(map[string]map[string]string)
+
+	for i, seatBid := range bidResponse.SeatBid {
+		for j, bid := range seatBid.Bid {
+			// NYC_TODO maintain a global map of ow-partner-id to biddercode. Ex. 8->pubmatic
+			// prepare partner name to partner config map
+
+			for _, partnerConfig := range rctx.PartnerConfigMap {
+				if partnerConfig[models.SERVER_SIDE_FLAG] != "1" {
+					continue
+				}
+				partnerNameMap[partnerConfig[models.BidderCode]] = partnerConfig
+			}
+
+			revShare := GetRevenueShare(partnerNameMap[seatBid.Seat])
+			netEcpm := GetNetEcpm(bid.Price, revShare)
+
+			bidExt := &models.BidExt{}
 			if len(bid.Ext) != 0 {
-				bidExt := &models.BidExt{}
 				err := json.Unmarshal(bid.Ext, bidExt)
 				if err != nil {
 					return err
@@ -55,28 +74,111 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 
 				// bidExt.Summary
 
-				// NYC_TODO maintain a global map of ow-partner-id to biddercode. Ex. 8->pubmatic
-				// prepare partner name to partner config map
-				partnerNameMap := make(map[string]map[string]string)
-				for _, partnerConfig := range rctx.PartnerConfigMap {
-					if partnerConfig[models.SERVER_SIDE_FLAG] != "1" {
-						continue
-					}
-
-					partnerNameMap[partnerConfig[models.BidderCode]] = partnerConfig
-				}
-
 				// if platform == models.PLATFORM_APP {
-				revShare := GetRevenueShare(partnerNameMap[seatBid.Seat])
-				netEcpm := GetNetEcpm(bid.Price, revShare)
-
 				bidExt.NetECPM = netEcpm
 				// bidExt.Prebid = addPWTTargetingForBid(*request.Id, eachBid, impExt.Prebid, *eachSeatBid.Seat, platform, winBidFlag, netEcpm)
 				// }
+
+			}
+
+			owbid := owBid{&bid, netEcpm, bidExt.Prebid.DealTierSatisfied}
+			wbid, ok := winningBids[bid.ImpID]
+			if !ok || isNewWinningBid(owbid, wbid, rctx.PreferDeals) {
+				winningBids[owbid.ImpID] = owbid
+			}
+			// if bidMap, ok := winningBidsByBidder[owbid.ImpID]; ok {
+			// 	bestSoFar, ok := bidMap[openrtb_ext.BidderName(seatBid.Seat)]
+			// 	if !ok || cpm > bestSoFar.Bid.Price {
+			// 		bidMap[bidderName] = bid
+			// 	}
+			// } else {
+			// 	winningBidsByBidder[bid.Bid.ImpID] = make(map[openrtb_ext.BidderName]*entities.PbsOrtbBid)
+			// 	winningBidsByBidder[bid.Bid.ImpID][bidderName] = bid
+			// }
+
+			var err error
+			bidResponse.SeatBid[i].Bid[j].Ext, err = json.Marshal(bidExt)
+			if err != nil {
+				return err
 			}
 		}
 	}
+
+	//setTargeting
+	for i, seatBid := range bidResponse.SeatBid {
+		for j, bid := range seatBid.Bid {
+			bidExt := &models.BidExt{}
+			if len(bid.Ext) != 0 {
+				err := json.Unmarshal(bid.Ext, bidExt)
+				if err != nil {
+					return err
+				}
+			}
+
+			revShare := GetRevenueShare(partnerNameMap[seatBid.Seat])
+			netEcpm := GetNetEcpm(bid.Price, revShare)
+
+			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_SLOTID)] = bid.ID
+			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_SZ)] = GetSize(bid.W, bid.H)
+			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_PARTNERID)] = seatBid.Seat
+			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_ECPM)] = fmt.Sprintf("%.2f", netEcpm)
+			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_PLATFORM)] = rctx.Platform
+			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_BIDSTATUS)] = "1"
+			if len(bid.DealID) != 0 {
+				bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_DEALID)] = bid.DealID
+			}
+
+			if _, ok := winningBids[bid.ImpID]; ok {
+				bidExt.Winner = 1
+
+				bidExt.Prebid.Targeting[models.PWT_SLOTID] = bid.ID
+				bidExt.Prebid.Targeting[models.PWT_BIDSTATUS] = "1"
+				bidExt.Prebid.Targeting[models.PWT_SZ] = GetSize(bid.W, bid.H)
+				bidExt.Prebid.Targeting[models.PWT_PARTNERID] = seatBid.Seat
+				bidExt.Prebid.Targeting[models.PWT_ECPM] = fmt.Sprintf("%.2f", netEcpm)
+				bidExt.Prebid.Targeting[models.PWT_PLATFORM] = rctx.Platform
+				if len(bid.DealID) != 0 {
+					bidExt.Prebid.Targeting[models.PWT_DEALID] = bid.DealID
+				}
+			}
+
+			var err error
+			bidResponse.SeatBid[i].Bid[j].Ext, err = json.Marshal(bidExt)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
+}
+
+// isNewWinningBid calculates if the new bid (nbid) will win against the current winning bid (wbid) given preferDeals.
+func isNewWinningBid(bid, wbid owBid, preferDeals bool) bool {
+	if preferDeals {
+		//only wbid has deal
+		if wbid.bidDealTierSatisfied && !bid.bidDealTierSatisfied {
+			return false
+		}
+		//only bid has deal
+		if !wbid.bidDealTierSatisfied && bid.bidDealTierSatisfied {
+			return true
+		}
+	}
+	//both have deal or both do not have deal
+	return bid.netEcpm > wbid.netEcpm
+}
+
+// CreatePartnerKey returns key with partner appended
+func CreatePartnerKey(partner, key string) string {
+	if partner == "" {
+		return key
+	}
+	return key + "_" + partner
+}
+
+func GetSize(width, height int64) string {
+	return fmt.Sprintf("%dx%d", width, height)
 }
 
 // GetAdFormat gets adformat from creative(adm) of the bid

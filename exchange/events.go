@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/prebid/prebid-server/exchange/entities"
+	jsonpatch "gopkg.in/evanphx/json-patch.v4"
 
 	"github.com/prebid/openrtb/v19/openrtb2"
 	"github.com/prebid/prebid-server/analytics"
