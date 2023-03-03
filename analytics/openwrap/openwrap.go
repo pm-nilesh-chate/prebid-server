@@ -1,6 +1,8 @@
 package openwrap
 
 import (
+	"net/http"
+
 	"github.com/prebid/prebid-server/analytics"
 )
 
@@ -17,12 +19,14 @@ const (
 
 // Module that can perform transactional logging
 type HTTPLogger struct {
-	URL string
+	URL    string
+	client *http.Client
 }
 
 // Writes AuctionObject to file
 func (ow *HTTPLogger) LogAuctionObject(ao *analytics.AuctionObject) {
-
+	wl := CreateCommonLogger(ao)
+	Send(*ow.client, ow.URL, wl, 1) // NYC_TODO: pass gdpr enabled in ao.Context
 }
 
 // Writes VideoObject to file
