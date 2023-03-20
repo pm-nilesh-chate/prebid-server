@@ -641,6 +641,7 @@ func (e *exchange) getAllBids(
 				if seatBid != nil {
 					for _, bid := range seatBid.Bids {
 						var cpm = float64(bid.Bid.Price * 1000)
+
 						e.me.RecordAdapterPrice(bidderRequest.BidderLabels, cpm)
 						e.me.RecordAdapterBidReceived(bidderRequest.BidderLabels, bid.BidType, bid.Bid.AdM != "")
 						if bid.BidType == openrtb_ext.BidTypeVideo && bid.BidVideo != nil && bid.BidVideo.Duration > 0 {
@@ -1043,7 +1044,7 @@ func applyCategoryMapping(ctx context.Context, r *AuctionRequest, requestExt *op
 					if r.LoggableObject != nil {
 						r.LoggableObject.RejectedBids = append(r.LoggableObject.RejectedBids, analytics.RejectedBid{
 							Bid:             bid.Bid,
-							RejectionReason: openrtb3.LossCategoryExclusions,
+							RejectionReason: openrtb3.LossBidCategoryMapping,
 							Seat:            seatBid.Seat,
 						})
 					}
@@ -1056,7 +1057,7 @@ func applyCategoryMapping(ctx context.Context, r *AuctionRequest, requestExt *op
 					if r.LoggableObject != nil {
 						r.LoggableObject.RejectedBids = append(r.LoggableObject.RejectedBids, analytics.RejectedBid{
 							Bid:             bids[remInd].Bid,
-							RejectionReason: openrtb3.LossCategoryExclusions,
+							RejectionReason: openrtb3.LossBidCategoryMapping,
 							Seat:            seatBid.Seat,
 						})
 					}

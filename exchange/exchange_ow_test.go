@@ -90,7 +90,7 @@ func TestApplyAdvertiserBlocking(t *testing.T) {
 			want: want{
 				expectedRejectedBids: []analytics.RejectedBid{
 					{
-						RejectionReason: openrtb3.LossAdvertiserExclusions,
+						RejectionReason: openrtb3.LossBidAdvertiserBlocking,
 						Bid: &openrtb2.Bid{
 							ID:      "a.com_bid",
 							ADomain: []string{"a.com"},
@@ -98,7 +98,7 @@ func TestApplyAdvertiserBlocking(t *testing.T) {
 						Seat: "",
 					},
 					{
-						RejectionReason: openrtb3.LossAdvertiserExclusions,
+						RejectionReason: openrtb3.LossBidAdvertiserBlocking,
 						Bid: &openrtb2.Bid{
 							ID:      "reject_b.a.com.a.com.b.c.d.a.com",
 							ADomain: []string{"b.a.com.a.com.b.c.d.a.com"},

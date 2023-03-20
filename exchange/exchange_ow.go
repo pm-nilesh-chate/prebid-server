@@ -109,7 +109,7 @@ func applyAdvertiserBlocking(r *AuctionRequest, seatBids map[openrtb_ext.BidderN
 						// Add rejectedBid for analytics logging.
 						if r.LoggableObject != nil {
 							r.LoggableObject.RejectedBids = append(r.LoggableObject.RejectedBids, analytics.RejectedBid{
-								RejectionReason: openrtb3.LossAdvertiserExclusions,
+								RejectionReason: openrtb3.LossBidAdvertiserBlocking,
 								Bid:             bid.Bid,
 								Seat:            seatBid.Seat,
 							})
