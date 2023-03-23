@@ -1,17 +1,20 @@
 package adapters
 
-import "github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
+import (
+	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
+	"github.com/prebid/prebid-server/openrtb_ext"
+)
 
 // Alias will return copy of exisiting alias
 var Alias map[string]string
 
 func init() {
 	Alias = map[string]string{
-		models.BidderAdGenerationAlias:      models.BidderAdGeneration,
-		models.BidderDistrictmDMXAlias:      models.BidderDistrictmDMX,
-		models.BidderPubMaticSecondaryAlias: models.BidderPubMatic,
-		models.BidderDistrictmAlias:         models.BidderAppnexus,
-		models.BidderAndBeyondAlias:         models.BidderAdKernel,
+		models.BidderAdGenerationAlias: string(openrtb_ext.BidderAdgeneration),
+		// models.BidderDistrictmDMXAlias:      string(openrtb_ext.BidderDistrictmDMX),
+		models.BidderPubMaticSecondaryAlias: string(openrtb_ext.BidderPubmatic),
+		models.BidderDistrictmAlias:         string(openrtb_ext.BidderAppnexus),
+		models.BidderAndBeyondAlias:         string(openrtb_ext.BidderAdkernel),
 	}
 }
 
@@ -24,15 +27,15 @@ func ResolveOWBidder(bidderName string) string {
 	switch bidderName {
 
 	case models.BidderAdGenerationAlias:
-		coreBidderName = models.BidderAdGeneration
+		coreBidderName = string(openrtb_ext.BidderAdgeneration)
 	case models.BidderDistrictmDMXAlias:
-		coreBidderName = models.BidderDistrictmDMX
+		// coreBidderName = string(openrtb_ext.BidderDistrictmDMX)
 	case models.BidderPubMaticSecondaryAlias:
-		coreBidderName = models.BidderPubMatic
+		coreBidderName = string(openrtb_ext.BidderPubmatic)
 	case models.BidderDistrictmAlias:
-		coreBidderName = models.BidderAppnexus
+		coreBidderName = string(openrtb_ext.BidderAppnexus)
 	case models.BidderAndBeyondAlias:
-		coreBidderName = models.BidderAdKernel
+		coreBidderName = string(openrtb_ext.BidderAdkernel)
 	default:
 		coreBidderName = bidderName
 

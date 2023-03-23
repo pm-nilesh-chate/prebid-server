@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
+	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
 // BidderParameters provides all properties requires for bidder to generate bidder json
@@ -31,25 +32,25 @@ var _bidderBuilderFactory map[string]builder
 // initBidderBuilderFactory initialise all hard coded bidder builder
 func initBidderBuilderFactory() {
 	_bidderBuilderFactory = map[string]builder{
-		models.BidderAdForm:          builderAdform,
-		models.BidderAdf:             builderAdform,
-		models.BidderAppnexus:        builderAppNexus,
-		models.BidderBeachfront:      builderBeachfront,
-		models.BidderCriteo:          builderCriteo,
-		models.BidderGumGum:          builderGumGum,
-		models.BidderImproveDigitial: builderImproveDigital,
-		models.BidderIndex:           builderIndex,
-		models.BidderOpenX:           builderOpenx,
-		models.BidderOutbrain:        builderOutbrain,
-		models.BidderPangle:          builderPangle,
-		models.BidderPubMatic:        builderPubMatic, /*this only gets used incase of hybrid case*/
-		models.BidderPulsePoint:      builderPulsePoint,
-		models.BidderRubicon:         builderRubicon,
-		models.BidderSmaato:          builderSmaato,
-		models.BidderSmartAdServer:   builderSmartAdServer,
-		models.BidderSonobi:          builderSonobi,
-		models.BidderSovrn:           builderSovrn,
-		models.BidderApacdex:         builderApacdex,
+		string(openrtb_ext.BidderAdform):         builderAdform,
+		string(openrtb_ext.BidderAdf):            builderAdform,
+		string(openrtb_ext.BidderAppnexus):       builderAppNexus,
+		string(openrtb_ext.BidderBeachfront):     builderBeachfront,
+		string(openrtb_ext.BidderCriteo):         builderCriteo,
+		string(openrtb_ext.BidderGumGum):         builderGumGum,
+		string(openrtb_ext.BidderImprovedigital): builderImproveDigital,
+		string(openrtb_ext.BidderIx):             builderIndex,
+		string(openrtb_ext.BidderOpenx):          builderOpenx,
+		string(openrtb_ext.BidderOutbrain):       builderOutbrain,
+		string(openrtb_ext.BidderPangle):         builderPangle,
+		string(openrtb_ext.BidderPubmatic):       builderPubMatic, /*this only gets used incase of hybrid case*/
+		string(openrtb_ext.BidderPulsepoint):     builderPulsePoint,
+		string(openrtb_ext.BidderRubicon):        builderRubicon,
+		string(openrtb_ext.BidderSmaato):         builderSmaato,
+		string(openrtb_ext.BidderSmartAdserver):  builderSmartAdServer,
+		string(openrtb_ext.BidderSonobi):         builderSonobi,
+		string(openrtb_ext.BidderSovrn):          builderSovrn,
+		string(openrtb_ext.BidderApacdex):        builderApacdex,
 	}
 }
 

@@ -6,7 +6,7 @@ import (
 )
 
 type Cache interface {
-	GetPartnerConfigMap(bidRequest *openrtb2.BidRequest, pubid, profileid, displayversion int) map[int]map[string]string
+	GetPartnerConfigMap(pubid, profileid, displayversion int) map[int]map[string]string
 	GetAdunitConfigFromCache(request *openrtb2.BidRequest, pubID int, profileID, displayVersion int) models.AdUnitConfig
 	GetMappingsFromCacheV25(rctx models.RequestCtx, partnerID int) map[string]models.SlotMapping
 	GetSlotToHashValueMapFromCacheV25(rctx models.RequestCtx, partnerID int) models.SlotMappingInfo

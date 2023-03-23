@@ -98,25 +98,3 @@ func getImpExtPubMaticKeyWords(impExt models.ImpExtension, bidderCode string) []
 	}
 	return nil
 }
-
-func UpdateRequestExtBidderParamsForPubmatic(bidderParams *json.RawMessage, cookie string, reqLoggerImpID, loggerImpID, platform, bidderCode string) {
-	bidderParamsMap := make(map[string]map[string]interface{})
-	err := json.Unmarshal(*bidderParams, &bidderParamsMap)
-	if err != nil {
-		return
-	}
-
-	params := map[string]interface{}{
-		models.COOKIE: cookie,
-	}
-
-	//if platform is display set wiid as req.ext.wrapper.wiid, otherwise use
-	if platform == models.PLATFORM_DISPLAY {
-		params[models.WrapperLoggerImpID] = reqLoggerImpID
-	} else {
-		params[models.WrapperLoggerImpID] = loggerImpID
-	}
-	bidderParamsMap[bidderCode] = params
-
-	*bidderParams, _ = json.Marshal(bidderParamsMap)
-}
