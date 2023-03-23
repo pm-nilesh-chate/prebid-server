@@ -18,7 +18,7 @@ import (
 // These marcros is used in replacing with actual values of Macros in case of Video Event tracke URLs
 // If this function fails to determine value of any macro then it continues with next macro setup
 // returns true when at least one macro is added to map
-func SetVASTEventMacros(reqExt *models.ExtRequest, bidReq openrtb2.BidRequest, wrapperImpressionID, displayVersionID string, pubmaticPlatform models.DevicePlatform) (bool, error) {
+func SetVASTEventMacros(reqExt *models.ExtRequestWrapper, bidReq openrtb2.BidRequest, wrapperImpressionID, displayVersionID string, pubmaticPlatform models.DevicePlatform) (bool, error) {
 	reqExt.Prebid.Macros = make(map[string]string)
 	errMsgs := []string{}
 	reqExt.Prebid.Macros[string(models.MacroProfileID)] = strconv.Itoa(reqExt.Wrapper.ProfileId)

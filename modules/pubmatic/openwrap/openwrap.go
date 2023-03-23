@@ -24,7 +24,7 @@ type OpenWrap struct {
 	cache ow_cache.Cache
 }
 
-func initOpenWrap(rawCfg json.RawMessage, deps moduledeps.ModuleDeps) (OpenWrap, error) {
+func initOpenWrap(rawCfg json.RawMessage, _ moduledeps.ModuleDeps) (OpenWrap, error) {
 	cfg := ow_config.SSHB{}
 
 	err := json.Unmarshal(rawCfg, &cfg)

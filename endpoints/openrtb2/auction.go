@@ -2263,14 +2263,14 @@ func getAccountIdFromRawRequest(hasStoredRequest bool, storedRequest json.RawMes
 		request = storedRequest
 	}
 
-	accountId, isAppReq, err := searchAccountId(request)
+	accountId, isAppReq, err := SearchAccountId(request)
 	if err != nil {
 		return "", isAppReq, []error{err}
 	}
 
 	// In case the stored request did not have account data we specifically search it in the original request
 	if accountId == "" && hasStoredRequest {
-		accountId, _, err = searchAccountId(originalRequest)
+		accountId, _, err = SearchAccountId(originalRequest)
 		if err != nil {
 			return "", isAppReq, []error{err}
 		}
@@ -2283,7 +2283,7 @@ func getAccountIdFromRawRequest(hasStoredRequest bool, storedRequest json.RawMes
 	return accountId, isAppReq, nil
 }
 
-func searchAccountId(request []byte) (string, bool, error) {
+func SearchAccountId(request []byte) (string, bool, error) {
 	for _, path := range accountIdSearchPath {
 		accountId, exists, err := getStringValueFromRequest(request, path.key)
 		if err != nil {

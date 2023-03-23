@@ -42,7 +42,7 @@ type ImpExtension struct {
 	SKAdnetwork json.RawMessage             `json:"skadn,omitempty"`
 	Reward      *int8                       `json:"reward,omitempty"`
 	Data        json.RawMessage             `json:"data,omitempty"`
-	Prebid      *openrtb_ext.ExtImpPrebid   `json:"prebid,omitempty"`
+	Prebid      openrtb_ext.ExtImpPrebid    `json:"prebid,omitempty"`
 }
 
 // BidderExtension - Bidder specific items
@@ -62,8 +62,8 @@ type ExtVideo struct {
 	AdPod  *AdPod `json:"adpod,omitempty"`
 }
 
-// ExtRequest Request Extension
-type ExtRequest struct {
+// ExtRequestWrapper Request Extension
+type ExtRequestWrapper struct {
 	Wrapper *RequestExtWrapper                `json:"wrapper,omitempty"`
 	Bidder  map[string]map[string]interface{} `json:"bidder,omitempty"`
 	AdPod   *ExtRequestAdPod                  `json:"adpod,omitempty"`

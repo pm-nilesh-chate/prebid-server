@@ -1,26 +1,61 @@
 package openwrap
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/url"
 	"strconv"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
+	"github.com/prebid/prebid-server/hooks/hookstage"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/adapters"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/bidderparams"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	"github.com/prebid/prebid-server/openrtb_ext"
+	uuid "github.com/satori/go.uuid"
 )
 
-// updateORTBV25Request copies and updates BidRequest with required values from http header and partnetConfigMap
-func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]byte, error) {
-	bidRequest := &openrtb2.BidRequest{}
-	err := json.Unmarshal(body, bidRequest)
-	if err != nil {
-		return body, fmt.Errorf("failed to decode request %v", err)
+func (m OpenWrap) handleBeforeValidationHook(
+	ctx context.Context,
+	moduleCtx hookstage.ModuleInvocationContext,
+	payload hookstage.BeforeValidationRequestPayload,
+) (hookstage.HookResult[hookstage.BeforeValidationRequestPayload], error) {
+	result := hookstage.HookResult[hookstage.BeforeValidationRequestPayload]{}
+
+	rCtx := result.ModuleContext["rctx"].(models.RequestCtx)
+
+	rCtx.IsTestRequest = payload.BidRequest.Test == 2
+
+	var partnerConfigMap map[int]map[string]string
+	if rCtx.IsTestRequest {
+		// NYC: can this be clubbed with profileid=0
+		partnerConfigMap = getTestModePartnerConfigMap(payload.BidRequest, rCtx.PubID, rCtx.ProfileID, rCtx.DisplayID)
+	} else if rCtx.ProfileID == 0 {
+		partnerConfigMap = getDefaultPartnerConfigMap(rCtx.PubID, rCtx.ProfileID, rCtx.DisplayID)
+	} else {
+		partnerConfigMap = m.cache.GetPartnerConfigMap(rCtx.PubID, rCtx.ProfileID, rCtx.DisplayID)
+	}
+	if len(partnerConfigMap) == 0 {
+		return result, errors.New("failed to get profile data")
 	}
 
+	rCtx.PartnerConfigMap = partnerConfigMap // keep a copy at module level as well
+	result.ModuleContext["rctx"] = rCtx
+
+	result.ChangeSet.AddMutation(func(ep hookstage.BeforeValidationRequestPayload) (hookstage.BeforeValidationRequestPayload, error) {
+		//NYC_TODO: convert /2.5 redirect request to auction
+		rctx := result.ModuleContext["rctx"].(models.RequestCtx)
+		var err error
+		ep.BidRequest, err = m.updateORTBV25Request(rctx, ep.BidRequest)
+		return ep, err
+	}, hookstage.MutationUpdate, "request-body-with-profile-data")
+
+	return result, nil
+}
+
+// updateORTBV25Request copies and updates BidRequest with required values from http header and partnetConfigMap
+func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, bidRequest *openrtb2.BidRequest) (*openrtb2.BidRequest, error) {
 	if cur, ok := rctx.PartnerConfigMap[models.VersionLevelConfigID][models.AdServerCurrency]; ok {
 		bidRequest.Cur = []string{cur}
 	}
@@ -50,10 +85,12 @@ func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]
 	// var isAdPodRequest bool
 	// aliasgvlids := make(map[string]uint16)
 
-	reqExt, err := models.GetRequestExt(bidRequest.Ext)
+	reqExt, err := models.GetRequestExtWrapper(bidRequest.Ext)
 	if err != nil {
-		return body, err
+		return bidRequest, err
 	}
+
+	loggerID := getLoggerID(reqExt)
 
 	reqExt.Prebid.SupportDeals = reqExt.Wrapper.SupportDeals && rctx.IsCTVRequest
 	// AlternateBidderCodes: getMarketplaceBidders(newReq.Ext, reqWrapper.PartnerConfigMap),
@@ -62,16 +99,20 @@ func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]
 	for i := 0; i < len(bidRequest.Imp); i++ {
 		var adpodExt *models.AdPod
 		// var isAdPodImpression bool
-		eachImp := &bidRequest.Imp[i]
+		imp := &bidRequest.Imp[i]
 		// //Wrapper
 		// impWrapper := &models.ImpWrapper{
 		// 	Imp:    eachImp,
 		// 	Bidder: map[string]*models.BidderWrapper{},
 		// }
 
-		updateImpFloorDefaultCurrency(eachImp)
+		if imp.BidFloor == 0 {
+			imp.BidFloorCur = ""
+		} else if imp.BidFloorCur == "" {
+			imp.BidFloorCur = "USD"
+		}
 
-		if nil != eachImp.Video && nil == reqExt.Prebid.Macros {
+		if nil != imp.Video && nil == reqExt.Prebid.Macros {
 			// provide custom macros for video event trackers
 			pubMaticPlatform := GetDevicePlatform(rctx.UA, *bidRequest, platform)
 			bidderparams.SetVASTEventMacros(&reqExt, *bidRequest, "", strconv.Itoa(rctx.DisplayID), pubMaticPlatform)
@@ -119,16 +160,15 @@ func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]
 		// }
 
 		impExt := &models.ImpExtension{}
-		if len(eachImp.Ext) != 0 {
-			err = json.Unmarshal(eachImp.Ext, impExt)
+		if len(imp.Ext) != 0 {
+			err = json.Unmarshal(imp.Ext, impExt)
 			if err != nil {
-				return body, err
+				return bidRequest, err
 			}
 		}
 
-		prebidBidderParams := make(map[string]json.RawMessage)
 		for _, partnerConfig := range rctx.PartnerConfigMap {
-			if partnerConfig[models.SERVER_SIDE_FLAG] == "" || partnerConfig[models.SERVER_SIDE_FLAG] == "0" {
+			if partnerConfig[models.SERVER_SIDE_FLAG] != "1" {
 				continue
 			}
 
@@ -153,19 +193,19 @@ func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]
 			bidder := partnerConfig[models.PREBID_PARTNER_NAME]
 			var bidderParams json.RawMessage
 			switch bidder {
-			case models.BidderPubMatic, models.BidderPubMaticSecondaryAlias:
-				bidderParams, err = bidderparams.PreparePubMaticParamsV25(rctx, m.cache, *bidRequest, *eachImp, *impExt, partnerID)
+			case string(openrtb_ext.BidderPubmatic), models.BidderPubMaticSecondaryAlias:
+				bidderParams, err = bidderparams.PreparePubMaticParamsV25(rctx, m.cache, *bidRequest, *imp, *impExt, partnerID)
 			case models.BidderVASTBidder:
-				bidderParams, err = bidderparams.PrepareVASTBidderParams(rctx, m.cache, *bidRequest, *eachImp, *impExt, partnerID, adpodExt)
+				bidderParams, err = bidderparams.PrepareVASTBidderParams(rctx, m.cache, *bidRequest, *imp, *impExt, partnerID, adpodExt)
 			default:
-				bidderParams, err = bidderparams.PrepareAdapterParamsV25(rctx, m.cache, *bidRequest, *eachImp, *impExt, partnerID)
+				bidderParams, err = bidderparams.PrepareAdapterParamsV25(rctx, m.cache, *bidRequest, *imp, *impExt, partnerID)
 			}
 
 			if err != nil || len(bidderParams) == 0 {
 				continue
 			}
 
-			prebidBidderParams[bidder] = bidderParams
+			impExt.Prebid.Bidder[bidder] = bidderParams
 
 			if alias, ok := partnerConfig[models.IsAlias]; ok && alias == "1" {
 				if reqExt.Prebid.Aliases == nil {
@@ -175,16 +215,9 @@ func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]
 					reqExt.Prebid.Aliases[bidderCode] = adapters.ResolveOWBidder(prebidPartnerName)
 				}
 			}
-		} // rctx.PartnerConfigMap
+		} // for(rctx.PartnerConfigMap
 
-		if impExt.Prebid == nil {
-			impExt.Prebid = &openrtb_ext.ExtImpPrebid{}
-		}
-
-		impExt.Prebid.Bidder = prebidBidderParams
-		impExt.Prebid.IsRewardedInventory = impExt.Reward
-
-		eachImp.Ext, err = json.Marshal(impExt)
+		imp.Ext, err = json.Marshal(impExt)
 		if err != nil {
 			// NYC_TODO: mark and remove impression
 			continue
@@ -192,14 +225,17 @@ func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]
 
 		if platform == models.PLATFORM_VIDEO {
 			// set banner object back to nil
-			eachImp.Banner = nil
+			imp.Banner = nil
 		}
 
 		// NYC_TODO:
 		// setContentTransparencyObject(newReq, &requestExt, wtExt, eachImp, reqWrapper.AdUnitConfig, reqWrapper.PartnerConfigMap, adapterThrottleMap)
-	}
+	} // for(imp
 
-	bidderparams.UpdateRequestExtBidderParamsForPubmatic(&reqExt.Prebid.BidderParams, rctx.Cookies, "NYC-loggerImpID", "NYC-loggerImpID", platform, string(openrtb_ext.BidderPubmatic))
+	reqExt.Prebid.BidderParams, err = updateRequestExtBidderParamsPubmatic(reqExt.Prebid.BidderParams, rctx.Cookies, loggerID, string(openrtb_ext.BidderPubmatic))
+	if err != nil {
+		// return bidRequest, err
+	}
 
 	// replaceAppObjectFromAdUnitConfig(reqWrapper.AdUnitConfig, newReq)
 
@@ -209,10 +245,7 @@ func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]
 	// 	return nil, errorcodes.ErrInvalidImpression
 	// }
 
-	// if reqWrapper.BidRequest.Id != nil {
-	// 	newReq.Source.TID = new(string)
-	// 	*newReq.Source.TID = reqWrapper.ReqID
-	// }
+	bidRequest.Source.TID = bidRequest.ID // NYC: is this needed
 
 	// if reqWrapper.Platform == models.PLATFORM_APP || reqWrapper.Platform == models.PLATFORM_VIDEO {
 	// 	sChainObj := getSChainObj(reqWrapper.PartnerConfigMap)
@@ -239,27 +272,9 @@ func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, body []byte) ([]
 	// if isAdPodRequest {
 	// 	requestExt.AdPod = getPrebidExtRequestAdPod(reqWrapper)
 	//  }
-	// if reqWrapper.Debug || reqWrapper.WakandaDebug.Enabled {
-	// 	requestExt.Prebid.Debug = true
-	// }
 	// updateFloorsExtObjectFromAdUnitConfig(wtExt, reqWrapper.AdUnitConfig, newReq, &requestExt)
 	// setPriceFloorFetchURL(&requestExt, reqWrapper.PartnerConfigMap)
-	bidRequest.Ext, err = json.Marshal(reqExt)
-	if err != nil {
-		return body, err
-	}
-
-	return json.Marshal(bidRequest)
-}
-
-// updateImpFloorDefaultCurrency updates default currency to USD if only bidfloor values is provided,
-// if only bidfloorCur is provided then bidfloor and bidfloorcur are resetted
-func updateImpFloorDefaultCurrency(imp *openrtb2.Imp) {
-	if imp.BidFloor == 0 {
-		imp.BidFloorCur = ""
-	} else if imp.BidFloorCur == "" {
-		imp.BidFloorCur = "USD"
-	}
+	return bidRequest, nil
 }
 
 func getDomainFromUrl(pageUrl string) string {
@@ -298,4 +313,27 @@ func getDefaultAllowedConnectionTypes(adUnitConfigMap models.AdUnitConfig) []int
 	}
 
 	return nil
+}
+
+func getLoggerID(reqExt models.ExtRequestWrapper) string {
+	if reqExt.Wrapper.LoggerImpressionID != "" {
+		return reqExt.Wrapper.LoggerImpressionID
+	}
+	return uuid.NewV4().String()
+}
+
+// NYC: make this generic
+func updateRequestExtBidderParamsPubmatic(bidderParams json.RawMessage, cookie, loggerID, bidderCode string) (json.RawMessage, error) {
+	bidderParamsMap := make(map[string]map[string]interface{})
+	err := json.Unmarshal(bidderParams, &bidderParamsMap)
+	if err != nil {
+		return nil, err
+	}
+
+	bidderParamsMap[bidderCode] = map[string]interface{}{
+		models.COOKIE:             cookie,
+		models.WrapperLoggerImpID: loggerID,
+	}
+
+	return json.Marshal(bidderParamsMap)
 }
