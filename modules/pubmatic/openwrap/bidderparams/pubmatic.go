@@ -12,14 +12,14 @@ import (
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
-func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int) ([]byte, errorcodes.IError) {
+func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int) (string, []byte, errorcodes.IError) {
 	slots, slotMap, slotMappingInfo, _ := getSlotMeta(rctx, cache, bidRequest, imp, impExt, partnerID)
 	for _, slot := range slots {
 		params, err := prepareBidParamForPubmaticV25(rctx, slot, slotMap, slotMappingInfo, bidRequest, imp, impExt, partnerID, false)
 		if err != nil || params == nil {
 			continue
 		}
-		return params, nil
+		return slot, params, nil
 	}
 	// isRegex := kgp == models.REGEX_KGP
 	// _ = isRegex
@@ -29,7 +29,7 @@ func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequ
 	// 	prepareBidParamForPubmaticV25(rctx, slot, slotMap, slotMappingInfo, bidRequest, imp, impExt, partnerID, true)
 	// }
 
-	return nil, nil
+	return "", nil, nil
 }
 
 func prepareBidParamForPubmaticV25(rctx models.RequestCtx, slot string, slotMap map[string]models.SlotMapping, slotMappingInfo models.SlotMappingInfo, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int, isRegex bool) ([]byte, error) {

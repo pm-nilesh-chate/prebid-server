@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/adapters"
@@ -14,58 +13,24 @@ import (
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
 )
 
-// setVASTEventMacros populates reqExt.Prebid.Macros with PubMatic specific macros
-// These marcros is used in replacing with actual values of Macros in case of Video Event tracke URLs
-// If this function fails to determine value of any macro then it continues with next macro setup
-// returns true when at least one macro is added to map
-func SetVASTEventMacros(reqExt *models.ExtRequestWrapper, bidReq openrtb2.BidRequest, wrapperImpressionID, displayVersionID string, pubmaticPlatform models.DevicePlatform) (bool, error) {
-	reqExt.Prebid.Macros = make(map[string]string)
-	errMsgs := []string{}
-	reqExt.Prebid.Macros[string(models.MacroProfileID)] = strconv.Itoa(reqExt.Wrapper.ProfileId)
-
-	if displayVersionID == "" {
-		errMsgs = append(errMsgs, "version id")
-	} else {
-		reqExt.Prebid.Macros[string(models.MacroProfileVersionID)] = displayVersionID
-	}
-
-	reqExt.Prebid.Macros[string(models.MacroUnixTimeStamp)] = strconv.FormatInt(time.Now().Unix(), 10)
-	reqExt.Prebid.Macros[string(models.MacroPlatform)] = strconv.Itoa(int(pubmaticPlatform))
-	if wrapperImpressionID == "" {
-		errMsgs = append(errMsgs, "wrapper impression id")
-	} else {
-		reqExt.Prebid.Macros[string(models.MacroWrapperImpressionID)] = wrapperImpressionID
-	}
-
-	if len(reqExt.Wrapper.SSAI) != 0 {
-		reqExt.Prebid.Macros[string(models.MacroSSAI)] = reqExt.Wrapper.SSAI
-	}
-
-	var err error
-	if len(errMsgs) > 0 {
-		err = fmt.Errorf("invalid '%s'. Not able to add to custom macro map", strings.Join(errMsgs, ","))
-	}
-	return true, err
-}
-
-func PrepareVASTBidderParams(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int, adpodExt *models.AdPod) (json.RawMessage, errorcodes.IError) {
+func PrepareVASTBidderParams(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int, adpodExt *models.AdPod) (string, json.RawMessage, errorcodes.IError) {
 	if imp.Video == nil {
-		return nil, nil
+		return "", nil, nil
 	}
 
 	slots, slotMap, _, _ := getSlotMeta(rctx, cache, bidRequest, imp, impExt, partnerID)
 	if len(slots) == 0 {
-		return nil, nil
+		return "", nil, nil
 	}
 
 	pubVASTTags := cache.GetPublisherVASTTagsFromCache(rctx.PubID)
 	if len(pubVASTTags) == 0 {
-		return nil, nil
+		return "", nil, nil
 	}
 
 	matchedSlotKeys, err := getVASTBidderSlotKeys(&imp, slots[0], slotMap, pubVASTTags, adpodExt)
 	if len(matchedSlotKeys) == 0 {
-		return nil, err
+		return "", nil, err
 	}
 
 	// NYC_TODO:
@@ -85,7 +50,7 @@ func PrepareVASTBidderParams(rctx models.RequestCtx, cache cache.Cache, bidReque
 			//slotMap:map[/15671365/DMDemo1@com.pubmatic.openbid.app@101:map[param1:6005 param2:test param3:example]]
 			//Ext:{"tags":[{"tagid":"101","url":"sample_url_1","dur":15,"price":"15","params":{"param1":"6005","param2":"test","param3":"example"}}]}
 	*/
-	return bidParams, nil
+	return slots[0], bidParams, nil
 }
 
 // getVASTBidderSlotKeys returns all slot keys which are matching to vast tag slot key
