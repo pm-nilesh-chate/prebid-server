@@ -39,7 +39,7 @@ func init() {
 }
 
 // GetDevicePlatform determines the device from which request has been generated
-func GetDevicePlatform(httpReqUAHeader string, bidRequest openrtb2.BidRequest, platform string) models.DevicePlatform {
+func GetDevicePlatform(httpReqUAHeader string, bidRequest *openrtb2.BidRequest, platform string) models.DevicePlatform {
 	userAgentString := httpReqUAHeader
 	if userAgentString == "" && bidRequest.Device != nil && len(bidRequest.Device.UA) != 0 {
 		userAgentString = bidRequest.Device.UA

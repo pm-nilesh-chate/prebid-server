@@ -282,7 +282,7 @@ func New(cfg *config.Configuration, rateConvertor *currency.RateConverter) (r *R
 	r.POST("/optout", userSyncDeps.OptOut)
 	r.GET("/optout", userSyncDeps.OptOut)
 
-	r.registerOpenWrapEndpoints()
+	r.registerOpenWrapEndpoints(openrtbEndpoint)
 	return r, nil
 }
 

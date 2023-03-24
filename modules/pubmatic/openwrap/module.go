@@ -3,7 +3,9 @@ package openwrap
 import (
 	"context"
 	"encoding/json"
+	"runtime/debug"
 
+	"github.com/golang/glog"
 	"github.com/prebid/prebid-server/hooks/hookstage"
 	"github.com/prebid/prebid-server/modules/moduledeps"
 )
@@ -20,6 +22,12 @@ func (m OpenWrap) HandleEntrypointHook(
 	miCtx hookstage.ModuleInvocationContext,
 	payload hookstage.EntrypointPayload,
 ) (hookstage.HookResult[hookstage.EntrypointPayload], error) {
+	defer func() {
+		if r := recover(); r != nil {
+			glog.Error(string(debug.Stack()))
+		}
+	}()
+
 	return m.handleEntrypointHook(ctx, miCtx, payload)
 }
 
@@ -29,6 +37,12 @@ func (m OpenWrap) HandleRawAuctionHook(
 	miCtx hookstage.ModuleInvocationContext,
 	payload hookstage.RawAuctionRequestPayload,
 ) (hookstage.HookResult[hookstage.RawAuctionRequestPayload], error) {
+	defer func() {
+		if r := recover(); r != nil {
+			glog.Error(string(debug.Stack()))
+		}
+	}()
+
 	return m.handleRawAuctionHook(ctx, miCtx, payload)
 }
 
@@ -38,6 +52,12 @@ func (m OpenWrap) HandleBeforeValidationHook(
 	miCtx hookstage.ModuleInvocationContext,
 	payload hookstage.BeforeValidationRequestPayload,
 ) (hookstage.HookResult[hookstage.BeforeValidationRequestPayload], error) {
+	defer func() {
+		if r := recover(); r != nil {
+			glog.Error(string(debug.Stack()))
+		}
+	}()
+
 	return m.handleBeforeValidationHook(ctx, miCtx, payload)
 }
 
@@ -46,5 +66,11 @@ func (m OpenWrap) HandleAuctionResponseHook(
 	miCtx hookstage.ModuleInvocationContext,
 	payload hookstage.AuctionResponsePayload,
 ) (hookstage.HookResult[hookstage.AuctionResponsePayload], error) {
+	defer func() {
+		if r := recover(); r != nil {
+			glog.Error(string(debug.Stack()))
+		}
+	}()
+
 	return m.handleAuctionResponseHook(ctx, miCtx, payload)
 }

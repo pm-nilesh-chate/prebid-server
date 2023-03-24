@@ -22,8 +22,13 @@ func (m OpenWrap) handleAuctionResponseHook(
 	result := hookstage.HookResult[hookstage.AuctionResponsePayload]{}
 	result.ChangeSet = hookstage.ChangeSet[hookstage.AuctionResponsePayload]{}
 	result.ChangeSet.AddMutation(func(ap hookstage.AuctionResponsePayload) (hookstage.AuctionResponsePayload, error) {
-		rctx := result.ModuleContext["rctx"].(models.RequestCtx)
-		err := m.updateORTBV25Response(rctx, ap.BidResponse)
+		rctx := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
+		var err error
+		ap.BidResponse, err = m.updateORTBV25Response(rctx, ap.BidResponse)
+		if err != nil {
+			return ap, err
+		}
+		ap.BidResponse, err = m.injectTrackers(rctx, ap.BidResponse)
 		return ap, err
 	}, hookstage.MutationUpdate, "response-body-with-sshb-format")
 
@@ -36,7 +41,7 @@ type owBid struct {
 	bidDealTierSatisfied bool
 }
 
-func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) error {
+func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) (*openrtb2.BidResponse, error) {
 	winningBids := make(map[string]owBid, 0)
 	// winningBidsByBidder := make(map[string]map[openrtb_ext.BidderName]owBid, 0)
 	partnerNameMap := make(map[string]map[string]string)
@@ -60,7 +65,7 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 			if len(bid.Ext) != 0 {
 				err := json.Unmarshal(bid.Ext, bidExt)
 				if err != nil {
-					return err
+					return bidResponse, err
 				}
 
 				if v, ok := rctx.PartnerConfigMap[models.VersionLevelConfigID]["refreshInterval"]; ok {
@@ -70,7 +75,10 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 					}
 				}
 
-				bidExt.CreativeType = GetAdFormat(bid.AdM)
+				bidExt.CreativeType = string(bidExt.Prebid.Type)
+				if bidExt.CreativeType == "" {
+					bidExt.CreativeType = GetAdFormat(bid.AdM)
+				}
 
 				// bidExt.Summary
 
@@ -79,6 +87,13 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 				// bidExt.Prebid = addPWTTargetingForBid(*request.Id, eachBid, impExt.Prebid, *eachSeatBid.Seat, platform, winBidFlag, netEcpm)
 				// }
 
+				if rctx.ClientConfigFlag == 1 {
+					if rctx.ImpBidCtx[bid.ImpID].Type == "banner" {
+						bidExt.Banner.ClientConfig = GetClientConfigForMediaType(rctx, bid.ImpID, rctx.AdUnitConfig, "banner")
+					} else if rctx.ImpBidCtx[bid.ImpID].Type == "video" {
+						bidExt.Video.ClientConfig = GetClientConfigForMediaType(rctx, bid.ImpID, rctx.AdUnitConfig, "video")
+					}
+				}
 			}
 
 			owbid := owBid{&bid, netEcpm, bidExt.Prebid.DealTierSatisfied}
@@ -99,7 +114,7 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 			var err error
 			bidResponse.SeatBid[i].Bid[j].Ext, err = json.Marshal(bidExt)
 			if err != nil {
-				return err
+				return bidResponse, err
 			}
 		}
 	}
@@ -111,24 +126,38 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 			if len(bid.Ext) != 0 {
 				err := json.Unmarshal(bid.Ext, bidExt)
 				if err != nil {
-					return err
+					return bidResponse, err
 				}
 			}
 
 			revShare := GetRevenueShare(partnerNameMap[seatBid.Seat])
 			netEcpm := GetNetEcpm(bid.Price, revShare)
 
+			newTargeting := make(map[string]string)
+			for key, value := range bidExt.Prebid.Targeting {
+				if allowTargetingKey(key) {
+					updatedKey := key
+					if strings.HasPrefix(key, models.PrebidTargetingKeyPrefix) {
+						updatedKey = strings.Replace(key, models.PrebidTargetingKeyPrefix, models.OWTargetingKeyPrefix, 1)
+					}
+					newTargeting[updatedKey] = value
+				}
+				delete(bidExt.Prebid.Targeting, key)
+			}
+
+			bidExt.Prebid.Targeting = newTargeting
 			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_SLOTID)] = bid.ID
 			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_SZ)] = GetSize(bid.W, bid.H)
 			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_PARTNERID)] = seatBid.Seat
 			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_ECPM)] = fmt.Sprintf("%.2f", netEcpm)
-			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_PLATFORM)] = rctx.Platform
+			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_PLATFORM)] = getPlatformName(rctx.Platform)
 			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_BIDSTATUS)] = "1"
 			if len(bid.DealID) != 0 {
 				bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_DEALID)] = bid.DealID
 			}
 
 			if _, ok := winningBids[bid.ImpID]; ok {
+				// bidExt.Winner = ptrutil.ToPtr(1)
 				bidExt.Winner = 1
 
 				bidExt.Prebid.Targeting[models.PWT_SLOTID] = bid.ID
@@ -136,7 +165,7 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 				bidExt.Prebid.Targeting[models.PWT_SZ] = GetSize(bid.W, bid.H)
 				bidExt.Prebid.Targeting[models.PWT_PARTNERID] = seatBid.Seat
 				bidExt.Prebid.Targeting[models.PWT_ECPM] = fmt.Sprintf("%.2f", netEcpm)
-				bidExt.Prebid.Targeting[models.PWT_PLATFORM] = rctx.Platform
+				bidExt.Prebid.Targeting[models.PWT_PLATFORM] = getPlatformName(rctx.Platform)
 				if len(bid.DealID) != 0 {
 					bidExt.Prebid.Targeting[models.PWT_DEALID] = bid.DealID
 				}
@@ -145,12 +174,12 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 			var err error
 			bidResponse.SeatBid[i].Bid[j].Ext, err = json.Marshal(bidExt)
 			if err != nil {
-				return err
+				return bidResponse, err
 			}
 		}
 	}
 
-	return nil
+	return bidResponse, nil
 }
 
 // isNewWinningBid calculates if the new bid (nbid) will win against the current winning bid (wbid) given preferDeals.
@@ -226,4 +255,15 @@ func toFixed(num float64, precision int) float64 {
 
 func round(num float64) int {
 	return int(num + math.Copysign(0.5, num))
+}
+
+func getPlatformName(platform string) string {
+	if platform == models.PLATFORM_APP {
+		return models.PlatformAppTargetingKey
+	}
+	return platform
+}
+
+func getIntPtr(i int) *int {
+	return &i
 }
