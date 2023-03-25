@@ -37,7 +37,7 @@ func GetClientConfigForMediaType(rctx models.RequestCtx, impID string, adUnitCfg
 		return nil
 	}
 
-	if cfg, ok := adUnitCfgMap.Config[impData.MatchedSlot]; ok {
+	if cfg, ok := adUnitCfgMap.Config[impData.TagID]; ok {
 		if mediaType == models.AdunitConfigSlotBannerKey {
 			if cfg.Banner != nil && cfg.Banner.Config != nil {
 				return cfg.Banner.Config.ClientConfig

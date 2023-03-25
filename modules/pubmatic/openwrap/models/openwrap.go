@@ -32,6 +32,9 @@ type RequestCtx struct {
 	StartTime      int64
 	DevicePlatform DevicePlatform
 
+	//logger
+	URL string
+
 	// imp-bid ctx to avoid computing same thing for bidder params, logger and tracker
 	ImpBidCtx map[string]ImpCtx
 	Aliases   map[string]string
@@ -57,9 +60,14 @@ type ImpCtx struct {
 	KGPV              string
 	MatchedSlot       string
 	IsRewardInventory *int8
-	Type              string                     // banner, video, native, etc
-	Bidders           map[string]json.RawMessage // TODO
+	Type              string // banner, video, native, etc
+	Bidders           map[string]PartnerData
 	BidCtx            map[string]BidCtx
+}
+
+type PartnerData struct {
+	PartnerID int
+	Params    json.RawMessage
 }
 
 type BidCtx struct {

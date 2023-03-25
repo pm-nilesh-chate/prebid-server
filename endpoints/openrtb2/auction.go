@@ -17,6 +17,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/golang/glog"
 	"github.com/julienschmidt/httprouter"
+	"github.com/pm-nilesh-chate/prebid-server/analytics/openwrap"
 	gpplib "github.com/prebid/go-gpp"
 	"github.com/prebid/go-gpp/constants"
 	"github.com/prebid/openrtb/v19/adcom1"
@@ -316,6 +317,14 @@ func sendAuctionResponse(
 	if response != nil {
 		stageOutcomes := hookExecutor.GetOutcomes()
 		ao.HookExecutionOutcome = stageOutcomes
+
+		isDebug, err := jsonparser.GetBoolean(request.Ext, "prebid", "debug")
+		if err == nil && isDebug {
+			url := openwrap.GetLogAuctionObjectAsURL(&ao)
+			var err error
+			ao.Response.Ext, err = jsonparser.Set(ao.Response.Ext, []byte(url), "owlogger")
+			fmt.Println(string(ao.Response.Ext), err)
+		}
 
 		ext, warns, err := hookexecution.EnrichExtBidResponse(response.Ext, stageOutcomes, request, account)
 		if err != nil {

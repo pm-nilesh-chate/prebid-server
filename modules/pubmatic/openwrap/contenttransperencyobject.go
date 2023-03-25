@@ -24,7 +24,7 @@ func setContentTransparencyObject(rctx models.RequestCtx, reqExt *openrtb_ext.Ex
 
 	var contentMappings map[string]openrtb_ext.TransparencyRule
 
-	if v, ok := adUnitConfigMap.Config[impData.MatchedSlot]; ok && v.Transparency != nil {
+	if v, ok := adUnitConfigMap.Config[impData.TagID]; ok && v.Transparency != nil {
 		contentMappings = v.Transparency.Content.Mappings
 	} else if v, ok := adUnitConfigMap.Config[models.AdunitConfigDefaultKey]; ok && v.Transparency != nil {
 		contentMappings = v.Transparency.Content.Mappings

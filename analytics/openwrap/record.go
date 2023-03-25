@@ -2,8 +2,10 @@ package openwrap
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
+	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/analytics"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	uuid "github.com/satori/go.uuid"
@@ -65,11 +67,11 @@ type AdPodPercentage struct {
 
 // Content of openrtb request object
 type Content struct {
-	ID      *string  `json:"id,omitempty"`  // ID uniquely identifying the content
-	Episode *int     `json:"eps,omitempty"` // Episode number (typically applies to video content).
-	Title   *string  `json:"ttl,omitempty"` // Content title.
-	Series  *string  `json:"srs,omitempty"` // Content series
-	Season  *string  `json:"ssn,omitempty"` // Content season
+	ID      string   `json:"id,omitempty"`  // ID uniquely identifying the content
+	Episode int      `json:"eps,omitempty"` // Episode number (typically applies to video content).
+	Title   string   `json:"ttl,omitempty"` // Content title.
+	Series  string   `json:"srs,omitempty"` // Content series
+	Season  string   `json:"ssn,omitempty"` // Content season
 	Cat     []string `json:"cat,omitempty"` // Array of IAB content categories that describe the content producer
 }
 
@@ -252,3 +254,67 @@ func (wlog *WloggerRecord) SetCachePutMiss(cachePutMiss int) {
 func (wlog *WloggerRecord) SetTestConfigApplied(testFlag int) {
 	wlog.TestConfigApplied = testFlag
 }
+
+// logDeviceObject will be used to log device specific parameters like platform and ifa_type
+func (wlog *WloggerRecord) logDeviceObject(rctx models.RequestCtx, uaFromHTTPReq string, ortbBidRequest *openrtb2.BidRequest, platform string) {
+	dvc := Device{
+		Platform: rctx.DevicePlatform,
+	}
+
+	if ortbBidRequest != nil && ortbBidRequest.Device != nil && ortbBidRequest.Device.Ext != nil {
+		ext := make(map[string]interface{})
+		err := json.Unmarshal(ortbBidRequest.Device.Ext, &ext)
+		if err != nil {
+			return
+
+		}
+		// if ext, ok := ortbBidRequest.Device.Ext.(map[string]interface{}); ok {
+		//use ext object for logging any other extension parameters
+
+		//log device.ext.ifa_type parameter to ifty in logger record
+		if value, ok := ext["ifa_type"].(string); ok {
+
+			//ifa_type checkking is valid parameter and log its respective id
+			ifaType := models.DeviceIFATypeID[strings.ToLower(value)]
+			dvc.IFAType = &ifaType
+		}
+		// }
+	}
+
+	//settind device object
+	wlog.Device = dvc
+}
+
+// ParseRequestCookies parse request cookies
+// func ParseRequestCookies(HTTPRequest *http.Request, partnerConfigMap map[int]map[string]string) map[string]int {
+// 	cookieFlagMap := make(map[string]int)
+// 	pc := usersync.ParseCookieFromRequest(HTTPRequest, &config.HostCookie{})
+// 	for _, partnerConfig := range partnerConfigMap {
+// 		if partnerConfig[models.SERVER_SIDE_FLAG] != "1" {
+// 			continue
+// 		}
+
+// 		syncerMap := router.SyncerMap()
+// 		partnerName := partnerConfig[models.PREBID_PARTNER_NAME]
+
+// 		syncerCode := adapters.ResolveOWBidder(partnerName)
+
+// 		matchedImpression := 0
+
+// 		syncer := syncerMap[syncerCode]
+// 		if syncer == nil {
+// 		} else {
+// 			uid, _, _ := pc.GetUID(syncer.Key())
+
+// 			// Added flag in map for Cookie is present
+// 			// we are not considering if the cookie is active
+// 			if uid != "" {
+// 				matchedImpression = 1
+// 			}
+// 		}
+
+// 		cookieFlagMap[partnerConfig[models.BidderCode]] = matchedImpression
+// 	}
+
+// 	return cookieFlagMap
+// }

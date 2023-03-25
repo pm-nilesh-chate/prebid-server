@@ -179,12 +179,15 @@ func (m OpenWrap) handleBeforeValidationHook(
 					MatchedSlot:       slot,
 					Type:              slotType,
 					KGPV:              rCtx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN],
-					Bidders:           make(map[string]json.RawMessage),
+					Bidders:           make(map[string]models.PartnerData),
 					BidCtx:            make(map[string]models.BidCtx),
 				}
 			}
 
-			rCtx.ImpBidCtx[imp.ID].Bidders[bidderCode] = bidderParams
+			rCtx.ImpBidCtx[imp.ID].Bidders[bidderCode] = models.PartnerData{
+				Params:    bidderParams,
+				PartnerID: partnerID,
+			}
 
 			if alias, ok := partnerConfig[models.IsAlias]; ok && alias == "1" {
 				if prebidPartnerName, ok := partnerConfig[models.PREBID_PARTNER_NAME]; ok {
@@ -303,7 +306,7 @@ func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, bidRequest *open
 
 			bidderCode := partnerConfig[models.BidderCode]
 
-			bidderParams, ok := rctx.ImpBidCtx[imp.ID].Bidders[bidderCode]
+			bidderData, ok := rctx.ImpBidCtx[imp.ID].Bidders[bidderCode]
 			if !ok {
 				continue
 			}
@@ -311,7 +314,7 @@ func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, bidRequest *open
 			if impExt.Prebid.Bidder == nil {
 				impExt.Prebid.Bidder = make(map[string]json.RawMessage)
 			}
-			impExt.Prebid.Bidder[bidderCode] = bidderParams
+			impExt.Prebid.Bidder[bidderCode] = bidderData.Params
 
 			if partnerConfig[models.PREBID_PARTNER_NAME] == models.BidderVASTBidder {
 				updateAliasGVLIds(aliasgvlids, bidderCode, partnerConfig)

@@ -74,12 +74,12 @@ func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 				BidID:      bid.ID,
 				OrigBidID:  bid.ID,
 				KGPV:       rctx.ImpBidCtx[bid.ImpID].MatchedSlot,
-				NetECPM:    GetNetEcpm(bid.Price, GetRevenueShare(partnerNameMap[seatBid.Seat])),
-				GrossECPM:  GetGrossEcpm(bid.Price),
+				NetECPM:    models.GetNetEcpm(bid.Price, models.GetRevenueShare(partnerNameMap[seatBid.Seat])),
+				GrossECPM:  models.GetGrossEcpm(bid.Price),
 			}
 
 			if len(bid.ADomain) != 0 {
-				if domain, err := extractDomain(bid.ADomain[0]); err == nil {
+				if domain, err := models.ExtractDomain(bid.ADomain[0]); err == nil {
 					tracker.Advertiser = domain
 				}
 			}
@@ -103,19 +103,6 @@ func getRewardedInventoryFlag(reward *int8) int {
 		return int(*reward)
 	}
 	return 0
-}
-
-func extractDomain(rawURL string) (string, error) {
-	if !strings.HasPrefix(rawURL, "http") {
-		rawURL = "http://" + rawURL
-	}
-
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return "", err
-	}
-
-	return u.Host, nil
 }
 
 // ConstructTrackerURL constructing tracker url for impression
