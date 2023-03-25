@@ -23,6 +23,7 @@ import (
 	nativeRequests "github.com/prebid/openrtb/v17/native1/request"
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/openrtb/v17/openrtb3"
+	"github.com/prebid/prebid-server/analytics/openwrap"
 	"github.com/prebid/prebid-server/hooks"
 	"golang.org/x/net/publicsuffix"
 	jsonpatch "gopkg.in/evanphx/json-patch.v4"
@@ -291,6 +292,14 @@ func sendAuctionResponse(
 	if response != nil {
 		stageOutcomes := hookExecutor.GetOutcomes()
 		ao.HookExecutionOutcome = stageOutcomes
+
+		isDebug, err := jsonparser.GetBoolean(request.Ext, "prebid", "debug")
+		if err == nil && isDebug {
+			url := openwrap.GetLogAuctionObjectAsURL(&ao)
+			var err error
+			ao.Response.Ext, err = jsonparser.Set(ao.Response.Ext, []byte(url), "owlogger")
+			fmt.Println(string(ao.Response.Ext), err)
+		}
 
 		ext, warns, err := hookexecution.EnrichExtBidResponse(response.Ext, stageOutcomes, request, account)
 		if err != nil {

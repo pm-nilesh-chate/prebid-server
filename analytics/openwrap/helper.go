@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/analytics"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	"github.com/prebid/prebid-server/openrtb_ext"
@@ -175,4 +176,83 @@ func GetInt(val interface{}) int {
 		}
 	}
 	return result
+}
+
+func (wlog *WloggerRecord) logContentObject(content *openrtb2.Content) {
+	if nil == content {
+		return
+	}
+
+	wlog.Content = &Content{
+		ID:      content.ID,
+		Episode: int(content.Episode),
+		Title:   content.Title,
+		Series:  content.Series,
+		Season:  content.Season,
+		Cat:     content.Cat,
+	}
+}
+
+// func (wlog *WloggerRecord) logAdPodPercentage(adpod *openrtb2.ExtRequestAdPod) {
+// 	if nil == adpod {
+// 		return
+// 	}
+
+// 	percentage := &AdPodPercentage{}
+// 	found := false
+
+// 	if nil != adpod.CrossPodAdvertiserExclusionPercent {
+// 		percentage.CrossPodAdvertiserExclusionPercent = adpod.CrossPodAdvertiserExclusionPercent
+// 		found = true
+// 	}
+
+// 	if nil != adpod.CrossPodIABCategoryExclusionPercent {
+// 		percentage.CrossPodIABCategoryExclusionPercent = adpod.CrossPodIABCategoryExclusionPercent
+// 		found = true
+// 	}
+
+// 	if nil != adpod.IABCategoryExclusionWindow {
+// 		percentage.IABCategoryExclusionWindow = adpod.IABCategoryExclusionWindow
+// 		found = true
+// 	}
+
+// 	if nil != adpod.AdvertiserExclusionWindow {
+// 		percentage.AdvertiserExclusionWindow = adpod.AdvertiserExclusionWindow
+// 		found = true
+// 	}
+
+// 	if found {
+// 		wlog.AdPodPercentage = percentage
+// 	}
+// }
+
+func getSizeForPlatform(width, height int64, platform string) string {
+	s := models.GetSize(width, height)
+	if platform == models.PLATFORM_VIDEO {
+		s = s + models.VideoSizeSuffix
+	}
+	return s
+}
+
+// set partnerRecord MetaData
+func (partnerRecord *PartnerRecord) setMetaDataObject(meta *openrtb_ext.ExtBidPrebidMeta) {
+
+	if meta.NetworkID != 0 || meta.AdvertiserID != 0 || len(meta.SecondaryCategoryIDs) > 0 {
+		partnerRecord.MetaData = &MetaData{
+			NetworkID:            meta.NetworkID,
+			AdvertiserID:         meta.AdvertiserID,
+			PrimaryCategoryID:    meta.PrimaryCategoryID,
+			AgencyID:             meta.AgencyID,
+			DemandSource:         meta.DemandSource,
+			SecondaryCategoryIDs: meta.SecondaryCategoryIDs,
+		}
+	}
+	//NOTE : We Don't get following Data points in Response, whenever got from translator,
+	//they can be populated.
+	//partnerRecord.MetaData.NetworkName = meta.NetworkName
+	//partnerRecord.MetaData.AdvertiserName = meta.AdvertiserName
+	//partnerRecord.MetaData.AgencyName = meta.AgencyName
+	//partnerRecord.MetaData.BrandName = meta.BrandName
+	//partnerRecord.MetaData.BrandID = meta.BrandID
+	//partnerRecord.MetaData.DChain = meta.DChain (type is json.RawMessage)
 }

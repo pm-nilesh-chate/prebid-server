@@ -4,12 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
-	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
+	"github.com/prebid/prebid-server/hooks/hookanalytics"
 	"github.com/prebid/prebid-server/hooks/hookstage"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 )
@@ -21,6 +20,15 @@ func (m OpenWrap) handleAuctionResponseHook(
 ) (hookstage.HookResult[hookstage.AuctionResponsePayload], error) {
 	result := hookstage.HookResult[hookstage.AuctionResponsePayload]{}
 	result.ChangeSet = hookstage.ChangeSet[hookstage.AuctionResponsePayload]{}
+
+	result.AnalyticsTags.Activities = make([]hookanalytics.Activity, 1)
+	result.AnalyticsTags.Activities[0].Name = "openwrap_request_ctx"
+	result.AnalyticsTags.Activities[0].Results = make([]hookanalytics.Result, 1)
+	values := make(map[string]interface{})
+	rctx := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
+	values["request-ctx"] = &rctx
+	result.AnalyticsTags.Activities[0].Results[0].Values = values
+
 	result.ChangeSet.AddMutation(func(ap hookstage.AuctionResponsePayload) (hookstage.AuctionResponsePayload, error) {
 		rctx := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
 		var err error
@@ -58,8 +66,8 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 				partnerNameMap[partnerConfig[models.BidderCode]] = partnerConfig
 			}
 
-			revShare := GetRevenueShare(partnerNameMap[seatBid.Seat])
-			netEcpm := GetNetEcpm(bid.Price, revShare)
+			revShare := models.GetRevenueShare(partnerNameMap[seatBid.Seat])
+			netEcpm := models.GetNetEcpm(bid.Price, revShare)
 
 			bidExt := &models.BidExt{}
 			if len(bid.Ext) != 0 {
@@ -77,7 +85,7 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 
 				bidExt.CreativeType = string(bidExt.Prebid.Type)
 				if bidExt.CreativeType == "" {
-					bidExt.CreativeType = GetAdFormat(bid.AdM)
+					bidExt.CreativeType = models.GetAdFormat(bid.AdM)
 				}
 
 				// bidExt.Summary
@@ -89,8 +97,14 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 
 				if rctx.ClientConfigFlag == 1 {
 					if rctx.ImpBidCtx[bid.ImpID].Type == "banner" {
+						if bidExt.Banner == nil {
+							bidExt.Banner = &models.ExtBidBanner{}
+						}
 						bidExt.Banner.ClientConfig = GetClientConfigForMediaType(rctx, bid.ImpID, rctx.AdUnitConfig, "banner")
 					} else if rctx.ImpBidCtx[bid.ImpID].Type == "video" {
+						if bidExt.Video == nil {
+							bidExt.Video = &models.ExtBidVideo{}
+						}
 						bidExt.Video.ClientConfig = GetClientConfigForMediaType(rctx, bid.ImpID, rctx.AdUnitConfig, "video")
 					}
 				}
@@ -130,8 +144,8 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 				}
 			}
 
-			revShare := GetRevenueShare(partnerNameMap[seatBid.Seat])
-			netEcpm := GetNetEcpm(bid.Price, revShare)
+			revShare := models.GetRevenueShare(partnerNameMap[seatBid.Seat])
+			netEcpm := models.GetNetEcpm(bid.Price, revShare)
 
 			newTargeting := make(map[string]string)
 			for key, value := range bidExt.Prebid.Targeting {
@@ -146,23 +160,23 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 			}
 
 			bidExt.Prebid.Targeting = newTargeting
-			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_SLOTID)] = bid.ID
-			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_SZ)] = GetSize(bid.W, bid.H)
-			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_PARTNERID)] = seatBid.Seat
-			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_ECPM)] = fmt.Sprintf("%.2f", netEcpm)
-			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_PLATFORM)] = getPlatformName(rctx.Platform)
-			bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_BIDSTATUS)] = "1"
+			bidExt.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_SLOTID)] = bid.ID
+			bidExt.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_SZ)] = models.GetSize(bid.W, bid.H)
+			bidExt.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_PARTNERID)] = seatBid.Seat
+			bidExt.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_ECPM)] = fmt.Sprintf("%.2f", netEcpm)
+			bidExt.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_PLATFORM)] = getPlatformName(rctx.Platform)
+			bidExt.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_BIDSTATUS)] = "1"
 			if len(bid.DealID) != 0 {
-				bidExt.Prebid.Targeting[CreatePartnerKey(seatBid.Seat, models.PWT_DEALID)] = bid.DealID
+				bidExt.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_DEALID)] = bid.DealID
 			}
 
-			if _, ok := winningBids[bid.ImpID]; ok {
+			if b, ok := winningBids[bid.ImpID]; ok && b.ID == bid.ID {
 				// bidExt.Winner = ptrutil.ToPtr(1)
 				bidExt.Winner = 1
 
 				bidExt.Prebid.Targeting[models.PWT_SLOTID] = bid.ID
 				bidExt.Prebid.Targeting[models.PWT_BIDSTATUS] = "1"
-				bidExt.Prebid.Targeting[models.PWT_SZ] = GetSize(bid.W, bid.H)
+				bidExt.Prebid.Targeting[models.PWT_SZ] = models.GetSize(bid.W, bid.H)
 				bidExt.Prebid.Targeting[models.PWT_PARTNERID] = seatBid.Seat
 				bidExt.Prebid.Targeting[models.PWT_ECPM] = fmt.Sprintf("%.2f", netEcpm)
 				bidExt.Prebid.Targeting[models.PWT_PLATFORM] = getPlatformName(rctx.Platform)
@@ -196,65 +210,6 @@ func isNewWinningBid(bid, wbid owBid, preferDeals bool) bool {
 	}
 	//both have deal or both do not have deal
 	return bid.netEcpm > wbid.netEcpm
-}
-
-// CreatePartnerKey returns key with partner appended
-func CreatePartnerKey(partner, key string) string {
-	if partner == "" {
-		return key
-	}
-	return key + "_" + partner
-}
-
-func GetSize(width, height int64) string {
-	return fmt.Sprintf("%dx%d", width, height)
-}
-
-// GetAdFormat gets adformat from creative(adm) of the bid
-func GetAdFormat(adm string) string {
-	adFormat := models.Banner
-	videoRegex, _ := regexp.Compile("<VAST\\s+")
-
-	if videoRegex.MatchString(adm) {
-		adFormat = models.Video
-	} else {
-		var admJSON map[string]interface{}
-		err := json.Unmarshal([]byte(strings.Replace(adm, "/\\/g", "", -1)), &admJSON)
-		if err == nil && admJSON != nil && admJSON["native"] != nil {
-			adFormat = models.Native
-		}
-	}
-	return adFormat
-}
-
-func GetRevenueShare(partnerConfig map[string]string) float64 {
-	var revShare float64
-
-	if val, ok := partnerConfig[models.REVSHARE]; ok {
-		revShare, _ = strconv.ParseFloat(val, 64)
-	}
-	return revShare
-}
-
-func GetNetEcpm(price float64, revShare float64) float64 {
-	if revShare == 0 {
-		return toFixed(price, models.BID_PRECISION)
-	}
-	price = price * (1 - revShare/100)
-	return toFixed(price, models.BID_PRECISION)
-}
-
-func GetGrossEcpm(price float64) float64 {
-	return toFixed(price, models.BID_PRECISION)
-}
-
-func toFixed(num float64, precision int) float64 {
-	output := math.Pow(10, float64(precision))
-	return float64(round(num*output)) / output
-}
-
-func round(num float64) int {
-	return int(num + math.Copysign(0.5, num))
 }
 
 func getPlatformName(platform string) string {

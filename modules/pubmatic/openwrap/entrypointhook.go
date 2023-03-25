@@ -61,6 +61,7 @@ func (m OpenWrap) handleEntrypointHook(
 		Debug:              queryParams.Get(models.Debug) == "1",
 		StartTime:          time.Now().Unix(),
 		ImpBidCtx:          make(map[string]models.ImpCtx),
+		URL:                m.cfg.OpenWrap.Logger.PublicEndpoint,
 	}
 
 	if rCtx.LoggerImpressionID == "" {
