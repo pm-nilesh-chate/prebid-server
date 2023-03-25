@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"runtime/debug"
 	"strconv"
 
+	"github.com/golang/glog"
 	"github.com/prebid/prebid-server/analytics"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	"github.com/prebid/prebid-server/openrtb_ext"
@@ -29,6 +31,12 @@ type HTTPLogger struct {
 }
 
 func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
+	defer func() {
+		if r := recover(); r != nil {
+			glog.Error(string(debug.Stack()))
+		}
+	}()
+
 	// TODO filter by name
 	// (*stageOutcomes[8].Groups[0].InvocationResults[0].AnalyticsTags.Activities[0].Results[0].Values["request-ctx"].(data))
 	rCtx := func() *models.RequestCtx {
@@ -98,9 +106,6 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 	wlog.SetOrigin(origin)
 	wlog.SetPageURL(pageURL)
 
-	wlog.SetProfileID(strconv.Itoa(extWrapper.ProfileId))
-	wlog.SetVersionID(strconv.Itoa(extWrapper.VersionId))
-
 	var consent string
 	if ao.Request.User != nil {
 		extUser := openrtb_ext.UserExt{}
@@ -157,7 +162,7 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 	// 	controller.LoggerRecord.SetTestConfigApplied(1)
 	// }
 
-	wl := CreateCommonLogger(ao)
+	// wl := CreateCommonLogger(ao)
 
 	// partnerMap := make([]map[string]PartnerRecord, len(ao.Request.Imp))
 	// // for imp, impCtx := range rCtx.ImpBidCtx {
@@ -190,7 +195,8 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 	// }
 
 	// imp-partner-record
-	ipr := make(map[string]map[string]PartnerRecord)
+	// ipr := make(map[string]map[string]PartnerRecord)
+	ipr := make(map[string][]PartnerRecord)
 	for _, seatBid := range ao.Response.SeatBid {
 		if seatBid.Seat == string(openrtb_ext.BidderOWPrebidCTV) {
 			continue
@@ -202,9 +208,9 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 				continue
 			}
 
-			if _, ok := ipr[bid.ImpID]; !ok {
-				ipr[bid.ImpID] = make(map[string]PartnerRecord)
-			}
+			// if _, ok := ipr[bid.ImpID]; !ok {
+			// 	ipr[bid.ImpID] = make(map[string]PartnerRecord)
+			// }
 
 			revShare := 0.0
 			if pd, ok := impCtx.Bidders[seatBid.Seat]; ok {
@@ -218,17 +224,15 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 				PartnerID:        seatBid.Seat,
 				BidderCode:       seatBid.Seat,
 				KGPV:             impCtx.MatchedSlot,
-				KGPSV:            impCtx.KGPV,
+				KGPSV:            impCtx.MatchedSlot,
 				BidID:            bid.ID,
 				OrigBidID:        bid.ID,
-				DefaultBidStatus: 1,
+				DefaultBidStatus: 0,
 				ServerSide:       1,
-				RevShare:         revShare,
-				KGP:              impCtx.MatchedSlot,
 				// MatchedImpression: matchedImpression,
 				NetECPM: func() float64 {
 					if revShare != 0.0 {
-						GetNetEcpm(bid.Price, revShare)
+						return GetNetEcpm(bid.Price, revShare)
 					}
 					return bid.Price
 				}(),
@@ -268,15 +272,44 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 				}
 			}
 
-			ipr[bid.ImpID][seatBid.Seat] = pr
+			// ipr[bid.ImpID][seatBid.Seat] = pr
+			ipr[bid.ImpID] = append(ipr[bid.ImpID], pr)
 		}
 	}
 
-	return PrepareLoggerURL(wl, rCtx.URL, GetGdprEnabledFlag(rCtx.PartnerConfigMap))
+	slots := make([]SlotRecord, 0)
+	for _, imp := range ao.Request.Imp {
+		reward := 0
+		if v, ok := rCtx.ImpBidCtx[imp.ID]; ok && v.IsRewardInventory != nil {
+			reward = int(*v.IsRewardInventory)
+		}
+
+		slots = append(slots, SlotRecord{
+			SlotName:          getSlotName(imp.ID, imp.TagID),
+			SlotSize:          getSizesFromImp(imp, rCtx.Platform),
+			Adunit:            imp.TagID,
+			PartnerData:       ipr[imp.ID],
+			RewardedInventory: int(reward),
+			// AdPodSlot:         getAdPodSlot(imp, responseMap.AdPodBidsExt),
+		})
+	}
+
+	wlog.SetProfileID(strconv.Itoa(rCtx.ProfileID))
+	wlog.SetVersionID(strconv.Itoa(rCtx.DisplayID))
+
+	wlog.SetSlots(slots)
+
+	return PrepareLoggerURL(&wlog, rCtx.URL, GetGdprEnabledFlag(rCtx.PartnerConfigMap))
 }
 
 // Writes AuctionObject to file
 func (ow *HTTPLogger) LogAuctionObject(ao *analytics.AuctionObject) {
+	defer func() {
+		if r := recover(); r != nil {
+			glog.Error(string(debug.Stack()))
+		}
+	}()
+
 	_ = GetLogAuctionObjectAsURL(ao)
 	// Send(*ow.client, ow.URL, wl, 1) // NYC_TODO: pass gdpr enabled in ao.Context
 }
