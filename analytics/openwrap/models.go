@@ -8,6 +8,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/prebid/openrtb/v17/openrtb2"
+	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 )
 
 const (
@@ -90,4 +93,41 @@ func ExtractDomain(rawURL string) (string, error) {
 	}
 
 	return u.Host, nil
+}
+
+func getSlotName(impID string, tagID string) string {
+	return fmt.Sprintf("%s_%s", impID, tagID)
+}
+
+func getSizesFromImp(imp openrtb2.Imp, platform string) []string {
+	//get unique sizes from banner.format and banner.w and banner.h
+	sizes := make(map[string]bool)
+	var sizeArr []string
+	// TODO: handle video
+	if imp.Banner != nil && imp.Banner.W != nil && imp.Banner.H != nil {
+		size := getSizeForPlatform(*imp.Banner.W, *imp.Banner.H, platform)
+		if _, ok := sizes[size]; !ok {
+			sizeArr = append(sizeArr, size)
+			sizes[size] = true
+		}
+	}
+
+	if imp.Banner != nil && imp.Banner.Format != nil && len(imp.Banner.Format) != 0 {
+		for _, eachFormat := range imp.Banner.Format {
+			size := GetSize(eachFormat.W, eachFormat.H)
+			if _, ok := sizes[size]; !ok {
+				sizeArr = append(sizeArr, size)
+				sizes[size] = true
+			}
+		}
+	}
+
+	if imp.Video != nil {
+		size := getSizeForPlatform(imp.Video.W, imp.Video.H, models.PLATFORM_VIDEO)
+		if _, ok := sizes[size]; !ok {
+			sizeArr = append(sizeArr, size)
+			sizes[size] = true
+		}
+	}
+	return sizeArr
 }

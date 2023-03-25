@@ -125,10 +125,6 @@ type PartnerRecord struct {
 	Cat                 []string `json:"cat,omitempty"`
 	NoBidReason         *int     `json:"aprc,omitempty"`
 
-	//for internal
-	RevShare float64 `json:"-"`
-	KGP      string  `json:"-"`
-
 	OriginalCPM float64 `json:"ocpm"`
 	OriginalCur string  `json:"ocry"`
 

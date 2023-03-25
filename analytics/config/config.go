@@ -39,10 +39,12 @@ func NewPBSAnalytics(analytics *config.Analytics) analytics.PBSAnalyticsModule {
 		}
 	}
 
-	owl := openwrap.HTTPLogger{
-		URL: "http://t.pubmatic.com/wl",
+	if analytics.PubMatic.Enabled {
+		owl := openwrap.HTTPLogger{
+			URL: "http://t.pubmatic.com/wl",
+		}
+		modules = append(modules, &owl)
 	}
-	modules = append(modules, &owl)
 
 	return modules
 }
