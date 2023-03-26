@@ -99,7 +99,8 @@ func NewAmpEndpoint(
 		nil,
 		ipValidator,
 		storedRespFetcher,
-		hookExecutor}).AmpAuction), nil
+		hookExecutor,
+		nil}).AmpAuction), nil
 
 }
 

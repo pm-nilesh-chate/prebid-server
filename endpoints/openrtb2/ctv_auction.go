@@ -102,6 +102,7 @@ func NewCTVEndpoint(
 			ipValidator,
 			nil,
 			&hookexecution.EmptyHookExecutor{},
+			nil,
 		},
 	}).CTVAuctionEndpoint), nil
 }
@@ -147,7 +148,7 @@ func (deps *ctvEndpointDeps) CTVAuctionEndpoint(w http.ResponseWriter, r *http.R
 	}()
 
 	//Parse ORTB Request and do Standard Validation
-	reqWrapper, _, _, _, _, _, errL = deps.parseRequest(r, &deps.labels)
+	reqWrapper, _, _, _, _, _, errL = deps.parseRequest(r, &deps.labels, deps.hookExecutor)
 	if errortypes.ContainsFatalError(errL) && writeError(errL, w, &deps.labels) {
 		return
 	}

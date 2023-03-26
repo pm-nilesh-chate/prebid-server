@@ -192,7 +192,12 @@ func handleHookResponse[P any](
 
 	switch true {
 	case hr.Err != nil:
-		handleHookError(hr, &hookOutcome, metricEngine, labels)
+		if false { // make this configurable whether the user wants to treat module errors as fatal or not
+			handleHookError(hr, &hookOutcome, metricEngine, labels)
+			break
+		}
+		hr.Result.Reject = true
+		fallthrough
 	case hr.Result.Reject:
 		rejectErr = handleHookReject(ctx, hr, &hookOutcome, metricEngine, labels)
 	default:
