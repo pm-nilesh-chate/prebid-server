@@ -92,6 +92,7 @@ func TestValidateImpExtOW(t *testing.T) {
 		hardcodedResponseIPValidator{response: true},
 		empty_fetcher.EmptyFetcher{},
 		hookexecution.NewHookExecutor(hooks.EmptyPlanBuilder{}, hookexecution.EndpointAuction, &metricsConfig.NilMetricsEngine{}),
+		hooks.EmptyPlanBuilder{},
 	}
 
 	for _, group := range testGroups {

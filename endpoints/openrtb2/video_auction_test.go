@@ -16,6 +16,7 @@ import (
 	"github.com/prebid/prebid-server/config"
 	"github.com/prebid/prebid-server/errortypes"
 	"github.com/prebid/prebid-server/exchange"
+	"github.com/prebid/prebid-server/hooks"
 	"github.com/prebid/prebid-server/hooks/hookexecution"
 	"github.com/prebid/prebid-server/metrics"
 	metricsConfig "github.com/prebid/prebid-server/metrics/config"
@@ -1243,6 +1244,7 @@ func mockDepsWithMetrics(t *testing.T, ex *mockExchangeVideo) (*endpointDeps, *m
 		hardcodedResponseIPValidator{response: true},
 		empty_fetcher.EmptyFetcher{},
 		&hookexecution.EmptyHookExecutor{},
+		hooks.EmptyPlanBuilder{},
 	}
 	return deps, metrics, mockModule
 }
@@ -1288,6 +1290,7 @@ func mockDeps(t *testing.T, ex *mockExchangeVideo) *endpointDeps {
 		hardcodedResponseIPValidator{response: true},
 		empty_fetcher.EmptyFetcher{},
 		&hookexecution.EmptyHookExecutor{},
+		hooks.EmptyPlanBuilder{},
 	}
 }
 
@@ -1311,6 +1314,7 @@ func mockDepsAppendBidderNames(t *testing.T, ex *mockExchangeAppendBidderNames) 
 		hardcodedResponseIPValidator{response: true},
 		empty_fetcher.EmptyFetcher{},
 		&hookexecution.EmptyHookExecutor{},
+		hooks.EmptyPlanBuilder{},
 	}
 
 	return deps
@@ -1336,6 +1340,7 @@ func mockDepsNoBids(t *testing.T, ex *mockExchangeVideoNoBids) *endpointDeps {
 		hardcodedResponseIPValidator{response: true},
 		empty_fetcher.EmptyFetcher{},
 		&hookexecution.EmptyHookExecutor{},
+		hooks.EmptyPlanBuilder{},
 	}
 
 	return edep
