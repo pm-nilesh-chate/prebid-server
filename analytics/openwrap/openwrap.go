@@ -220,6 +220,11 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 			bidExt := models.BidExt{}
 			_ = json.Unmarshal(bid.Ext, &bidExt)
 
+			price := bid.Price
+			if ao.Response.Cur != "USD" {
+				price = bidExt.OriginalBidCPMUSD
+			}
+
 			pr := PartnerRecord{
 				PartnerID:        seatBid.Seat,
 				BidderCode:       seatBid.Seat,
@@ -232,11 +237,11 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 				// MatchedImpression: matchedImpression,
 				NetECPM: func() float64 {
 					if revShare != 0.0 {
-						return GetNetEcpm(bid.Price, revShare)
+						return GetNetEcpm(price, revShare)
 					}
-					return bid.Price
+					return price
 				}(),
-				GrossECPM:       GetGrossEcpm(bid.Price),
+				GrossECPM:       GetGrossEcpm(price),
 				OriginalCPM:     GetGrossEcpm(bidExt.OriginalBidCPM),
 				OriginalCur:     bidExt.OriginalBidCur,
 				PartnerSize:     getSizeForPlatform(bid.W, bid.H, rCtx.Platform),

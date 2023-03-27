@@ -50,6 +50,10 @@ type owBid struct {
 }
 
 func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) (*openrtb2.BidResponse, error) {
+	if len(bidResponse.SeatBid) == 0 {
+		return bidResponse, nil
+	}
+
 	winningBids := make(map[string]owBid, 0)
 	// winningBidsByBidder := make(map[string]map[openrtb_ext.BidderName]owBid, 0)
 	partnerNameMap := make(map[string]map[string]string)
@@ -66,11 +70,8 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 				partnerNameMap[partnerConfig[models.BidderCode]] = partnerConfig
 			}
 
-			revShare := models.GetRevenueShare(partnerNameMap[seatBid.Seat])
-			netEcpm := models.GetNetEcpm(bid.Price, revShare)
-
 			bidExt := &models.BidExt{}
-			if len(bid.Ext) != 0 {
+			if len(bid.Ext) != 0 { //NYC_TODO: most of the fields should be filled even if unmarshal fails
 				err := json.Unmarshal(bid.Ext, bidExt)
 				if err != nil {
 					return bidResponse, err
@@ -90,8 +91,14 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 
 				// bidExt.Summary
 
+				revShare := models.GetRevenueShare(partnerNameMap[seatBid.Seat])
+				price := bid.Price
+				if bidResponse.Cur != "USD" {
+					price = bidExt.OriginalBidCPMUSD
+				}
+
 				// if platform == models.PLATFORM_APP {
-				bidExt.NetECPM = netEcpm
+				bidExt.NetECPM = models.GetNetEcpm(price, revShare)
 				// bidExt.Prebid = addPWTTargetingForBid(*request.Id, eachBid, impExt.Prebid, *eachSeatBid.Seat, platform, winBidFlag, netEcpm)
 				// }
 
@@ -110,7 +117,7 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 				}
 			}
 
-			owbid := owBid{&bid, netEcpm, bidExt.Prebid.DealTierSatisfied}
+			owbid := owBid{&bid, bidExt.NetECPM, bidExt.Prebid.DealTierSatisfied}
 			wbid, ok := winningBids[bid.ImpID]
 			if !ok || isNewWinningBid(owbid, wbid, rctx.PreferDeals) {
 				winningBids[owbid.ImpID] = owbid
@@ -189,6 +196,17 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 			bidResponse.SeatBid[i].Bid[j].Ext, err = json.Marshal(bidExt)
 			if err != nil {
 				return bidResponse, err
+			}
+		}
+	}
+
+	// keep pubmatic 1st to handle automation failure.
+	if bidResponse.SeatBid[0].Seat != "pubmatic" {
+		for i := 0; i < len(bidResponse.SeatBid); i++ {
+			if bidResponse.SeatBid[i].Seat == "pubmatic" {
+				temp := bidResponse.SeatBid[0]
+				bidResponse.SeatBid[0] = bidResponse.SeatBid[i]
+				bidResponse.SeatBid[i] = temp
 			}
 		}
 	}
