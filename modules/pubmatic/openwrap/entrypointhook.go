@@ -30,6 +30,7 @@ func (m OpenWrap) handleEntrypointHook(
 		return result, err
 	}
 
+	// ----- use errors from getAccountIdFromRawRequest() or move this to after account stage
 	pubid := 0
 	accountID, _, err := pbsOpenrtb2.SearchAccountId(payload.Body)
 	if err != nil {
@@ -40,6 +41,7 @@ func (m OpenWrap) handleEntrypointHook(
 	if err != nil {
 		return result, fmt.Errorf("invalid publisher id : %v", err)
 	}
+	// ----
 
 	queryParams := payload.Request.URL.Query()
 
