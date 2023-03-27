@@ -21,11 +21,19 @@ func (m OpenWrap) handleAuctionResponseHook(
 	result := hookstage.HookResult[hookstage.AuctionResponsePayload]{}
 	result.ChangeSet = hookstage.ChangeSet[hookstage.AuctionResponsePayload]{}
 
+	// absence of rctx at this hook means the first hook failed!. Do nothing
+	if len(moduleCtx.ModuleContext) == 0 {
+		return result, nil
+	}
+	rctx, ok := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
+	if !ok {
+
+	}
+
 	result.AnalyticsTags.Activities = make([]hookanalytics.Activity, 1)
 	result.AnalyticsTags.Activities[0].Name = "openwrap_request_ctx"
 	result.AnalyticsTags.Activities[0].Results = make([]hookanalytics.Result, 1)
 	values := make(map[string]interface{})
-	rctx := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
 	values["request-ctx"] = &rctx
 	result.AnalyticsTags.Activities[0].Results[0].Values = values
 

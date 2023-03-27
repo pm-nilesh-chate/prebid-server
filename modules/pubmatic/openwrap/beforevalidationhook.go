@@ -333,6 +333,9 @@ func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, bidRequest *open
 
 	} // for(imp
 
+	if reqExt.Prebid.Aliases == nil {
+		reqExt.Prebid.Aliases = make(map[string]string)
+	}
 	for k, v := range rctx.Aliases {
 		reqExt.Prebid.Aliases[k] = v
 	}
@@ -397,7 +400,7 @@ func getDefaultAllowedConnectionTypes(adUnitConfigMap *adunitconfig.AdUnitConfig
 		return nil
 	}
 
-	if v, ok := adUnitConfigMap.Config[models.AdunitConfigDefaultKey]; ok && v.Video != nil {
+	if v, ok := adUnitConfigMap.Config[models.AdunitConfigDefaultKey]; ok && v.Video != nil && v.Video.Config != nil && len(v.Video.Config.CompanionType) != 0 {
 		return v.Video.Config.ConnectionType
 	}
 
@@ -415,14 +418,14 @@ func getDefaultAllowedConnectionTypes(adUnitConfigMap *adunitconfig.AdUnitConfig
 // NYC: make this generic
 func updateRequestExtBidderParamsPubmatic(bidderParams json.RawMessage, cookie, loggerID, bidderCode string) (json.RawMessage, error) {
 	bidderParamsMap := make(map[string]map[string]interface{})
-	err := json.Unmarshal(bidderParams, &bidderParamsMap)
-	if err != nil {
-		return nil, err
-	}
+	_ = json.Unmarshal(bidderParams, &bidderParamsMap) // ignore error, incoming might be nil for now but we still have data to put
 
 	bidderParamsMap[bidderCode] = map[string]interface{}{
-		models.COOKIE:             cookie,
 		models.WrapperLoggerImpID: loggerID,
+	}
+
+	if len(cookie) != 0 {
+		bidderParamsMap[bidderCode][models.COOKIE] = cookie
 	}
 
 	return json.Marshal(bidderParamsMap)
