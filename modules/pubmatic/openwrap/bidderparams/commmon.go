@@ -43,17 +43,6 @@ func getSlotMeta(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.
 
 	kgp := rctx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN]
 
-	var src string
-	if bidRequest.Site != nil {
-		if bidRequest.Site.Domain != "" {
-			src = bidRequest.Site.Domain
-		} else if bidRequest.Site.Page != "" {
-			src = bidRequest.Site.Page
-		}
-	} else if bidRequest.App != nil && bidRequest.App.Bundle != "" {
-		src = bidRequest.App.Bundle
-	}
-
 	var div string
 	if impExt.Wrapper != nil {
 		div = impExt.Wrapper.Div
@@ -61,7 +50,7 @@ func getSlotMeta(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.
 
 	var slots []string
 	for _, format := range wh {
-		slot := generateSlotName(format[0], format[1], kgp, imp.TagID, div, src)
+		slot := GenerateSlotName(format[0], format[1], kgp, imp.TagID, div, rctx.Source)
 		if slot != "" {
 			slots = append(slots, slot)
 			// NYC_TODO: break at i=0 for pubmatic?
@@ -85,7 +74,7 @@ func getSlotMeta(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.
 // | _AU_@_SRC_@_VASTTAG_ |
 // +----------------------+
 // 6 rows in set (0.21 sec)
-func generateSlotName(h, w int64, kgp, tagid, div, src string) string {
+func GenerateSlotName(h, w int64, kgp, tagid, div, src string) string {
 	// func (H, W, Div), no need to validate, will always be non-nil
 	switch kgp {
 	case "_AU_@_W_x_H_":

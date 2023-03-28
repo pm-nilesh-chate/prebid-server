@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
-	"time"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/hooks/hookstage"
@@ -15,6 +14,7 @@ import (
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/bidderparams"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/adunitconfig"
+	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
@@ -24,25 +24,27 @@ func (m OpenWrap) handleBeforeValidationHook(
 	payload hookstage.BeforeValidationRequestPayload,
 ) (hookstage.HookResult[hookstage.BeforeValidationRequestPayload], error) {
 	result := hookstage.HookResult[hookstage.BeforeValidationRequestPayload]{}
-	rCtx := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
 
+	requestExt, err := models.GetRequestExt(payload.BidRequest.Ext)
+	if err != nil {
+		result.Reject = true
+		result.NbrCode = errorcodes.ErrInvalidRequestExtension.Code()
+		result.Errors = append(result.Errors, errorcodes.ErrInvalidRequestExtension.Error())
+		return result, err
+	}
+
+	rCtx := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
 	rCtx.IsTestRequest = payload.BidRequest.Test == 2
 
-	var partnerConfigMap map[int]map[string]string
-	if rCtx.IsTestRequest {
-		// NYC: can this be clubbed with profileid=0
-		partnerConfigMap = getTestModePartnerConfigMap(payload.BidRequest, rCtx.PubID, rCtx.ProfileID, rCtx.DisplayID)
-	} else if rCtx.ProfileID == 0 {
-		partnerConfigMap = getDefaultPartnerConfigMap(rCtx.PubID, rCtx.ProfileID, rCtx.DisplayID)
-	} else {
-		partnerConfigMap = m.cache.GetPartnerConfigMap(rCtx.PubID, rCtx.ProfileID, rCtx.DisplayID)
-	}
-	if len(partnerConfigMap) == 0 {
+	partnerConfigMap, err := m.getProfileData(rCtx)
+	if err != nil || len(partnerConfigMap) == 0 {
+		result.Reject = true
+		result.NbrCode = errorcodes.ErrInvalidConfiguration.Code()
+		result.DebugMessages = append(result.Errors, errorcodes.ErrInvalidConfiguration.Error())
 		return result, errors.New("failed to get profile data")
 	}
 
 	rCtx.PartnerConfigMap = partnerConfigMap // keep a copy at module level as well
-
 	rCtx.Platform, _ = rCtx.GetVersionLevelKey(models.PLATFORM_KEY)
 	rCtx.PageURL = getPageURL(payload.BidRequest)
 	rCtx.DevicePlatform = GetDevicePlatform(rCtx.UA, payload.BidRequest, rCtx.Platform)
@@ -57,47 +59,33 @@ func (m OpenWrap) handleBeforeValidationHook(
 		rCtx.Source = payload.BidRequest.App.Bundle
 	}
 
-	var err error
 	rCtx.AdapterThrottleMap, err = GetAdapterThrottleMap(rCtx.PartnerConfigMap)
 	if err != nil {
 		return result, err
 	}
 
-	var videoEnabled bool
-	var bannerEnabled bool
-	var allowedConnectionTypes []int
 	rCtx.AdUnitConfig = m.cache.GetAdunitConfigFromCache(payload.BidRequest, rCtx.PubID, rCtx.ProfileID, rCtx.DisplayID)
-	if rCtx.Platform == models.PLATFORM_APP || rCtx.Platform == models.PLATFORM_VIDEO || rCtx.Platform == models.PLATFORM_DISPLAY {
-		videoEnabled = getDefaultEnabledValueForMediaType(rCtx.AdUnitConfig, models.AdunitConfigSlotVideoKey)
-		allowedConnectionTypes = getDefaultAllowedConnectionTypes(rCtx.AdUnitConfig)
-	}
-	bannerEnabled = getDefaultEnabledValueForMediaType(rCtx.AdUnitConfig, models.AdunitConfigSlotBannerKey)
 	if rCtx.AdUnitConfig != nil && rCtx.AdUnitConfig.Config[models.AdunitConfigRegex] != nil {
 		if v, ok := rCtx.AdUnitConfig.Config[models.AdunitConfigRegex]; ok && v.Regex != nil && *v.Regex == true {
-			// Logging erroneous regular expressions
-			populateAndLogRegex(rCtx.AdUnitConfig)
+			errs := populateAndLogRegex(rCtx.AdUnitConfig)
+			for _, err := range errs {
+				result.Errors = append(result.Errors, err.Error())
+			}
 		}
 	}
 
-	_ = videoEnabled
-	_ = bannerEnabled
-	_ = allowedConnectionTypes
-
-	// var isAdPodRequest bool
-
-	requestExt := &openrtb_ext.ExtOWRequest{}
-	if len(payload.BidRequest.Ext) != 0 {
-		err := json.Unmarshal(payload.BidRequest.Ext, requestExt)
-		if err != nil {
-			return result, err
-		}
-	}
 	requestExt.Prebid.SupportDeals = rCtx.PreferDeals // && IsCTVAPIRequest(reqWrapper.RequestAPI),
-	// requestExt.Prebid.AlternateBidderCodes = getMarketplaceBidders(reqWrapper.BidRequest.Ext, reqWrapper.PartnerConfigMap),
+	requestExt.Prebid.AlternateBidderCodes = getMarketplaceBidders(requestExt.Prebid.AlternateBidderCodes, partnerConfigMap)
+	requestExt.Prebid.Targeting = &openrtb_ext.ExtRequestTargeting{
+		IncludeBidderKeys: true,
+		IncludeWinners:    true,
+	}
+	requestExt.Prebid.BidderParams, _ = updateRequestExtBidderParamsPubmatic(requestExt.Prebid.BidderParams, rCtx.Cookies, rCtx.LoggerImpressionID, string(openrtb_ext.BidderPubmatic))
 
+	newImps := make(map[string]openrtb2.Imp)
+	aliasgvlids := make(map[string]uint16)
 	for i := 0; i < len(payload.BidRequest.Imp); i++ {
 		var adpodExt *models.AdPod
-		// var isAdPodImpression bool
 		imp := payload.BidRequest.Imp[i]
 
 		if len(requestExt.Prebid.Macros) == 0 && imp.Video != nil {
@@ -105,34 +93,26 @@ func (m OpenWrap) handleBeforeValidationHook(
 			requestExt.Prebid.Macros = getVASTEventMacros(rCtx)
 		}
 
-		// if rCtx.AdUnitConfig != nil {
-		// 	// Currently we are supporting Video config via Ad Unit config file for in-app / video / display profiles
-		// 	if (rCtx.Platform == models.PLATFORM_APP || rCtx.Platform == models.PLATFORM_VIDEO || rCtx.Platform == models.PLATFORM_DISPLAY) && imp.Video != nil {
-		// 		if err := updateVideoObjectWithAdunitConfig(reqWrapper.ReqID, eachImp, reqWrapper.AdUnitConfig, videoEnabled,
-		// 			allowedConnectionTypes, newReq.Device.ConnectionType, reqWrapper.PubID, reqWrapper.ProfileID, reqWrapper.RequestAPI); err != nil {
-		// 			return nil, err
-		// 		}
-		// 	}
-
-		// 	// We are supporting Banner config via Ad Unit config file for all platforms. Hence, there is no platform check for updating Banner object
-		// 	if eachImp.Banner != nil {
-		// 		updateBannerObjectWithAdunitConfig(reqWrapper.ReqID, eachImp, reqWrapper.AdUnitConfig, bannerEnabled, reqWrapper.PubID, reqWrapper.ProfileID)
-		// 	}
-		// 	if eachImp.Banner == nil && eachImp.Video == nil && eachImp.Native == nil {
-		// 		newReq.Imp = append(newReq.Imp[:i], newReq.Imp[i+1:]...)
-		// 		logger.DebugWithBid(reqWrapper.ReqID, "No Valid Banner/Video/Native present for impID: %v ", *eachImp.Id)
-		// 		i--
-		// 		partnerChan <- *objects.GetErrorResponseForImpressionV25(reqWrapper.ReqID, eachImp, "", errorcodes.ErrBannerVideoDisabled)
-		// 		continue
-		// 	}
-		// }
-
 		impExt := &models.ImpExtension{}
 		if len(imp.Ext) != 0 {
 			err := json.Unmarshal(imp.Ext, impExt)
 			if err != nil {
 				return result, err
 			}
+		}
+
+		if rCtx.AdUnitConfig != nil {
+			// NYC TODO
+			// rCtx.AdUnitConfigMatchedSlot, deducedAdUnitConfig = getMatchedSlotName(rCtx, imp, *impExt)
+			updateVideoObjectWithAdunitConfig(rCtx, imp, *impExt, payload.BidRequest.Device.ConnectionType)
+			updateBannerObjectWithAdunitConfig(rCtx, imp, *impExt)
+		}
+
+		if imp.Banner == nil && imp.Video == nil && imp.Native == nil {
+			payload.BidRequest.Imp = append(payload.BidRequest.Imp[:i], payload.BidRequest.Imp[i+1:]...)
+			result.Errors = append(result.Errors, fmt.Sprintf("no Valid Banner/Video/Native present for imp: %+v", imp.ID))
+			i--
+			continue
 		}
 
 		for _, partnerConfig := range rCtx.PartnerConfigMap {
@@ -194,195 +174,55 @@ func (m OpenWrap) handleBeforeValidationHook(
 					rCtx.Aliases[bidderCode] = adapters.ResolveOWBidder(prebidPartnerName)
 				}
 			}
-		} // for(rctx.PartnerConfigMap
-
-		// NYC_TODO:
-		if cto := setContentTransparencyObject(rCtx, requestExt, imp.ID, rCtx.AdUnitConfig); cto != nil {
-			requestExt.Prebid.Transparency = cto
-		}
-	} // for(imp
-
-	moduleCtx.ModuleContext["rctx"] = rCtx
-
-	result.ChangeSet.AddMutation(func(ep hookstage.BeforeValidationRequestPayload) (hookstage.BeforeValidationRequestPayload, error) {
-		//NYC_TODO: convert /2.5 redirect request to auction
-		rctx := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
-		var err error
-		ep.BidRequest, err = m.updateORTBV25Request(rctx, ep.BidRequest)
-		return ep, err
-	}, hookstage.MutationUpdate, "request-body-with-profile-data")
-
-	return result, nil
-}
-
-// updateORTBV25Request copies and updates BidRequest with required values from http header and partnetConfigMap
-func (m *OpenWrap) updateORTBV25Request(rctx models.RequestCtx, bidRequest *openrtb2.BidRequest) (*openrtb2.BidRequest, error) {
-	if cur, ok := rctx.PartnerConfigMap[models.VersionLevelConfigID][models.AdServerCurrency]; ok {
-		bidRequest.Cur = []string{cur}
-	}
-
-	reqExt, err := models.GetRequestExtWrapper(bidRequest.Ext)
-	if err != nil {
-		return bidRequest, err
-	}
-
-	// loggerID := getLoggerID(reqExt)
-
-	requestExt := &openrtb_ext.ExtOWRequest{}
-	if len(bidRequest.Ext) != 0 {
-		err := json.Unmarshal(bidRequest.Ext, requestExt)
-		if err != nil {
-			return bidRequest, err
-		}
-	}
-	requestExt.Prebid.SupportDeals = rctx.PreferDeals // && IsCTVAPIRequest(reqWrapper.RequestAPI),
-	// requestExt.Prebid.AlternateBidderCodes = getMarketplaceBidders(reqWrapper.BidRequest.Ext, reqWrapper.PartnerConfigMap),
-
-	reqExt.Prebid.SupportDeals = reqExt.Wrapper.SupportDeals && rctx.IsCTVRequest
-	// AlternateBidderCodes: getMarketplaceBidders(newReq.Ext, reqWrapper.PartnerConfigMap),
-	reqExt.Prebid.Debug = rctx.Debug
-
-	aliasgvlids := make(map[string]uint16)
-
-	for i := 0; i < len(bidRequest.Imp); i++ {
-		//var adpodExt *models.AdPod
-		// var isAdPodImpression bool
-		imp := bidRequest.Imp[i]
-
-		if imp.BidFloor == 0 {
-			imp.BidFloorCur = ""
-		} else if imp.BidFloorCur == "" {
-			imp.BidFloorCur = "USD"
-		}
-
-		if len(requestExt.Prebid.Macros) == 0 && imp.Video != nil {
-			// provide custom macros for video event trackers
-			requestExt.Prebid.Macros = getVASTEventMacros(rctx)
-		}
-
-		// if rCtx.AdUnitConfig != nil {
-		// 	// Currently we are supporting Video config via Ad Unit config file for in-app / video / display profiles
-		// 	if (rCtx.Platform == models.PLATFORM_APP || rCtx.Platform == models.PLATFORM_VIDEO || rCtx.Platform == models.PLATFORM_DISPLAY) && imp.Video != nil {
-		// 		if err := updateVideoObjectWithAdunitConfig(reqWrapper.ReqID, eachImp, reqWrapper.AdUnitConfig, videoEnabled,
-		// 			allowedConnectionTypes, newReq.Device.ConnectionType, reqWrapper.PubID, reqWrapper.ProfileID, reqWrapper.RequestAPI); err != nil {
-		// 			return nil, err
-		// 		}
-		// 	}
-
-		// 	// We are supporting Banner config via Ad Unit config file for all platforms. Hence, there is no platform check for updating Banner object
-		// 	if eachImp.Banner != nil {
-		// 		updateBannerObjectWithAdunitConfig(reqWrapper.ReqID, eachImp, reqWrapper.AdUnitConfig, bannerEnabled, reqWrapper.PubID, reqWrapper.ProfileID)
-		// 	}
-		// 	if eachImp.Banner == nil && eachImp.Video == nil && eachImp.Native == nil {
-		// 		newReq.Imp = append(newReq.Imp[:i], newReq.Imp[i+1:]...)
-		// 		logger.DebugWithBid(reqWrapper.ReqID, "No Valid Banner/Video/Native present for impID: %v ", *eachImp.Id)
-		// 		i--
-		// 		partnerChan <- *objects.GetErrorResponseForImpressionV25(reqWrapper.ReqID, eachImp, "", errorcodes.ErrBannerVideoDisabled)
-		// 		continue
-		// 	}
-		// }
-
-		impExt := &models.ImpExtension{}
-		if len(imp.Ext) != 0 {
-			err := json.Unmarshal(imp.Ext, impExt)
-			if err != nil {
-				return bidRequest, err
-			}
-		}
-
-		for _, partnerConfig := range rctx.PartnerConfigMap {
-			if partnerConfig[models.SERVER_SIDE_FLAG] != "1" {
-				continue
-			}
-
-			partneridstr, ok := partnerConfig[models.PARTNER_ID]
-			if !ok {
-				continue
-			}
-			partnerID, err := strconv.Atoi(partneridstr)
-			if err != nil || partnerID == models.VersionLevelConfigID {
-				continue
-			}
-
-			bidderCode := partnerConfig[models.BidderCode]
-
-			bidderData, ok := rctx.ImpBidCtx[imp.ID].Bidders[bidderCode]
-			if !ok {
-				continue
-			}
-
-			if impExt.Prebid.Bidder == nil {
-				impExt.Prebid.Bidder = make(map[string]json.RawMessage)
-			}
-			impExt.Prebid.Bidder[bidderCode] = bidderData.Params
 
 			if partnerConfig[models.PREBID_PARTNER_NAME] == models.BidderVASTBidder {
 				updateAliasGVLIds(aliasgvlids, bidderCode, partnerConfig)
 			}
 		} // for(rctx.PartnerConfigMap
 
-		// NYC_TODO:
-		if cto := setContentTransparencyObject(rctx, requestExt, imp.ID, rctx.AdUnitConfig); cto != nil {
+		if cto := setContentTransparencyObject(rCtx, requestExt, imp.ID, rCtx.AdUnitConfig); cto != nil {
 			requestExt.Prebid.Transparency = cto
 		}
-
-		bidRequest.Imp[i].Ext, err = json.Marshal(impExt)
-		if err != nil {
-			return bidRequest, err
-		}
-
 	} // for(imp
 
-	if reqExt.Prebid.Aliases == nil {
-		reqExt.Prebid.Aliases = make(map[string]string)
+	// replaceAppObjectFromAdUnitConfig(reqWrapper.AdUnitConfig, newReq)
+
+	if len(rCtx.Aliases) != 0 && requestExt.Prebid.Aliases == nil {
+		requestExt.Prebid.Aliases = make(map[string]string)
 	}
-	for k, v := range rctx.Aliases {
-		reqExt.Prebid.Aliases[k] = v
+	for k, v := range rCtx.Aliases {
+		requestExt.Prebid.Aliases[k] = v
 	}
-
-	reqExt.Prebid.BidderParams, err = updateRequestExtBidderParamsPubmatic(reqExt.Prebid.BidderParams, rctx.Cookies, rctx.LoggerImpressionID, string(openrtb_ext.BidderPubmatic))
-	if err != nil {
-		// return bidRequest, err
-	}
-
-	// replaceAppObjectFromAdUnitConfig(rCtx.AdUnitConfig, newReq)
-
-	// replaceDeviceTypeFromAdUnitConfig(rCtx.AdUnitConfig, newReq)
-
-	// if !bidExist {
-	// 	return nil, errorcodes.ErrInvalidImpression
-	// }
-
-	bidRequest.Source.TID = bidRequest.ID // NYC: is this needed
-
-	// if rCtx.Platform == models.PLATFORM_APP || rCtx.Platform == models.PLATFORM_VIDEO {
-	// 	sChainObj := getSChainObj(reqWrapper.PartnerConfigMap)
-	// 	if sChainObj != nil {
-	// 		setSchainInSourceObject(newReq.Source, sChainObj)
-	// 	}
-	// }
-
-	// pg, priceGranularity, err := computePriceGranularity(reqWrapper.PartnerConfigMap, reqWrapper.RequestAPI, reqWrapper.BidRequest.Test)
-	// if err != nil {
-	// 	return nil, err
-	// }
 
 	requestExt.Prebid.AliasGVLIDs = aliasgvlids
 
-	reqExt.Prebid.Targeting = &openrtb_ext.ExtRequestTargeting{
-		// PriceGranularity:  pg,
-		IncludeBidderKeys: true,
-		IncludeWinners:    true,
+	result.ChangeSet.AddMutation(func(ep hookstage.BeforeValidationRequestPayload) (hookstage.BeforeValidationRequestPayload, error) {
+		rctx := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
+		var err error
+		ep.BidRequest, err = m.applyProfileChanges(rctx, ep.BidRequest, requestExt, newImps)
+		return ep, err
+	}, hookstage.MutationUpdate, "request-body-with-profile-data")
+
+	moduleCtx.ModuleContext["rctx"] = rCtx
+	return result, nil
+}
+
+// applyProfileChanges copies and updates BidRequest with required values from http header and partnetConfigMap
+func (m *OpenWrap) applyProfileChanges(rctx models.RequestCtx, bidRequest *openrtb2.BidRequest, requestExt models.RequestExt, imp map[string]openrtb2.Imp) (*openrtb2.BidRequest, error) {
+	if cur, ok := rctx.PartnerConfigMap[models.VersionLevelConfigID][models.AdServerCurrency]; ok {
+		bidRequest.Cur = []string{cur}
 	}
 
-	// setIncludeBrandCategory(wtExt, &requestExt.Prebid, reqWrapper.PartnerConfigMap, IsCTVAPIRequest(reqWrapper.RequestAPI))
+	var err error
+	for i := 0; i < len(bidRequest.Imp); i++ {
 
-	// if isAdPodRequest {
-	// 	requestExt.AdPod = getPrebidExtRequestAdPod(reqWrapper)
-	//  }
-	// updateFloorsExtObjectFromAdUnitConfig(wtExt, rCtx.AdUnitConfig, newReq, &requestExt)
-	// setPriceFloorFetchURL(&requestExt, reqWrapper.PartnerConfigMap)
-	bidRequest.Ext, err = json.Marshal(reqExt)
+		bidRequest.Imp[i].Ext, err = json.Marshal(imp[bidRequest.Imp[i].ID].Ext)
+		if err != nil {
+			return bidRequest, err
+		}
+	}
+
+	bidRequest.Ext, err = json.Marshal(requestExt)
 	return bidRequest, err
 }
 
@@ -415,7 +255,7 @@ func getDefaultAllowedConnectionTypes(adUnitConfigMap *adunitconfig.AdUnitConfig
 // 	return uuid.NewV4().String()
 // }
 
-// NYC: make this generic
+// NYC: make this generic. Do we need this?. PBS now has auto_gen_source_tid generator. We can make it to wiid for pubmatic adapter in pubmatic.go
 func updateRequestExtBidderParamsPubmatic(bidderParams json.RawMessage, cookie, loggerID, bidderCode string) (json.RawMessage, error) {
 	bidderParamsMap := make(map[string]map[string]interface{})
 	_ = json.Unmarshal(bidderParams, &bidderParamsMap) // ignore error, incoming might be nil for now but we still have data to put
@@ -446,12 +286,12 @@ func getPageURL(bidRequest *openrtb2.BidRequest) string {
 // returns true when at least one macro is added to map
 func getVASTEventMacros(rctx models.RequestCtx) map[string]string {
 	return map[string]string{
-		string(models.MacroProfileID):           strconv.Itoa(rctx.ProfileID),
-		string(models.MacroUnixTimeStamp):       strconv.FormatInt(time.Now().Unix(), 10),
-		string(models.MacroPlatform):            fmt.Sprintf("%d", rctx.DevicePlatform),
-		string(models.MacroWrapperImpressionID): rctx.LoggerImpressionID,
-		string(models.MacroSSAI):                rctx.SSAI,
+		string(models.MacroProfileID):           fmt.Sprintf("%d", rctx.ProfileID),
 		string(models.MacroProfileVersionID):    fmt.Sprintf("%d", rctx.DisplayID),
+		string(models.MacroUnixTimeStamp):       fmt.Sprintf("%d", rctx.StartTime, 10),
+		string(models.MacroPlatform):            fmt.Sprintf("%d", rctx.DevicePlatform),
+		string(models.MacroSSAI):                rctx.SSAI,
+		string(models.MacroWrapperImpressionID): rctx.LoggerImpressionID,
 	}
 }
 

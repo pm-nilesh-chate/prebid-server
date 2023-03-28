@@ -27,7 +27,7 @@ func (m OpenWrap) handleAuctionResponseHook(
 	}
 	rctx, ok := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
 	if !ok {
-
+		return result, nil
 	}
 
 	result.AnalyticsTags.Activities = make([]hookanalytics.Activity, 1)

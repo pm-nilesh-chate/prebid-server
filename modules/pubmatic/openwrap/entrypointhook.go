@@ -2,15 +2,20 @@ package openwrap
 
 import (
 	"context"
-	"fmt"
-	"strconv"
 	"time"
 
-	pbsOpenrtb2 "github.com/prebid/prebid-server/endpoints/openrtb2"
 	"github.com/prebid/prebid-server/hooks/hookexecution"
 	"github.com/prebid/prebid-server/hooks/hookstage"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
+	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
 	uuid "github.com/satori/go.uuid"
+)
+
+const (
+	OpenWrapAuction = "/pbs/openrtb2/auction"
+	OpenWrapV25     = "/openrtb/2.5"
+	OpenWrapVideo   = "/openrtb/video"
+	OpenWrapAmp     = "/openrtb/amp"
 )
 
 func (m OpenWrap) handleEntrypointHook(
@@ -19,34 +24,37 @@ func (m OpenWrap) handleEntrypointHook(
 	payload hookstage.EntrypointPayload,
 ) (hookstage.HookResult[hookstage.EntrypointPayload], error) {
 	result := hookstage.HookResult[hookstage.EntrypointPayload]{}
-	if payload.Request.URL.Path == hookexecution.EndpointAuction {
+
+	var err error
+	var requestExtWrapper models.RequestExtWrapper
+	switch payload.Request.URL.Path {
+	// NYC_TODO: Both hybid and non-hybrid flow should be under same API "/openrtb2/auction"
+	// but modules should not executre of hybrid flow.
+	// check isHybrid()
+	case hookexecution.EndpointAuction:
+		if !models.IsHybrid(payload.Body) {
+			return result, nil
+		}
+		requestExtWrapper, err = models.GetRequestExtWrapper(payload.Body)
+	case OpenWrapAuction:
 		return result, nil
+	case OpenWrapV25:
+		requestExtWrapper, err = models.GetRequestExtWrapper(payload.Body, "ext", "wrapper")
+	case OpenWrapVideo:
+	case OpenWrapAmp:
+		// requestExtWrapper, err = models.GetQueryParamRequestExtWrapper(payload.Body)
 	}
 
-	result.ChangeSet = hookstage.ChangeSet[hookstage.EntrypointPayload]{}
-
-	requestExtWrapper, err := models.GetWrapperExt(payload.Body)
-	if err != nil {
+	if err != nil || requestExtWrapper.ProfileId == 0 {
+		result.Reject = true
+		result.NbrCode = errorcodes.ErrMissingProfileID.Code()
+		result.Errors = append(result.Errors, errorcodes.ErrMissingProfileID.Error())
 		return result, err
 	}
-
-	// ----- use errors from getAccountIdFromRawRequest() or move this to after account stage
-	pubid := 0
-	accountID, _, err := pbsOpenrtb2.SearchAccountId(payload.Body)
-	if err != nil {
-		return result, fmt.Errorf("failed to get publisher id : %v", err)
-	}
-
-	pubid, err = strconv.Atoi(accountID)
-	if err != nil {
-		return result, fmt.Errorf("invalid publisher id : %v", err)
-	}
-	// ----
 
 	queryParams := payload.Request.URL.Query()
 
 	rCtx := models.RequestCtx{
-		PubID:              pubid,
 		ProfileID:          requestExtWrapper.ProfileId,
 		DisplayID:          requestExtWrapper.VersionId,
 		LogInfoFlag:        requestExtWrapper.LogInfoFlag,

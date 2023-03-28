@@ -62,12 +62,14 @@ type ExtVideo struct {
 	AdPod  *AdPod `json:"adpod,omitempty"`
 }
 
-// ExtRequestWrapper Request Extension
-type ExtRequestWrapper struct {
+// RequestExt Request Extension
+type RequestExt struct {
+	openrtb_ext.ExtRequest
+
+	// Move this to bidder params
 	Wrapper *RequestExtWrapper                `json:"wrapper,omitempty"`
 	Bidder  map[string]map[string]interface{} `json:"bidder,omitempty"`
 	AdPod   *ExtRequestAdPod                  `json:"adpod,omitempty"`
-	Prebid  openrtb_ext.ExtRequestPrebid      `json:"prebid"`
 }
 
 // pbopenrtb_ext alias for prebid server openrtb_ext

@@ -192,12 +192,7 @@ func handleHookResponse[P any](
 
 	switch true {
 	case hr.Err != nil:
-		if !strings.EqualFold(hr.HookID.ModuleCode, "pubmatic.openwrap") { // make this configurable whether the user wants to treat module errors as fatal or not
-			handleHookError(hr, &hookOutcome, metricEngine, labels)
-			break
-		}
-		hr.Result.Reject = true
-		fallthrough
+		handleHookError(hr, &hookOutcome, metricEngine, labels)
 	case hr.Result.Reject:
 		rejectErr = handleHookReject(ctx, hr, &hookOutcome, metricEngine, labels)
 	default:

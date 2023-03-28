@@ -19,11 +19,14 @@ func IsCTVAPIRequest(api string) bool {
 	// NYC_TODO: fix this temporary change
 }
 
-func GetWrapperExt(request []byte) (RequestExtWrapper, error) {
+func GetRequestExtWrapper(request []byte, wrapperLocation ...string) (RequestExtWrapper, error) {
 	extWrapper := RequestExtWrapper{}
 
-	// NYC_TODO: if /2.5 redirect check ext.wrapper else check ext.prebid.bidderparams.pubmatic.wrapper
-	extWrapperBytes, _, _, err := jsonparser.Get(request, "ext", "wrapper")
+	if len(wrapperLocation) == 0 {
+		wrapperLocation = []string{"ext", "prebid", "bidderparams", "pubmatic", "wrapper"}
+	}
+
+	extWrapperBytes, _, _, err := jsonparser.Get(request, wrapperLocation...)
 	if err != nil {
 		return extWrapper, fmt.Errorf("request.ext.wrapper not found: %v", err)
 	}
@@ -114,4 +117,20 @@ func ExtractDomain(rawURL string) (string, error) {
 	}
 
 	return u.Host, nil
+}
+
+// do not ud
+func IsHybrid(body []byte) bool {
+	defer func() {
+		if r := recover(); r != nil {
+			// glog.Error(string(debug.Stack()))
+		}
+	}()
+
+	_, _, _, err := jsonparser.Get(body, "imp", "[0]", "ext", "prebid", "bidder", "pubmatic")
+	if err != nil {
+		return false
+	}
+
+	return true
 }
