@@ -13,21 +13,20 @@ import (
 
 // return the list of active server side header bidding partners
 // with their configurations at publisher-profile-version level
-func (db *mySqlDB) GetActivePartnerConfigurations(pubId, profileId int, displayVersion int) map[int]map[string]string {
+func (db *mySqlDB) GetActivePartnerConfigurations(pubId, profileId int, displayVersion int) (map[int]map[string]string, error) {
 	versionID, displayVersionID, err := db.getVersionID(profileId, displayVersion, pubId)
 	if err != nil {
-		// return nil, fmt.Errorf("failed to get version id for the request", err)
-		return nil
+		return nil, err
 	}
 
-	partnerConfigMap := db.getActivePartnerConfigurations(pubId, profileId, versionID)
-	if len(partnerConfigMap) != 0 && partnerConfigMap[-1] != nil {
+	partnerConfigMap, err := db.getActivePartnerConfigurations(pubId, profileId, versionID)
+	if err != nil && partnerConfigMap[-1] != nil {
 		partnerConfigMap[-1][models.DisplayVersionID] = strconv.Itoa(displayVersionID)
 	}
-	return partnerConfigMap
+	return partnerConfigMap, err
 }
 
-func (db *mySqlDB) getActivePartnerConfigurations(pubId, profileId int, versionID int) map[int]map[string]string {
+func (db *mySqlDB) getActivePartnerConfigurations(pubId, profileId int, versionID int) (map[int]map[string]string, error) {
 	getActivePartnersQuery := strings.Replace(getParterConfig, versionIdKey, strconv.Itoa(versionID), -1)
 	getActivePartnersQuery = fmt.Sprintf(getActivePartnersQuery, db.cfg.MaxDbContextTimeout)
 
@@ -35,7 +34,7 @@ func (db *mySqlDB) getActivePartnerConfigurations(pubId, profileId int, versionI
 	defer cancel()
 	rows, err := db.conn.QueryContext(ctx, getActivePartnersQuery)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -70,9 +69,12 @@ func (db *mySqlDB) getActivePartnerConfigurations(pubId, profileId int, versionI
 			partnerConfigMap[partnerID][models.IsAlias] = strconv.Itoa(isAlias)
 		}
 	}
+
+	// NYC_TODO: ignore close error
 	if err = rows.Err(); err != nil {
+
 	}
-	return partnerConfigMap
+	return partnerConfigMap, nil
 }
 
 func (db *mySqlDB) getVersionID(profileID, displayVersionID, pubID int) (int, int, error) {

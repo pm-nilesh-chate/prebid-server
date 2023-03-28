@@ -63,6 +63,8 @@ const (
 
 	AdServerCurrency = "adServerCurrency"
 
+	MarketplaceBidders = "marketplaceBidders"
+
 	UserAgent   = "UserAgent"
 	IP          = "ip"
 	StoreURL    = "StoreURL"

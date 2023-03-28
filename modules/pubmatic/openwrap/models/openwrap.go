@@ -40,7 +40,9 @@ type RequestCtx struct {
 	Aliases   map[string]string
 
 	AdapterThrottleMap map[string]struct{}
-	AdUnitConfig       *adunitconfig.AdUnitConfig
+
+	AdUnitConfig            *adunitconfig.AdUnitConfig
+	AdUnitConfigMatchedSlot string
 
 	Source string
 }

@@ -5,8 +5,8 @@ import (
 	"fmt"
 )
 
-func GetRequestExtWrapper(ext []byte) (ExtRequestWrapper, error) {
-	extRequest := ExtRequestWrapper{}
+func GetRequestExt(ext []byte) (RequestExt, error) {
+	extRequest := RequestExt{}
 
 	err := json.Unmarshal(ext, &extRequest)
 	if err != nil {

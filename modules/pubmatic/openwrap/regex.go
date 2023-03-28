@@ -5,7 +5,7 @@ import (
 )
 
 // populateAndLogRegex populates compiled regex object in container with respective needed regex patterns and logs Invalid Regular expression
-func populateAndLogRegex(adUnitCfgs *adunitconfig.AdUnitConfig) error {
+func populateAndLogRegex(adUnitCfgs *adunitconfig.AdUnitConfig) []error {
 	// for expression := range adUnitCfgs {
 	// 	//excluding keys for "regex","configPattern" , "default" to compile regexs
 	// 	if expression != models.AdunitConfigRegex && expression != models.AdunitConfigConfigPatternKey && expression != models.AdunitConfigDefaultKey {

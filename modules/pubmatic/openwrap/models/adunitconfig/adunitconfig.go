@@ -9,7 +9,8 @@ import (
 
 // AdUnitConfig type definition for Ad Unit config parsed from stored config JSON
 type AdUnitConfig struct {
-	ConfigPattern string               `json:"configpattern"`
+	ConfigPattern string               `json:"configPattern"`
+	Regex         bool                 `json:"regex"`
 	Config        map[string]*AdConfig `json:"config"`
 }
 type Content struct {
@@ -45,6 +46,10 @@ type Video struct {
 }
 
 type AdConfig struct {
+	BidFloor    *float64                     `json:"bidfloor"`
+	BidFloorCur *string                      `json:"bidfloorcur"`
+	Floors      *openrtb_ext.PriceFloorRules `json:"floors"`
+
 	Exp          *int             `json:"exp"`
 	Banner       *Banner          `json:"banner"`
 	Native       *Native          `json:"native"`
