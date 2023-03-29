@@ -287,6 +287,7 @@ func (e *exchange) HoldAuction(ctx context.Context, r AuctionRequest, debugLog *
 	if e.floor.Enabled {
 		floorErrs = floors.EnrichWithPriceFloors(r.BidRequestWrapper, r.Account, conversions, e.priceFloorFetcher)
 	}
+
 	if responseDebugAllow {
 		//save incoming request with stored requests (if applicable) to return in debug logs
 		resolvedBidReq, err := json.Marshal(r.BidRequestWrapper.BidRequest)
@@ -1041,9 +1042,10 @@ func applyCategoryMapping(ctx context.Context, r *AuctionRequest, requestExt *op
 			if len(bidsToRemove) == len(seatBid.Bids) {
 				//if all bids are invalid - remove entire seat bid
 				for _, bid := range seatBid.Bids {
+
 					if r.LoggableObject != nil {
 						r.LoggableObject.RejectedBids = append(r.LoggableObject.RejectedBids, analytics.RejectedBid{
-							Bid:             bid.Bid,
+							Bid:             bid,
 							RejectionReason: openrtb3.LossBidCategoryMapping,
 							Seat:            seatBid.Seat,
 						})
@@ -1056,7 +1058,7 @@ func applyCategoryMapping(ctx context.Context, r *AuctionRequest, requestExt *op
 					remInd := bidsToRemove[i]
 					if r.LoggableObject != nil {
 						r.LoggableObject.RejectedBids = append(r.LoggableObject.RejectedBids, analytics.RejectedBid{
-							Bid:             bids[remInd].Bid,
+							Bid:             bids[remInd],
 							RejectionReason: openrtb3.LossBidCategoryMapping,
 							Seat:            seatBid.Seat,
 						})

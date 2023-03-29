@@ -6,7 +6,6 @@ import (
 	"math/rand"
 
 	"github.com/golang/glog"
-	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/openrtb/v17/openrtb3"
 	"github.com/prebid/prebid-server/analytics"
 	"github.com/prebid/prebid-server/config"
@@ -18,9 +17,9 @@ import (
 
 // RejectedBid defines the contract for bid rejection errors due to floors enforcement
 type RejectedBid struct {
-	Bid             *openrtb2.Bid `json:"bid,omitempty"`
-	RejectionReason int           `json:"rejectreason,omitempty"`
-	BidderName      string        `json:"biddername,omitempty"`
+	Bid             *entities.PbsOrtbBid `json:"bid,omitempty"`
+	RejectionReason int                  `json:"rejectreason,omitempty"`
+	BidderName      string               `json:"biddername,omitempty"`
 }
 
 // Check for Floors enforcement for deals,
@@ -96,6 +95,7 @@ func enforceFloorToBids(bidRequestWrapper *openrtb_ext.RequestWrapper, seatBids 
 					reqImpCur = bidRequestWrapper.Cur[0]
 				}
 			}
+			updateBidExtWithFloors(reqImp, bid, reqImpCur)
 			rate, err := getCurrencyConversionRate(seatBid.Currency, reqImpCur, conversions)
 			if err != nil {
 				errMsg := fmt.Errorf("error in rate conversion from = %s to %s with bidder %s for impression id %s and bid id %s", seatBid.Currency, reqImpCur, bidderName, bid.Bid.ImpID, bid.Bid.ID)
@@ -105,10 +105,9 @@ func enforceFloorToBids(bidRequestWrapper *openrtb_ext.RequestWrapper, seatBids 
 			}
 
 			bidPrice := rate * bid.Bid.Price
-			updateBidExtWithFloors(reqImp, bid, reqImpCur)
 			if reqImp.BidFloor > bidPrice {
 				rejectedBid := analytics.RejectedBid{
-					Bid:  bid.Bid,
+					Bid:  bid,
 					Seat: seatBid.Seat,
 				}
 				rejectedBid.RejectionReason = openrtb3.LossBidBelowAuctionFloor
