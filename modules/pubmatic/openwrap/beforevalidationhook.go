@@ -11,9 +11,9 @@ import (
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/hooks/hookstage"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/adapters"
+	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/adunitconfig"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/bidderparams"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/adunitconfig"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
@@ -82,7 +82,6 @@ func (m OpenWrap) handleBeforeValidationHook(
 	}
 	requestExt.Prebid.BidderParams, _ = updateRequestExtBidderParamsPubmatic(requestExt.Prebid.BidderParams, rCtx.Cookies, rCtx.LoggerImpressionID, string(openrtb_ext.BidderPubmatic))
 
-	newImps := make(map[string]openrtb2.Imp)
 	aliasgvlids := make(map[string]uint16)
 	for i := 0; i < len(payload.BidRequest.Imp); i++ {
 		var adpodExt *models.AdPod
@@ -101,11 +100,15 @@ func (m OpenWrap) handleBeforeValidationHook(
 			}
 		}
 
+		var videoAdUnitCtx, bannerAdUnitCtx models.AdUnitCtx
 		if rCtx.AdUnitConfig != nil {
-			// NYC TODO
-			// rCtx.AdUnitConfigMatchedSlot, deducedAdUnitConfig = getMatchedSlotName(rCtx, imp, *impExt)
-			updateVideoObjectWithAdunitConfig(rCtx, imp, *impExt, payload.BidRequest.Device.ConnectionType)
-			updateBannerObjectWithAdunitConfig(rCtx, imp, *impExt)
+			div := ""
+			if impExt.Wrapper != nil {
+				div = impExt.Wrapper.Div
+			}
+
+			videoAdUnitCtx = adunitconfig.UpdateVideoObjectWithAdunitConfig(rCtx, imp, div, payload.BidRequest.Device.ConnectionType)
+			bannerAdUnitCtx = adunitconfig.UpdateBannerObjectWithAdunitConfig(rCtx, imp, div)
 		}
 
 		if imp.Banner == nil && imp.Video == nil && imp.Native == nil {
@@ -115,6 +118,12 @@ func (m OpenWrap) handleBeforeValidationHook(
 			continue
 		}
 
+		slotType := "banner"
+		if imp.Video != nil {
+			slotType = "video"
+		}
+
+		bidderMeta := make(map[string]models.PartnerData)
 		for _, partnerConfig := range rCtx.PartnerConfigMap {
 			if partnerConfig[models.SERVER_SIDE_FLAG] != "1" {
 				continue
@@ -147,28 +156,6 @@ func (m OpenWrap) handleBeforeValidationHook(
 				continue
 			}
 
-			slotType := "banner"
-			if imp.Video != nil {
-				slotType = "video"
-			}
-
-			if _, ok := rCtx.ImpBidCtx[imp.ID]; !ok {
-				rCtx.ImpBidCtx[imp.ID] = models.ImpCtx{
-					TagID:             imp.TagID,
-					IsRewardInventory: impExt.Reward,
-					MatchedSlot:       slot,
-					Type:              slotType,
-					KGPV:              rCtx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN],
-					Bidders:           make(map[string]models.PartnerData),
-					BidCtx:            make(map[string]models.BidCtx),
-				}
-			}
-
-			rCtx.ImpBidCtx[imp.ID].Bidders[bidderCode] = models.PartnerData{
-				Params:    bidderParams,
-				PartnerID: partnerID,
-			}
-
 			if alias, ok := partnerConfig[models.IsAlias]; ok && alias == "1" {
 				if prebidPartnerName, ok := partnerConfig[models.PREBID_PARTNER_NAME]; ok {
 					rCtx.Aliases[bidderCode] = adapters.ResolveOWBidder(prebidPartnerName)
@@ -178,14 +165,55 @@ func (m OpenWrap) handleBeforeValidationHook(
 			if partnerConfig[models.PREBID_PARTNER_NAME] == models.BidderVASTBidder {
 				updateAliasGVLIds(aliasgvlids, bidderCode, partnerConfig)
 			}
+
+			bidderMeta[bidderCode] = models.PartnerData{
+				PartnerID:   partnerID,
+				MatchedSlot: slot,
+				Params:      bidderParams,
+				KGPV:        rCtx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN],
+			}
 		} // for(rctx.PartnerConfigMap
 
 		if cto := setContentTransparencyObject(rCtx, requestExt, imp.ID, rCtx.AdUnitConfig); cto != nil {
 			requestExt.Prebid.Transparency = cto
 		}
+
+		// update the imp.ext with bidder params for this
+		if impExt.Prebid.Bidder == nil {
+			impExt.Prebid.Bidder = make(map[string]json.RawMessage)
+		}
+		for bidder, meta := range bidderMeta {
+			impExt.Prebid.Bidder[bidder] = meta.Params
+		}
+
+		newExt, err := json.Marshal(impExt)
+		if err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("failed to update bidder params for impression %s", imp.ID))
+		}
+
+		// cache the details for further processing
+		if _, ok := rCtx.ImpBidCtx[imp.ID]; !ok {
+			rCtx.ImpBidCtx[imp.ID] = models.ImpCtx{
+				TagID:             imp.TagID,
+				IsRewardInventory: impExt.Reward,
+				Type:              slotType,
+				Bidders:           make(map[string]models.PartnerData),
+				BidCtx:            make(map[string]models.BidCtx),
+				NewExt:            json.RawMessage(newExt),
+			}
+		}
+
+		impCtx := rCtx.ImpBidCtx[imp.ID]
+		impCtx.Bidders = bidderMeta
+		impCtx.VideoAdUnitCtx = videoAdUnitCtx
+		impCtx.BannerAdUnitCtx = bannerAdUnitCtx
+		rCtx.ImpBidCtx[imp.ID] = impCtx
 	} // for(imp
 
-	// replaceAppObjectFromAdUnitConfig(reqWrapper.AdUnitConfig, newReq)
+	adunitconfig.ReplaceAppObjectFromAdUnitConfig(rCtx, payload.BidRequest.App)
+	adunitconfig.ReplaceDeviceTypeFromAdUnitConfig(rCtx, payload.BidRequest.Device)
+	adunitconfig.UpdateFloorsExtObjectFromAdUnitConfig(rCtx, &requestExt)
+	setPriceFloorFetchURL(&requestExt, rCtx.PartnerConfigMap)
 
 	if len(rCtx.Aliases) != 0 && requestExt.Prebid.Aliases == nil {
 		requestExt.Prebid.Aliases = make(map[string]string)
@@ -196,10 +224,19 @@ func (m OpenWrap) handleBeforeValidationHook(
 
 	requestExt.Prebid.AliasGVLIDs = aliasgvlids
 
+	rCtx.NewReqExt, err = json.Marshal(requestExt)
+	if err != nil {
+		result.Errors = append(result.Errors, "failed to update request.ext "+err.Error())
+	}
+
+	newImp, _ := json.Marshal(rCtx.ImpBidCtx)
+	result.DebugMessages = append(result.DebugMessages, "new imp: "+string(newImp))
+	result.DebugMessages = append(result.DebugMessages, "new request.ext: "+string(rCtx.NewReqExt))
+
 	result.ChangeSet.AddMutation(func(ep hookstage.BeforeValidationRequestPayload) (hookstage.BeforeValidationRequestPayload, error) {
 		rctx := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
 		var err error
-		ep.BidRequest, err = m.applyProfileChanges(rctx, ep.BidRequest, requestExt, newImps)
+		ep.BidRequest, err = m.applyProfileChanges(rctx, ep.BidRequest)
 		return ep, err
 	}, hookstage.MutationUpdate, "request-body-with-profile-data")
 
@@ -208,22 +245,197 @@ func (m OpenWrap) handleBeforeValidationHook(
 }
 
 // applyProfileChanges copies and updates BidRequest with required values from http header and partnetConfigMap
-func (m *OpenWrap) applyProfileChanges(rctx models.RequestCtx, bidRequest *openrtb2.BidRequest, requestExt models.RequestExt, imp map[string]openrtb2.Imp) (*openrtb2.BidRequest, error) {
+func (m *OpenWrap) applyProfileChanges(rctx models.RequestCtx, bidRequest *openrtb2.BidRequest) (*openrtb2.BidRequest, error) {
 	if cur, ok := rctx.PartnerConfigMap[models.VersionLevelConfigID][models.AdServerCurrency]; ok {
 		bidRequest.Cur = []string{cur}
 	}
 
-	var err error
-	for i := 0; i < len(bidRequest.Imp); i++ {
+	if bidRequest.Source == nil {
+		bidRequest.Source = &openrtb2.Source{}
+	}
 
-		bidRequest.Imp[i].Ext, err = json.Marshal(imp[bidRequest.Imp[i].ID].Ext)
-		if err != nil {
-			return bidRequest, err
+	for i := 0; i < len(bidRequest.Imp); i++ {
+		m.applyBannerAdUnitConfig(rctx, &bidRequest.Imp[i])
+		m.applyVideoAdUnitConfig(rctx, &bidRequest.Imp[i])
+		bidRequest.Imp[i].Ext = rctx.ImpBidCtx[bidRequest.Imp[i].ID].NewExt
+	}
+
+	if rctx.Platform == models.PLATFORM_APP || rctx.Platform == models.PLATFORM_VIDEO {
+		sChainObj := getSChainObj(rctx.PartnerConfigMap)
+		if sChainObj != nil {
+			setSchainInSourceObject(bidRequest.Source, sChainObj)
 		}
 	}
 
-	bidRequest.Ext, err = json.Marshal(requestExt)
-	return bidRequest, err
+	bidRequest.Ext = rctx.NewReqExt
+	return bidRequest, nil
+}
+
+func (m *OpenWrap) applyVideoAdUnitConfig(rCtx models.RequestCtx, imp *openrtb2.Imp) {
+	adUnitCfg := rCtx.ImpBidCtx[imp.ID].VideoAdUnitCtx.AppliedSlotAdUnitConfig
+	if adUnitCfg == nil {
+		return
+	}
+
+	if imp.BidFloor == 0 && adUnitCfg.BidFloor != nil {
+		imp.BidFloor = *adUnitCfg.BidFloor
+	}
+
+	if len(imp.BidFloorCur) == 0 && adUnitCfg.BidFloorCur != nil {
+		imp.BidFloorCur = *adUnitCfg.BidFloorCur
+	}
+
+	if adUnitCfg.Exp != nil {
+		imp.Exp = int64(*adUnitCfg.Exp)
+	}
+
+	if adUnitCfg.Video == nil {
+		return
+	}
+
+	//check if video is disabled, if yes then remove video from imp object
+	if adUnitCfg.Video.Enabled != nil && !*adUnitCfg.Video.Enabled {
+		imp.Video = nil
+		return
+	}
+
+	if adUnitCfg.Video.Config == nil {
+		return
+	}
+
+	configObjInVideoConfig := adUnitCfg.Video.Config
+
+	if len(imp.Video.MIMEs) == 0 {
+		imp.Video.MIMEs = configObjInVideoConfig.MIMEs
+	}
+
+	if imp.Video.MinDuration == 0 {
+		imp.Video.MinDuration = configObjInVideoConfig.MinDuration
+	}
+
+	if imp.Video.MaxDuration == 0 {
+		imp.Video.MaxDuration = configObjInVideoConfig.MaxDuration
+	}
+
+	if imp.Video.Skip == nil {
+		imp.Video.Skip = configObjInVideoConfig.Skip
+	}
+
+	if imp.Video.SkipMin == 0 {
+		imp.Video.SkipMin = configObjInVideoConfig.SkipMin
+	}
+
+	if imp.Video.SkipAfter == 0 {
+		imp.Video.SkipAfter = configObjInVideoConfig.SkipAfter
+	}
+
+	if len(configObjInVideoConfig.BAttr) == 0 {
+		imp.Video.BAttr = configObjInVideoConfig.BAttr
+	}
+
+	if imp.Video.MinBitRate == 0 {
+		imp.Video.MinBitRate = configObjInVideoConfig.MinBitRate
+	}
+
+	if imp.Video.MaxBitRate == 0 {
+		imp.Video.MaxBitRate = configObjInVideoConfig.MaxBitRate
+	}
+
+	if imp.Video.MaxExtended == 0 {
+		imp.Video.MaxExtended = configObjInVideoConfig.MaxExtended
+	}
+
+	if imp.Video.StartDelay == nil {
+		imp.Video.StartDelay = configObjInVideoConfig.StartDelay
+	}
+
+	if imp.Video.Placement == 0 {
+		imp.Video.Placement = configObjInVideoConfig.Placement
+	}
+
+	if imp.Video.Linearity == 0 {
+		imp.Video.Linearity = configObjInVideoConfig.Linearity
+	}
+
+	if imp.Video.Protocol == 0 {
+		imp.Video.Protocol = configObjInVideoConfig.Protocol
+	}
+
+	if len(configObjInVideoConfig.Protocols) == 0 {
+		imp.Video.Protocols = configObjInVideoConfig.Protocols
+	}
+
+	if imp.Video.W == 0 {
+		imp.Video.W = configObjInVideoConfig.W
+	}
+
+	if imp.Video.H == 0 {
+		imp.Video.H = configObjInVideoConfig.H
+	}
+
+	if imp.Video.Sequence == 0 {
+		imp.Video.Sequence = configObjInVideoConfig.Sequence
+	}
+
+	if imp.Video.BoxingAllowed == 0 {
+		imp.Video.BoxingAllowed = configObjInVideoConfig.BoxingAllowed
+	}
+
+	if imp.Video.PlaybackMethod == nil && len(configObjInVideoConfig.PlaybackMethod) > 0 {
+		imp.Video.PlaybackMethod = configObjInVideoConfig.PlaybackMethod
+	}
+
+	if imp.Video.PlaybackEnd == 0 {
+		imp.Video.PlaybackEnd = configObjInVideoConfig.PlaybackEnd
+	}
+
+	if imp.Video.Delivery == nil {
+		imp.Video.Delivery = configObjInVideoConfig.Delivery
+	}
+
+	if imp.Video.Pos == nil {
+		imp.Video.Pos = configObjInVideoConfig.Pos
+	}
+
+	if len(configObjInVideoConfig.API) > 0 {
+		imp.Video.API = configObjInVideoConfig.API
+	}
+
+	if len(configObjInVideoConfig.CompanionType) > 0 {
+		imp.Video.CompanionType = configObjInVideoConfig.CompanionType
+	}
+
+	if imp.Video.CompanionAd == nil {
+		imp.Video.CompanionAd = configObjInVideoConfig.CompanionAd
+	}
+}
+
+func (m *OpenWrap) applyBannerAdUnitConfig(rCtx models.RequestCtx, imp *openrtb2.Imp) {
+	adUnitCfg := rCtx.ImpBidCtx[imp.ID].VideoAdUnitCtx.AppliedSlotAdUnitConfig
+	if adUnitCfg == nil {
+		return
+	}
+
+	if imp.BidFloor == 0 && adUnitCfg.BidFloor != nil {
+		imp.BidFloor = *adUnitCfg.BidFloor
+	}
+
+	if len(imp.BidFloorCur) == 0 && adUnitCfg.BidFloorCur != nil {
+		imp.BidFloorCur = *adUnitCfg.BidFloorCur
+	}
+
+	if adUnitCfg.Exp != nil {
+		imp.Exp = int64(*adUnitCfg.Exp)
+	}
+
+	if adUnitCfg.Banner == nil {
+		return
+	}
+
+	if adUnitCfg.Banner.Enabled != nil && !*adUnitCfg.Banner.Enabled {
+		imp.Banner = nil
+		return
+	}
 }
 
 func getDomainFromUrl(pageUrl string) string {
@@ -233,18 +445,6 @@ func getDomainFromUrl(pageUrl string) string {
 	}
 
 	return u.Host
-}
-
-func getDefaultAllowedConnectionTypes(adUnitConfigMap *adunitconfig.AdUnitConfig) []int {
-	if adUnitConfigMap == nil {
-		return nil
-	}
-
-	if v, ok := adUnitConfigMap.Config[models.AdunitConfigDefaultKey]; ok && v.Video != nil && v.Video.Config != nil && len(v.Video.Config.CompanionType) != 0 {
-		return v.Video.Config.ConnectionType
-	}
-
-	return nil
 }
 
 // always perfer rCtx.LoggerImpressionID received in request. Create a new once if it is not availble.

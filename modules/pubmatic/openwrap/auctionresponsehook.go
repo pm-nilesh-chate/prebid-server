@@ -10,6 +10,7 @@ import (
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/hooks/hookanalytics"
 	"github.com/prebid/prebid-server/hooks/hookstage"
+	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/adunitconfig"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 )
 
@@ -115,12 +116,12 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 						if bidExt.Banner == nil {
 							bidExt.Banner = &models.ExtBidBanner{}
 						}
-						bidExt.Banner.ClientConfig = GetClientConfigForMediaType(rctx, bid.ImpID, rctx.AdUnitConfig, "banner")
+						bidExt.Banner.ClientConfig = adunitconfig.GetClientConfigForMediaType(rctx, bid.ImpID, rctx.AdUnitConfig, "banner")
 					} else if rctx.ImpBidCtx[bid.ImpID].Type == "video" {
 						if bidExt.Video == nil {
 							bidExt.Video = &models.ExtBidVideo{}
 						}
-						bidExt.Video.ClientConfig = GetClientConfigForMediaType(rctx, bid.ImpID, rctx.AdUnitConfig, "video")
+						bidExt.Video.ClientConfig = adunitconfig.GetClientConfigForMediaType(rctx, bid.ImpID, rctx.AdUnitConfig, "video")
 					}
 				}
 			}

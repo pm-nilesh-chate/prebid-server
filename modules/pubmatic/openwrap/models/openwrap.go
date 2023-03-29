@@ -38,11 +38,11 @@ type RequestCtx struct {
 	// imp-bid ctx to avoid computing same thing for bidder params, logger and tracker
 	ImpBidCtx map[string]ImpCtx
 	Aliases   map[string]string
+	NewReqExt json.RawMessage
 
 	AdapterThrottleMap map[string]struct{}
 
-	AdUnitConfig            *adunitconfig.AdUnitConfig
-	AdUnitConfigMatchedSlot string
+	AdUnitConfig *adunitconfig.AdUnitConfig
 
 	Source string
 }
@@ -60,16 +60,21 @@ type ImpCtx struct {
 	TagID             string
 	Secure            int
 	KGPV              string
-	MatchedSlot       string
 	IsRewardInventory *int8
 	Type              string // banner, video, native, etc
 	Bidders           map[string]PartnerData
+	NewExt            json.RawMessage
 	BidCtx            map[string]BidCtx
+
+	BannerAdUnitCtx AdUnitCtx
+	VideoAdUnitCtx  AdUnitCtx
 }
 
 type PartnerData struct {
-	PartnerID int
-	Params    json.RawMessage
+	PartnerID   int
+	MatchedSlot string
+	KGPV        string
+	Params      json.RawMessage
 }
 
 type BidCtx struct {
@@ -79,4 +84,14 @@ type BidCtx struct {
 	BidderCode string
 	GrossECPM  float64
 	NetECPM    float64
+}
+
+type AdUnitCtx struct {
+	MatchedSlot              string
+	IsRegex                  bool
+	MatchedRegex             string
+	SelectedSlotAdUnitConfig *adunitconfig.AdConfig
+	AppliedSlotAdUnitConfig  *adunitconfig.AdConfig
+	UsingDefaultConfig       bool
+	AllowedConnectionTypes   []int
 }
