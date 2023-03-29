@@ -74,6 +74,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 		}
 	}
 
+	requestExt.Prebid.Debug = rCtx.Debug
 	requestExt.Prebid.SupportDeals = rCtx.PreferDeals // && IsCTVAPIRequest(reqWrapper.RequestAPI),
 	requestExt.Prebid.AlternateBidderCodes = getMarketplaceBidders(requestExt.Prebid.AlternateBidderCodes, partnerConfigMap)
 	requestExt.Prebid.Targeting = &openrtb_ext.ExtRequestTargeting{
