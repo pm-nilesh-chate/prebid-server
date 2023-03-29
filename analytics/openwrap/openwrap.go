@@ -225,11 +225,17 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 				price = bidExt.OriginalBidCPMUSD
 			}
 
+			matchedSlot := ""
+			bidderMeta, ok := impCtx.Bidders[seatBid.Seat]
+			if ok {
+				matchedSlot = bidderMeta.MatchedSlot
+			}
+
 			pr := PartnerRecord{
 				PartnerID:        seatBid.Seat,
 				BidderCode:       seatBid.Seat,
-				KGPV:             impCtx.MatchedSlot,
-				KGPSV:            impCtx.MatchedSlot,
+				KGPV:             matchedSlot,
+				KGPSV:            matchedSlot,
 				BidID:            bid.ID,
 				OrigBidID:        bid.ID,
 				DefaultBidStatus: 0,

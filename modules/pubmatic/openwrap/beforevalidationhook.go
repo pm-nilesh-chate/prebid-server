@@ -488,7 +488,7 @@ func getVASTEventMacros(rctx models.RequestCtx) map[string]string {
 	return map[string]string{
 		string(models.MacroProfileID):           fmt.Sprintf("%d", rctx.ProfileID),
 		string(models.MacroProfileVersionID):    fmt.Sprintf("%d", rctx.DisplayID),
-		string(models.MacroUnixTimeStamp):       fmt.Sprintf("%d", rctx.StartTime, 10),
+		string(models.MacroUnixTimeStamp):       fmt.Sprintf("%d", rctx.StartTime),
 		string(models.MacroPlatform):            fmt.Sprintf("%d", rctx.DevicePlatform),
 		string(models.MacroSSAI):                rctx.SSAI,
 		string(models.MacroWrapperImpressionID): rctx.LoggerImpressionID,
