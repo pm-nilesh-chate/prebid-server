@@ -65,6 +65,12 @@ func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 				partnerNameMap[partnerConfig[models.BidderCode]] = partnerConfig
 			}
 
+			matchedSlot := ""
+			bidderMeta, ok := rctx.ImpBidCtx[bid.ImpID].Bidders[seatBid.Seat]
+			if ok {
+				matchedSlot = bidderMeta.MatchedSlot
+			}
+
 			tracker.Adunit = rctx.ImpBidCtx[bid.ImpID].TagID
 			tracker.SlotID = fmt.Sprintf("%s_%s", bid.ImpID, tracker.Adunit)
 			tracker.RewardedInventory = getRewardedInventoryFlag(rctx.ImpBidCtx[bid.ImpID].IsRewardInventory)
@@ -73,7 +79,7 @@ func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 				BidderCode: seatBid.Seat,
 				BidID:      bid.ID,
 				OrigBidID:  bid.ID,
-				KGPV:       rctx.ImpBidCtx[bid.ImpID].MatchedSlot,
+				KGPV:       matchedSlot,
 				NetECPM:    models.GetNetEcpm(bid.Price, models.GetRevenueShare(partnerNameMap[seatBid.Seat])),
 				GrossECPM:  models.GetGrossEcpm(bid.Price),
 			}
