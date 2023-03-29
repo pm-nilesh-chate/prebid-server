@@ -8,9 +8,7 @@ func (m OpenWrap) getProfileData(rCtx models.RequestCtx) (map[int]map[string]str
 		return getTestModePartnerConfigMap(rCtx.PubID, rCtx.ProfileID, rCtx.DisplayID, rCtx.Platform), nil
 	} else if rCtx.ProfileID == 0 {
 		return getDefaultPartnerConfigMap(rCtx.PubID, rCtx.ProfileID, rCtx.DisplayID), nil
-	} else {
-		return m.cache.GetPartnerConfigMap(rCtx.PubID, rCtx.ProfileID, rCtx.DisplayID)
 	}
 
-	return nil, nil
+	return m.cache.GetPartnerConfigMap(rCtx.PubID, rCtx.ProfileID, rCtx.DisplayID)
 }
