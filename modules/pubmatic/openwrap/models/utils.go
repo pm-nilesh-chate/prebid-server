@@ -22,7 +22,9 @@ func IsCTVAPIRequest(api string) bool {
 }
 
 func GetRequestExtWrapper(request []byte, wrapperLocation ...string) (RequestExtWrapper, error) {
-	extWrapper := RequestExtWrapper{}
+	extWrapper := RequestExtWrapper{
+		SSAuctionFlag: -1,
+	}
 
 	if len(wrapperLocation) == 0 {
 		wrapperLocation = []string{"ext", "prebid", "bidderparams", "pubmatic", "wrapper"}

@@ -23,7 +23,10 @@ func (m OpenWrap) handleEntrypointHook(
 	miCtx hookstage.ModuleInvocationContext,
 	payload hookstage.EntrypointPayload,
 ) (hookstage.HookResult[hookstage.EntrypointPayload], error) {
-	result := hookstage.HookResult[hookstage.EntrypointPayload]{}
+	// TODO in all hooks
+	result := hookstage.HookResult[hookstage.EntrypointPayload]{
+		Reject: true,
+	}
 
 	var err error
 	var requestExtWrapper models.RequestExtWrapper
@@ -46,7 +49,6 @@ func (m OpenWrap) handleEntrypointHook(
 	}
 
 	if err != nil || requestExtWrapper.ProfileId == 0 {
-		result.Reject = true
 		result.NbrCode = errorcodes.ErrMissingProfileID.Code()
 		result.Errors = append(result.Errors, errorcodes.ErrMissingProfileID.Error())
 		return result, err
@@ -82,5 +84,6 @@ func (m OpenWrap) handleEntrypointHook(
 	result.ModuleContext = make(hookstage.ModuleContext)
 	result.ModuleContext["rctx"] = rCtx
 
+	result.Reject = false
 	return result, nil
 }

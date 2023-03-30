@@ -48,6 +48,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 	rCtx.Platform, _ = rCtx.GetVersionLevelKey(models.PLATFORM_KEY)
 	rCtx.PageURL = getPageURL(payload.BidRequest)
 	rCtx.DevicePlatform = GetDevicePlatform(rCtx.UA, payload.BidRequest, rCtx.Platform)
+	rCtx.SendAllBids = isSendAllBids(rCtx)
 
 	if payload.BidRequest.Site != nil {
 		if len(payload.BidRequest.Site.Domain) != 0 {
@@ -557,4 +558,31 @@ func (m OpenWrap) setTimeout(rCtx models.RequestCtx) int64 {
 		}
 	}
 	return auctionTimeout
+}
+
+// isSendAllBids returns true in below cases:
+// if ssauction flag is set 0 in the request
+// if ssauction flag is not set and platform is dislay, then by default send all bids
+// if ssauction flag is not set and platform is in-app, then check if profile setting sendAllBids is set to 1
+func isSendAllBids(rctx models.RequestCtx) bool {
+
+	//if ssauction is set to 0 in the request
+	if rctx.SSAuction == 0 {
+		return true
+	} else if rctx.SSAuction == -1 {
+		//when ssauction flag is not present in request
+
+		//if platform is dislay, then by default send all bids is enabled
+		if rctx.Platform == models.PLATFORM_DISPLAY {
+			return true
+		}
+
+		//if platform is in-app, then check if profile setting sendAllBids is set to 1
+		if rctx.Platform == models.PLATFORM_APP {
+			if models.GetVersionLevelPropertyFromPartnerConfig(rctx.PartnerConfigMap, models.SendAllBidsKey) == "1" {
+				return true
+			}
+		}
+	}
+	return false
 }
