@@ -21,7 +21,7 @@ func (c *cache) populatePublisherVASTTags(pubid int) {
 		publisherVASTTags = models.PublisherVASTTags{}
 	}
 
-	c.cache.Set(cacheKey, publisherVASTTags, c.cfg.VASTTagCacheExpiry)
+	c.cache.Set(cacheKey, publisherVASTTags, getSeconds(c.cfg.VASTTagCacheExpiry))
 }
 
 // GetPublisherVASTTagsFromCache read publisher level vast tag details from cache

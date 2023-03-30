@@ -23,6 +23,8 @@ func (m OpenWrap) handleEntrypointHook(
 	miCtx hookstage.ModuleInvocationContext,
 	payload hookstage.EntrypointPayload,
 ) (hookstage.HookResult[hookstage.EntrypointPayload], error) {
+	// TODO marshal and log rCtx when request.ext.prebid.trace=verbose
+
 	// TODO in all hooks
 	result := hookstage.HookResult[hookstage.EntrypointPayload]{
 		Reject: true,
