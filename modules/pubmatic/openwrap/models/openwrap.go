@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 
+	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/adunitconfig"
 )
 
@@ -47,6 +48,15 @@ type RequestCtx struct {
 	AdUnitConfig *adunitconfig.AdUnitConfig
 
 	Source string
+
+	SendAllBids bool
+	WinningBids map[string]OwBid
+}
+
+type OwBid struct {
+	*openrtb2.Bid
+	NetEcpm              float64
+	BidDealTierSatisfied bool
 }
 
 func (r RequestCtx) GetVersionLevelKey(key string) (string, bool) {

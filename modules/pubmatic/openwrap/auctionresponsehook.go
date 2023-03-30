@@ -14,12 +14,6 @@ import (
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 )
 
-type owBid struct {
-	*openrtb2.Bid
-	netEcpm              float64
-	bidDealTierSatisfied bool
-}
-
 func (m OpenWrap) handleAuctionResponseHook(
 	ctx context.Context,
 	moduleCtx hookstage.ModuleInvocationContext,
@@ -45,7 +39,7 @@ func (m OpenWrap) handleAuctionResponseHook(
 	values["request-ctx"] = &rctx
 	result.AnalyticsTags.Activities[0].Results[0].Values = values
 
-	winningBids := make(map[string]owBid, 0)
+	winningBids := make(map[string]models.OwBid, 0)
 	for _, seatBid := range payload.BidResponse.SeatBid {
 		for _, bid := range seatBid.Bid {
 			impCtx, ok := rctx.ImpBidCtx[bid.ImpID]
@@ -103,7 +97,7 @@ func (m OpenWrap) handleAuctionResponseHook(
 				}
 			}
 
-			owbid := owBid{&bid, bidExt.NetECPM, bidExt.Prebid.DealTierSatisfied}
+			owbid := models.OwBid{&bid, bidExt.NetECPM, bidExt.Prebid.DealTierSatisfied}
 			wbid, ok := winningBids[bid.ImpID]
 			if !ok || isNewWinningBid(owbid, wbid, rctx.PreferDeals) {
 				winningBids[owbid.ImpID] = owbid
@@ -120,7 +114,12 @@ func (m OpenWrap) handleAuctionResponseHook(
 		}
 	}
 
-	addPWTTargetingForBid(rctx, payload.BidResponse, winningBids)
+	rctx.WinningBids = winningBids
+
+	warnings := addPWTTargetingForBid(rctx, payload.BidResponse, winningBids)
+	if len(warnings) != 0 {
+		result.Warnings = append(result.Warnings, warnings...)
+	}
 
 	result.ChangeSet.AddMutation(func(ap hookstage.AuctionResponsePayload) (hookstage.AuctionResponsePayload, error) {
 		rctx := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
@@ -143,6 +142,11 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 
 	for i, seatBid := range bidResponse.SeatBid {
 		for j, bid := range seatBid.Bid {
+			if b, ok := rctx.WinningBids[bid.ImpID]; ok && b.ID != bid.ID && !rctx.SendAllBids {
+				bidResponse.SeatBid[i].Bid = append(bidResponse.SeatBid[i].Bid[:j], bidResponse.SeatBid[i].Bid[j+1:]...)
+				continue
+			}
+
 			impCtx, ok := rctx.ImpBidCtx[bid.ImpID]
 			if !ok {
 				continue
@@ -172,19 +176,19 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 }
 
 // isNewWinningBid calculates if the new bid (nbid) will win against the current winning bid (wbid) given preferDeals.
-func isNewWinningBid(bid, wbid owBid, preferDeals bool) bool {
+func isNewWinningBid(bid, wbid models.OwBid, preferDeals bool) bool {
 	if preferDeals {
 		//only wbid has deal
-		if wbid.bidDealTierSatisfied && !bid.bidDealTierSatisfied {
+		if wbid.BidDealTierSatisfied && !bid.BidDealTierSatisfied {
 			return false
 		}
 		//only bid has deal
-		if !wbid.bidDealTierSatisfied && bid.bidDealTierSatisfied {
+		if !wbid.BidDealTierSatisfied && bid.BidDealTierSatisfied {
 			return true
 		}
 	}
 	//both have deal or both do not have deal
-	return bid.netEcpm > wbid.netEcpm
+	return bid.NetEcpm > wbid.NetEcpm
 }
 
 func getPlatformName(platform string) string {
@@ -198,7 +202,7 @@ func getIntPtr(i int) *int {
 	return &i
 }
 
-func addPWTTargetingForBid(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse, winningBids map[string]owBid) {
+func addPWTTargetingForBid(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse, winningBids map[string]models.OwBid) (warnings []string) {
 	if rctx.Platform != models.PLATFORM_APP {
 		return
 	}
@@ -240,8 +244,11 @@ func addPWTTargetingForBid(rctx models.RequestCtx, bidResponse *openrtb2.BidResp
 			}
 
 			if b, ok := winningBids[bid.ImpID]; ok && b.ID == bid.ID {
-				// bidExt.Winner = ptrutil.ToPtr(1)
-				bidCtx.Winner = 1
+				if rctx.SendAllBids {
+					bidCtx.Winner = 1
+				} else {
+					warnings = append(warnings, "dropping bid "+bid.ID+" as sendAllBids is disabled")
+				}
 
 				bidCtx.Prebid.Targeting[models.PWT_SLOTID] = bid.ID
 				bidCtx.Prebid.Targeting[models.PWT_BIDSTATUS] = "1"
@@ -262,4 +269,5 @@ func addPWTTargetingForBid(rctx models.RequestCtx, bidResponse *openrtb2.BidResp
 			rctx.ImpBidCtx[bid.ImpID] = impCtx
 		}
 	}
+	return
 }
