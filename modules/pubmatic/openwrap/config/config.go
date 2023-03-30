@@ -87,13 +87,13 @@ type SSHB struct {
 		Cache Cache
 
 		Timeout struct {
-			MaxTimeout          int
-			MinTimeout          int
-			PrebidDelta         int
-			HBTimeout           int
-			CacheConTimeout     int // Connection timeout for cache
-			MaxQueryTimeout     int // max_execution time for db query
-			MaxDbContextTimeout int // context timeout for db query
+			MaxTimeout          int64
+			MinTimeout          int64
+			PrebidDelta         int64
+			HBTimeout           int64
+			CacheConTimeout     int64 // Connection timeout for cache
+			MaxQueryTimeout     int64 // max_execution time for db query
+			MaxDbContextTimeout int64 // context timeout for db query
 		}
 
 		Tracker struct {
