@@ -34,6 +34,10 @@ func (m OpenWrap) handleBeforeValidationHook(
 	}
 
 	rCtx := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
+	defer func() {
+		moduleCtx.ModuleContext["rctx"] = rCtx
+	}()
+
 	rCtx.IsTestRequest = payload.BidRequest.Test == 2
 
 	partnerConfigMap, err := m.getProfileData(rCtx)
@@ -240,7 +244,6 @@ func (m OpenWrap) handleBeforeValidationHook(
 		return ep, err
 	}, hookstage.MutationUpdate, "request-body-with-profile-data")
 
-	moduleCtx.ModuleContext["rctx"] = rCtx
 	return result, nil
 }
 
