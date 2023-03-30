@@ -145,57 +145,8 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 		wlog.logContentObject(ao.Request.App.Content)
 	}
 
-	// //log adpod percentage object
-	// if nil != ao.Request.Ext {
-	// 	ext, ok := ao.Request.Ext.(*openrtb.ExtRequest)
-	// 	if ok {
-	// 		wlog.logAdPodPercentage(ext.AdPod)
-	// 	}
-	// }
-
 	wlog.SetTimeout(int(ao.Request.TMax))
 
-	// if uidCookie, _ := rCtx.Cookies(models.KADUSERCOOKIE); uidCookie != nil {
-	// 	controller.LoggerRecord.SetUID(uidCookie.Value)
-	// }
-	// if testConfigApplied {
-	// 	controller.LoggerRecord.SetTestConfigApplied(1)
-	// }
-
-	// wl := CreateCommonLogger(ao)
-
-	// partnerMap := make([]map[string]PartnerRecord, len(ao.Request.Imp))
-	// // for imp, impCtx := range rCtx.ImpBidCtx {
-	// for i, imp := range ao.Request.Imp {
-	// 	impCtx, ok := rCtx.ImpBidCtx[imp.ID]
-	// 	if !ok {
-	// 		continue
-	// 	}
-
-	// 	partnerMap[i] = make(map[string]PartnerRecord)
-	// 	for bidder, bidderData := range impCtx.Bidders { // for partnerID, partnerConfig := range partnerConfigMap {
-	// 		partnerMap[i][bidder] = PartnerRecord{
-	// 			PartnerID:        bidder,
-	// 			BidderCode:       bidder,
-	// 			PartnerSize:      "0x0",
-	// 			KGPV:             impCtx.MatchedSlot,
-	// 			KGPSV:            impCtx.KGPV,
-	// 			BidID:            imp.ID,
-	// 			OrigBidID:        imp.ID,
-	// 			DefaultBidStatus: 1,
-	// 			ServerSide:       1,
-	// 			RevShare: func() float64 {
-	// 				r, _ := strconv.ParseFloat(rCtx.PartnerConfigMap[bidderData.PartnerID][models.REVSHARE], 64)
-	// 				return r
-	// 			}(),
-	// 			KGP: impCtx.MatchedSlot,
-	// 			// MatchedImpression: matchedImpression,
-	// 		}
-	// 	}
-	// }
-
-	// imp-partner-record
-	// ipr := make(map[string]map[string]PartnerRecord)
 	ipr := make(map[string][]PartnerRecord)
 	for _, seatBid := range ao.Response.SeatBid {
 		if seatBid.Seat == string(openrtb_ext.BidderOWPrebidCTV) {
