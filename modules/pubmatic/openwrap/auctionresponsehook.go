@@ -123,7 +123,10 @@ func (m OpenWrap) handleAuctionResponseHook(
 
 	rctx.WinningBids = winningBids
 
-	warnings := addPWTTargetingForBid(rctx, payload.BidResponse, winningBids)
+	droppedBids, warnings := addPWTTargetingForBid(rctx, payload.BidResponse)
+	if len(droppedBids) != 0 {
+		rctx.DroppedBids = droppedBids
+	}
 	if len(warnings) != 0 {
 		result.Warnings = append(result.Warnings, warnings...)
 	}
@@ -217,9 +220,13 @@ func getIntPtr(i int) *int {
 	return &i
 }
 
-func addPWTTargetingForBid(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse, winningBids map[string]models.OwBid) (warnings []string) {
+func addPWTTargetingForBid(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) (droppedBids map[string][]openrtb2.Bid, warnings []string) {
 	if rctx.Platform != models.PLATFORM_APP {
 		return
+	}
+
+	if !rctx.SendAllBids {
+		droppedBids = make(map[string][]openrtb2.Bid)
 	}
 
 	//setTargeting needs a seperate loop as final winner would be decided after all the bids are processed by auction
@@ -228,6 +235,15 @@ func addPWTTargetingForBid(rctx models.RequestCtx, bidResponse *openrtb2.BidResp
 			impCtx, ok := rctx.ImpBidCtx[bid.ImpID]
 			if !ok {
 				continue
+			}
+
+			isWinningBid := false
+			if b, ok := rctx.WinningBids[bid.ImpID]; ok && b.ID == bid.ID {
+				isWinningBid = true
+			}
+
+			if !(isWinningBid && rctx.SendAllBids) {
+				droppedBids[seatBid.Seat] = append(droppedBids[seatBid.Seat], bid)
 			}
 
 			bidCtx, ok := impCtx.BidCtx[bid.ID]
@@ -258,7 +274,7 @@ func addPWTTargetingForBid(rctx models.RequestCtx, bidResponse *openrtb2.BidResp
 				bidCtx.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_DEALID)] = bid.DealID
 			}
 
-			if b, ok := winningBids[bid.ImpID]; ok && b.ID == bid.ID {
+			if isWinningBid {
 				if rctx.SendAllBids {
 					bidCtx.Winner = 1
 				}

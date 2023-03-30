@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/golang/glog"
+	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/analytics"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	"github.com/prebid/prebid-server/openrtb_ext"
@@ -148,23 +149,30 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 	wlog.SetTimeout(int(ao.Request.TMax))
 
 	ipr := make(map[string][]PartnerRecord)
+
+	// loggerSeat := make(map[string][]openrtb2.Bid, 0, len(ao.Response.SeatBid)+len(rctx.DroppedBids))
+
+	loggerSeat := make(map[string][]openrtb2.Bid)
 	for _, seatBid := range ao.Response.SeatBid {
-		if seatBid.Seat == string(openrtb_ext.BidderOWPrebidCTV) {
+		loggerSeat[seatBid.Seat] = append(loggerSeat[seatBid.Seat], seatBid.Bid...)
+	}
+	for seat, Bids := range rCtx.DroppedBids {
+		loggerSeat[seat] = append(loggerSeat[seat], Bids...)
+	}
+
+	for seat, bids := range loggerSeat {
+		if seat == string(openrtb_ext.BidderOWPrebidCTV) {
 			continue
 		}
 
-		for _, bid := range seatBid.Bid {
+		for _, bid := range bids {
 			impCtx, ok := rCtx.ImpBidCtx[bid.ImpID]
 			if !ok {
 				continue
 			}
 
-			// if _, ok := ipr[bid.ImpID]; !ok {
-			// 	ipr[bid.ImpID] = make(map[string]PartnerRecord)
-			// }
-
 			revShare := 0.0
-			if pd, ok := impCtx.Bidders[seatBid.Seat]; ok {
+			if pd, ok := impCtx.Bidders[seat]; ok {
 				revShare, _ = strconv.ParseFloat(rCtx.PartnerConfigMap[pd.PartnerID][models.REVSHARE], 64)
 			}
 
@@ -177,14 +185,19 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 			}
 
 			matchedSlot := ""
-			bidderMeta, ok := impCtx.Bidders[seatBid.Seat]
+			bidderMeta, ok := impCtx.Bidders[seat]
 			if ok {
 				matchedSlot = bidderMeta.MatchedSlot
 			}
 
+			partnerID := seat
+			if bidExt.Prebid.Meta != nil && len(bidExt.Prebid.Meta.AdapterCode) != 0 {
+				partnerID = bidExt.Prebid.Meta.AdapterCode
+			}
+
 			pr := PartnerRecord{
-				PartnerID:        seatBid.Seat,
-				BidderCode:       seatBid.Seat,
+				PartnerID:        partnerID,
+				BidderCode:       seat,
 				KGPV:             matchedSlot,
 				KGPSV:            matchedSlot,
 				BidID:            bid.ID,
