@@ -23,11 +23,12 @@ func (m OpenWrap) handleBeforeValidationHook(
 	moduleCtx hookstage.ModuleInvocationContext,
 	payload hookstage.BeforeValidationRequestPayload,
 ) (hookstage.HookResult[hookstage.BeforeValidationRequestPayload], error) {
-	result := hookstage.HookResult[hookstage.BeforeValidationRequestPayload]{}
+	result := hookstage.HookResult[hookstage.BeforeValidationRequestPayload]{
+		Reject: true,
+	}
 
 	requestExt, err := models.GetRequestExt(payload.BidRequest.Ext)
 	if err != nil {
-		result.Reject = true
 		result.NbrCode = errorcodes.ErrInvalidRequestExtension.Code()
 		result.Errors = append(result.Errors, errorcodes.ErrInvalidRequestExtension.Error())
 		return result, err
@@ -42,7 +43,6 @@ func (m OpenWrap) handleBeforeValidationHook(
 
 	partnerConfigMap, err := m.getProfileData(rCtx)
 	if err != nil || len(partnerConfigMap) == 0 {
-		result.Reject = true
 		result.NbrCode = errorcodes.ErrInvalidConfiguration.Code()
 		result.DebugMessages = append(result.Errors, errorcodes.ErrInvalidConfiguration.Error())
 		return result, errors.New("failed to get profile data")
@@ -66,6 +66,15 @@ func (m OpenWrap) handleBeforeValidationHook(
 
 	rCtx.AdapterThrottleMap, err = GetAdapterThrottleMap(rCtx.PartnerConfigMap)
 	if err != nil {
+		result.NbrCode = errorcodes.ErrAllPartnerThrottled.Code()
+		result.DebugMessages = append(result.Errors, err.Error())
+		return result, err
+	}
+
+	priceGranularity, err := computePriceGranularity(rCtx)
+	if err != nil {
+		result.NbrCode = errorcodes.ErrAllPartnerThrottled.Code()
+		result.DebugMessages = append(result.Errors, err.Error())
 		return result, err
 	}
 
@@ -83,6 +92,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 	requestExt.Prebid.SupportDeals = rCtx.PreferDeals // && IsCTVAPIRequest(reqWrapper.RequestAPI),
 	requestExt.Prebid.AlternateBidderCodes = getMarketplaceBidders(requestExt.Prebid.AlternateBidderCodes, partnerConfigMap)
 	requestExt.Prebid.Targeting = &openrtb_ext.ExtRequestTargeting{
+		PriceGranularity:  priceGranularity,
 		IncludeBidderKeys: true,
 		IncludeWinners:    true,
 	}
@@ -244,6 +254,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 		return ep, err
 	}, hookstage.MutationUpdate, "request-body-with-profile-data")
 
+	result.Reject = false
 	return result, nil
 }
 

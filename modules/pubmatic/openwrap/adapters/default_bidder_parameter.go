@@ -2,6 +2,7 @@ package adapters
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"os"
@@ -47,8 +48,11 @@ func (pm *ParameterMapping) String() string {
 		pm.BidderParamName, pm.KeyName, pm.Datatype, pm.Required, pm.DefaultValue)
 }
 
-func parseBidderParams() {
-	schemas := parseBidderSchemaDefinitions()
+func parseBidderParams() error {
+	schemas, err := parseBidderSchemaDefinitions()
+	if err != nil {
+		return err
+	}
 	owParameterMappings := parseOpenWrapParameterMappings()
 
 	adapterParams = make(map[string]map[string]*ParameterMapping)
@@ -102,6 +106,7 @@ func parseBidderParams() {
 		adapterParams[bidderName] = parameters
 	}
 
+	return nil
 }
 
 func getType(param BidderParameter) string {
@@ -124,17 +129,17 @@ func getType(param BidderParameter) string {
 	return tp
 }
 
-func parseBidderSchemaDefinitions() map[string]*BidderParamJSON {
+func parseBidderSchemaDefinitions() (map[string]*BidderParamJSON, error) {
 	schemas := make(map[string]*BidderParamJSON)
 
 	schemaDirectory := getBidderParamsDirectory()
 	if schemaDirectory == "" {
-		return schemas
+		return schemas, errors.New("Error failed to parse bidder params files")
 	}
 
 	fileInfos, err := os.ReadDir(schemaDirectory)
 	if err != nil {
-		return schemas
+		return schemas, errors.New("Error failed to parse bidder params files" + err.Error())
 	}
 
 	bidderMap := openrtb_ext.BuildBidderMap()
@@ -142,15 +147,15 @@ func parseBidderSchemaDefinitions() map[string]*BidderParamJSON {
 	for _, fileInfo := range fileInfos {
 		bidderName := strings.TrimSuffix(fileInfo.Name(), ".json")
 		if _, isValid := bidderMap[bidderName]; !isValid {
-			return schemas
+			continue
 		}
 		_, err := filepath.Abs(filepath.Join(schemaDirectory, fileInfo.Name()))
 		if err != nil {
-			return schemas
+			continue
 		}
 		fileBytes, err := os.ReadFile(fmt.Sprintf("%s/%s", schemaDirectory, fileInfo.Name()))
 		if err != nil {
-			return schemas
+			continue
 		}
 
 		var bidderParamJSON BidderParamJSON
@@ -162,11 +167,15 @@ func parseBidderSchemaDefinitions() map[string]*BidderParamJSON {
 		schemas[bidderName] = &bidderParamJSON
 	}
 
-	return schemas
+	if len(schemas) == 0 {
+		return schemas, errors.New("Error failed to parse bidder params files")
+	}
+
+	return schemas, nil
 }
 
 func getBidderParamsDirectory() string {
-	schemaDirectory := "../../../static/bidder-params"
+	schemaDirectory := "./static/bidder-params"
 	if isDirectoryExists(schemaDirectory) {
 		return schemaDirectory
 	}
