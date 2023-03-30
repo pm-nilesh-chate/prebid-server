@@ -30,6 +30,9 @@ func (m OpenWrap) handleAuctionResponseHook(
 	if !ok {
 		return result, nil
 	}
+	defer func() {
+		moduleCtx.ModuleContext["rctx"] = rctx
+	}()
 
 	// cache rctx for analytics
 	result.AnalyticsTags.Activities = make([]hookanalytics.Activity, 1)
@@ -97,7 +100,11 @@ func (m OpenWrap) handleAuctionResponseHook(
 				}
 			}
 
-			owbid := models.OwBid{&bid, bidExt.NetECPM, bidExt.Prebid.DealTierSatisfied}
+			owbid := models.OwBid{
+				Bid:                  &bid,
+				NetEcpm:              bidExt.NetECPM,
+				BidDealTierSatisfied: bidExt.Prebid.DealTierSatisfied,
+			}
 			wbid, ok := winningBids[bid.ImpID]
 			if !ok || isNewWinningBid(owbid, wbid, rctx.PreferDeals) {
 				winningBids[owbid.ImpID] = owbid
@@ -161,13 +168,21 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 		}
 	}
 
-	// keep pubmatic 1st to handle automation failure.
-	if bidResponse.SeatBid[0].Seat != "pubmatic" {
-		for i := 0; i < len(bidResponse.SeatBid); i++ {
-			if bidResponse.SeatBid[i].Seat == "pubmatic" {
-				temp := bidResponse.SeatBid[0]
-				bidResponse.SeatBid[0] = bidResponse.SeatBid[i]
-				bidResponse.SeatBid[i] = temp
+	for i, seatBid := range bidResponse.SeatBid {
+		if len(seatBid.Bid) == 0 {
+			bidResponse.SeatBid = append(bidResponse.SeatBid[:i], bidResponse.SeatBid[i+1:]...)
+		}
+	}
+
+	if len(bidResponse.SeatBid) != 0 {
+		// keep pubmatic 1st to handle automation failure.
+		if bidResponse.SeatBid[0].Seat != "pubmatic" {
+			for i := 0; i < len(bidResponse.SeatBid); i++ {
+				if bidResponse.SeatBid[i].Seat == "pubmatic" {
+					temp := bidResponse.SeatBid[0]
+					bidResponse.SeatBid[0] = bidResponse.SeatBid[i]
+					bidResponse.SeatBid[i] = temp
+				}
 			}
 		}
 	}
@@ -246,8 +261,6 @@ func addPWTTargetingForBid(rctx models.RequestCtx, bidResponse *openrtb2.BidResp
 			if b, ok := winningBids[bid.ImpID]; ok && b.ID == bid.ID {
 				if rctx.SendAllBids {
 					bidCtx.Winner = 1
-				} else {
-					warnings = append(warnings, "dropping bid "+bid.ID+" as sendAllBids is disabled")
 				}
 
 				bidCtx.Prebid.Targeting[models.PWT_SLOTID] = bid.ID
@@ -259,6 +272,8 @@ func addPWTTargetingForBid(rctx models.RequestCtx, bidResponse *openrtb2.BidResp
 				if len(bid.DealID) != 0 {
 					bidCtx.Prebid.Targeting[models.PWT_DEALID] = bid.DealID
 				}
+			} else if !rctx.SendAllBids {
+				warnings = append(warnings, "dropping bid "+bid.ID+" as sendAllBids is disabled")
 			}
 
 			// cache for bid details for logger and tracker
