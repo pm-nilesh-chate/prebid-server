@@ -14,6 +14,12 @@ import (
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 )
 
+type owBid struct {
+	*openrtb2.Bid
+	netEcpm              float64
+	bidDealTierSatisfied bool
+}
+
 func (m OpenWrap) handleAuctionResponseHook(
 	ctx context.Context,
 	moduleCtx hookstage.ModuleInvocationContext,
@@ -31,6 +37,7 @@ func (m OpenWrap) handleAuctionResponseHook(
 		return result, nil
 	}
 
+	// cache rctx for analytics
 	result.AnalyticsTags.Activities = make([]hookanalytics.Activity, 1)
 	result.AnalyticsTags.Activities[0].Name = "openwrap_request_ctx"
 	result.AnalyticsTags.Activities[0].Results = make([]hookanalytics.Result, 1)
@@ -38,52 +45,29 @@ func (m OpenWrap) handleAuctionResponseHook(
 	values["request-ctx"] = &rctx
 	result.AnalyticsTags.Activities[0].Results[0].Values = values
 
-	result.ChangeSet.AddMutation(func(ap hookstage.AuctionResponsePayload) (hookstage.AuctionResponsePayload, error) {
-		rctx := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
-		var err error
-		ap.BidResponse, err = m.updateORTBV25Response(rctx, ap.BidResponse)
-		if err != nil {
-			return ap, err
-		}
-		ap.BidResponse, err = m.injectTrackers(rctx, ap.BidResponse)
-		return ap, err
-	}, hookstage.MutationUpdate, "response-body-with-sshb-format")
-
-	return result, nil
-}
-
-type owBid struct {
-	*openrtb2.Bid
-	netEcpm              float64
-	bidDealTierSatisfied bool
-}
-
-func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) (*openrtb2.BidResponse, error) {
-	if len(bidResponse.SeatBid) == 0 {
-		return bidResponse, nil
-	}
-
 	winningBids := make(map[string]owBid, 0)
-	// winningBidsByBidder := make(map[string]map[openrtb_ext.BidderName]owBid, 0)
-	partnerNameMap := make(map[string]map[string]string)
-
-	for i, seatBid := range bidResponse.SeatBid {
-		for j, bid := range seatBid.Bid {
-			// NYC_TODO maintain a global map of ow-partner-id to biddercode. Ex. 8->pubmatic
-			// prepare partner name to partner config map
-
-			for _, partnerConfig := range rctx.PartnerConfigMap {
-				if partnerConfig[models.SERVER_SIDE_FLAG] != "1" {
-					continue
-				}
-				partnerNameMap[partnerConfig[models.BidderCode]] = partnerConfig
+	for _, seatBid := range payload.BidResponse.SeatBid {
+		for _, bid := range seatBid.Bid {
+			impCtx, ok := rctx.ImpBidCtx[bid.ImpID]
+			if !ok {
+				result.Errors = append(result.Errors, "invalid imp.ID for bid"+bid.ImpID)
+				continue
 			}
+
+			partnerID := 0
+			if bidderMeta, ok := impCtx.Bidders[seatBid.Seat]; ok {
+				partnerID = bidderMeta.PartnerID
+			}
+
+			revShare := models.GetRevenueShare(rctx.PartnerConfigMap[partnerID])
+			price := bid.Price
 
 			bidExt := &models.BidExt{}
 			if len(bid.Ext) != 0 { //NYC_TODO: most of the fields should be filled even if unmarshal fails
 				err := json.Unmarshal(bid.Ext, bidExt)
 				if err != nil {
-					return bidResponse, err
+					result.Errors = append(result.Errors, "failed to unmarshal bid.ext for "+bid.ID)
+					// continue
 				}
 
 				if v, ok := rctx.PartnerConfigMap[models.VersionLevelConfigID]["refreshInterval"]; ok {
@@ -98,18 +82,11 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 					bidExt.CreativeType = models.GetAdFormat(bid.AdM)
 				}
 
-				// bidExt.Summary
-
-				revShare := models.GetRevenueShare(partnerNameMap[seatBid.Seat])
-				price := bid.Price
-				if bidResponse.Cur != "USD" {
+				if payload.BidResponse.Cur != "USD" {
 					price = bidExt.OriginalBidCPMUSD
 				}
 
-				// if platform == models.PLATFORM_APP {
 				bidExt.NetECPM = models.GetNetEcpm(price, revShare)
-				// bidExt.Prebid = addPWTTargetingForBid(*request.Id, eachBid, impExt.Prebid, *eachSeatBid.Seat, platform, winBidFlag, netEcpm)
-				// }
 
 				if rctx.ClientConfigFlag == 1 {
 					if rctx.ImpBidCtx[bid.ImpID].Type == "banner" {
@@ -131,81 +108,48 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 			if !ok || isNewWinningBid(owbid, wbid, rctx.PreferDeals) {
 				winningBids[owbid.ImpID] = owbid
 			}
-			// if bidMap, ok := winningBidsByBidder[owbid.ImpID]; ok {
-			// 	bestSoFar, ok := bidMap[openrtb_ext.BidderName(seatBid.Seat)]
-			// 	if !ok || cpm > bestSoFar.Bid.Price {
-			// 		bidMap[bidderName] = bid
-			// 	}
-			// } else {
-			// 	winningBidsByBidder[bid.Bid.ImpID] = make(map[openrtb_ext.BidderName]*entities.PbsOrtbBid)
-			// 	winningBidsByBidder[bid.Bid.ImpID][bidderName] = bid
-			// }
 
-			var err error
-			bidResponse.SeatBid[i].Bid[j].Ext, err = json.Marshal(bidExt)
-			if err != nil {
-				return bidResponse, err
+			// cache for bid details for logger and tracker
+			if impCtx.BidCtx == nil {
+				impCtx.BidCtx = make(map[string]models.BidCtx)
 			}
+			impCtx.BidCtx[bid.ID] = models.BidCtx{
+				BidExt: *bidExt,
+			}
+			rctx.ImpBidCtx[bid.ImpID] = impCtx
 		}
 	}
 
-	//setTargeting
+	addPWTTargetingForBid(rctx, payload.BidResponse, winningBids)
+
+	result.ChangeSet.AddMutation(func(ap hookstage.AuctionResponsePayload) (hookstage.AuctionResponsePayload, error) {
+		rctx := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
+		var err error
+		ap.BidResponse, err = m.updateORTBV25Response(rctx, ap.BidResponse)
+		if err != nil {
+			return ap, err
+		}
+		ap.BidResponse, err = m.injectTrackers(rctx, ap.BidResponse)
+		return ap, err
+	}, hookstage.MutationUpdate, "response-body-with-sshb-format")
+
+	return result, nil
+}
+
+func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) (*openrtb2.BidResponse, error) {
 	for i, seatBid := range bidResponse.SeatBid {
 		for j, bid := range seatBid.Bid {
-			bidExt := &models.BidExt{}
-			if len(bid.Ext) != 0 {
-				err := json.Unmarshal(bid.Ext, bidExt)
-				if err != nil {
-					return bidResponse, err
-				}
+			impCtx, ok := rctx.ImpBidCtx[bid.ImpID]
+			if !ok {
+				continue
 			}
 
-			revShare := models.GetRevenueShare(partnerNameMap[seatBid.Seat])
-			netEcpm := models.GetNetEcpm(bid.Price, revShare)
-
-			newTargeting := make(map[string]string)
-			for key, value := range bidExt.Prebid.Targeting {
-				if allowTargetingKey(key) {
-					updatedKey := key
-					if strings.HasPrefix(key, models.PrebidTargetingKeyPrefix) {
-						updatedKey = strings.Replace(key, models.PrebidTargetingKeyPrefix, models.OWTargetingKeyPrefix, 1)
-					}
-					newTargeting[updatedKey] = value
-				}
-				delete(bidExt.Prebid.Targeting, key)
+			bidCtx, ok := impCtx.BidCtx[bid.ID]
+			if !ok {
+				continue
 			}
 
-			bidExt.Prebid.Targeting = newTargeting
-			bidExt.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_SLOTID)] = bid.ID
-			bidExt.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_SZ)] = models.GetSize(bid.W, bid.H)
-			bidExt.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_PARTNERID)] = seatBid.Seat
-			bidExt.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_ECPM)] = fmt.Sprintf("%.2f", netEcpm)
-			bidExt.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_PLATFORM)] = getPlatformName(rctx.Platform)
-			bidExt.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_BIDSTATUS)] = "1"
-			if len(bid.DealID) != 0 {
-				bidExt.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_DEALID)] = bid.DealID
-			}
-
-			if b, ok := winningBids[bid.ImpID]; ok && b.ID == bid.ID {
-				// bidExt.Winner = ptrutil.ToPtr(1)
-				bidExt.Winner = 1
-
-				bidExt.Prebid.Targeting[models.PWT_SLOTID] = bid.ID
-				bidExt.Prebid.Targeting[models.PWT_BIDSTATUS] = "1"
-				bidExt.Prebid.Targeting[models.PWT_SZ] = models.GetSize(bid.W, bid.H)
-				bidExt.Prebid.Targeting[models.PWT_PARTNERID] = seatBid.Seat
-				bidExt.Prebid.Targeting[models.PWT_ECPM] = fmt.Sprintf("%.2f", netEcpm)
-				bidExt.Prebid.Targeting[models.PWT_PLATFORM] = getPlatformName(rctx.Platform)
-				if len(bid.DealID) != 0 {
-					bidExt.Prebid.Targeting[models.PWT_DEALID] = bid.DealID
-				}
-			}
-
-			var err error
-			bidResponse.SeatBid[i].Bid[j].Ext, err = json.Marshal(bidExt)
-			if err != nil {
-				return bidResponse, err
-			}
+			bidResponse.SeatBid[i].Bid[j].Ext, _ = json.Marshal(bidCtx.BidExt)
 		}
 	}
 
@@ -248,4 +192,70 @@ func getPlatformName(platform string) string {
 
 func getIntPtr(i int) *int {
 	return &i
+}
+
+func addPWTTargetingForBid(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse, winningBids map[string]owBid) {
+	if rctx.Platform != models.PLATFORM_APP {
+		return
+	}
+
+	//setTargeting needs a seperate loop as final winner would be decided after all the bids are processed by auction
+	for _, seatBid := range bidResponse.SeatBid {
+		for _, bid := range seatBid.Bid {
+			impCtx, ok := rctx.ImpBidCtx[bid.ImpID]
+			if !ok {
+				continue
+			}
+
+			bidCtx, ok := impCtx.BidCtx[bid.ID]
+			if !ok {
+				continue
+			}
+
+			newTargeting := make(map[string]string)
+			for key, value := range bidCtx.Prebid.Targeting {
+				if allowTargetingKey(key) {
+					updatedKey := key
+					if strings.HasPrefix(key, models.PrebidTargetingKeyPrefix) {
+						updatedKey = strings.Replace(key, models.PrebidTargetingKeyPrefix, models.OWTargetingKeyPrefix, 1)
+					}
+					newTargeting[updatedKey] = value
+				}
+				delete(bidCtx.Prebid.Targeting, key)
+			}
+
+			bidCtx.Prebid.Targeting = newTargeting
+			bidCtx.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_SLOTID)] = bid.ID
+			bidCtx.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_SZ)] = models.GetSize(bid.W, bid.H)
+			bidCtx.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_PARTNERID)] = seatBid.Seat
+			bidCtx.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_ECPM)] = fmt.Sprintf("%.2f", bidCtx.NetECPM)
+			bidCtx.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_PLATFORM)] = getPlatformName(rctx.Platform)
+			bidCtx.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_BIDSTATUS)] = "1"
+			if len(bid.DealID) != 0 {
+				bidCtx.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_DEALID)] = bid.DealID
+			}
+
+			if b, ok := winningBids[bid.ImpID]; ok && b.ID == bid.ID {
+				// bidExt.Winner = ptrutil.ToPtr(1)
+				bidCtx.Winner = 1
+
+				bidCtx.Prebid.Targeting[models.PWT_SLOTID] = bid.ID
+				bidCtx.Prebid.Targeting[models.PWT_BIDSTATUS] = "1"
+				bidCtx.Prebid.Targeting[models.PWT_SZ] = models.GetSize(bid.W, bid.H)
+				bidCtx.Prebid.Targeting[models.PWT_PARTNERID] = seatBid.Seat
+				bidCtx.Prebid.Targeting[models.PWT_ECPM] = fmt.Sprintf("%.2f", bidCtx.NetECPM)
+				bidCtx.Prebid.Targeting[models.PWT_PLATFORM] = getPlatformName(rctx.Platform)
+				if len(bid.DealID) != 0 {
+					bidCtx.Prebid.Targeting[models.PWT_DEALID] = bid.DealID
+				}
+			}
+
+			// cache for bid details for logger and tracker
+			if impCtx.BidCtx == nil {
+				impCtx.BidCtx = make(map[string]models.BidCtx)
+			}
+			impCtx.BidCtx[bid.ID] = bidCtx
+			rctx.ImpBidCtx[bid.ImpID] = impCtx
+		}
+	}
 }

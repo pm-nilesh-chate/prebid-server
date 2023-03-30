@@ -53,35 +53,43 @@ func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 		SSAI:      rctx.SSAI,
 	}
 
-	partnerNameMap := make(map[string]map[string]string)
-
 	for i, seatBid := range bidResponse.SeatBid {
 		for j, bid := range seatBid.Bid {
-
-			for _, partnerConfig := range rctx.PartnerConfigMap {
-				if partnerConfig[models.SERVER_SIDE_FLAG] != "1" {
-					continue
-				}
-				partnerNameMap[partnerConfig[models.BidderCode]] = partnerConfig
-			}
-
+			tagid := ""
+			secure := 0
+			netECPM := 0
 			matchedSlot := ""
-			bidderMeta, ok := rctx.ImpBidCtx[bid.ImpID].Bidders[seatBid.Seat]
-			if ok {
-				matchedSlot = bidderMeta.MatchedSlot
+			price := bid.Price
+			isRewardInventory := 0
+
+			if impCtx, ok := rctx.ImpBidCtx[bid.ImpID]; ok {
+				if bidCtx, ok := impCtx.BidCtx[bid.ID]; ok {
+					if bidResponse.Cur != "USD" {
+						price = bidCtx.OriginalBidCPMUSD
+					}
+					netECPM = int(bidCtx.NetECPM)
+				}
+
+				if bidderMeta, ok := impCtx.Bidders[seatBid.Seat]; ok {
+					matchedSlot = bidderMeta.MatchedSlot
+				}
+
+				tagid = impCtx.TagID
+				secure = impCtx.Secure
+				isRewardInventory = getRewardedInventoryFlag(rctx.ImpBidCtx[bid.ImpID].IsRewardInventory)
 			}
 
-			tracker.Adunit = rctx.ImpBidCtx[bid.ImpID].TagID
-			tracker.SlotID = fmt.Sprintf("%s_%s", bid.ImpID, tracker.Adunit)
-			tracker.RewardedInventory = getRewardedInventoryFlag(rctx.ImpBidCtx[bid.ImpID].IsRewardInventory)
+			tracker.Adunit = tagid
+			tracker.SlotID = fmt.Sprintf("%s_%s", bid.ImpID, tagid)
+			tracker.RewardedInventory = isRewardInventory
 			tracker.PartnerInfo = &Partner{
 				PartnerID:  seatBid.Seat,
 				BidderCode: seatBid.Seat,
 				BidID:      bid.ID,
 				OrigBidID:  bid.ID,
 				KGPV:       matchedSlot,
-				NetECPM:    models.GetNetEcpm(bid.Price, models.GetRevenueShare(partnerNameMap[seatBid.Seat])),
-				GrossECPM:  models.GetGrossEcpm(bid.Price),
+				NetECPM:    float64(netECPM),
+				GrossECPM:  models.GetGrossEcpm(price),
 			}
 
 			if len(bid.ADomain) != 0 {
@@ -91,7 +99,7 @@ func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 			}
 
 			// construct tracker URL
-			trackerURL := ConstructTrackerURL(tracker, m.cfg.OpenWrap.Tracker.Endpoint, rctx.ImpBidCtx[bid.ImpID].Secure, rctx.Platform)
+			trackerURL := ConstructTrackerURL(tracker, m.cfg.OpenWrap.Tracker.Endpoint, secure, rctx.Platform)
 			trackURL, err := url.Parse(trackerURL)
 			if err == nil {
 				trackURL.Scheme = models.HTTPSProtocol

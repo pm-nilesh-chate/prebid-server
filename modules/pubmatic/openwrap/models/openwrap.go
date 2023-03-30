@@ -18,6 +18,8 @@ type RequestCtx struct {
 	LoggerImpressionID                     string
 	ClientConfigFlag                       int
 
+	IP string
+
 	//NYC_TODO: use enum?
 	IsTestRequest bool
 	IsCTVRequest  bool
@@ -78,12 +80,7 @@ type PartnerData struct {
 }
 
 type BidCtx struct {
-	BidID      string
-	OrigBidID  string
-	PartnerID  string
-	BidderCode string
-	GrossECPM  float64
-	NetECPM    float64
+	BidExt
 }
 
 type AdUnitCtx struct {

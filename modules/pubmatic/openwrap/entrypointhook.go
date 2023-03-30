@@ -72,6 +72,7 @@ func (m OpenWrap) handleEntrypointHook(
 		StartTime:          time.Now().Unix(),
 		ImpBidCtx:          make(map[string]models.ImpCtx),
 		URL:                m.cfg.OpenWrap.Logger.PublicEndpoint,
+		IP:                 models.GetIP(payload.Request),
 	}
 
 	if rCtx.LoggerImpressionID == "" {

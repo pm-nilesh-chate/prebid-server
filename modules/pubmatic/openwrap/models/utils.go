@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"net"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -133,4 +135,53 @@ func IsHybrid(body []byte) bool {
 	}
 
 	return true
+}
+
+// GetVersionLevelPropertyFromPartnerConfig returns a Version level property from the partner config map
+func GetVersionLevelPropertyFromPartnerConfig(partnerConfigMap map[int]map[string]string, propertyName string) string {
+	if versionLevelConfig, ok := partnerConfigMap[VersionLevelConfigID]; ok && versionLevelConfig != nil {
+		return versionLevelConfig[propertyName]
+	}
+	return ""
+}
+
+const (
+	//The following are the headerds related to IP address
+	XForwarded      = "X-FORWARDED-FOR"
+	SourceIP        = "SOURCE_IP"
+	ClusterClientIP = "X_CLUSTER_CLIENT_IP"
+	RemoteAddr      = "REMOTE_ADDR"
+	RlnClientIP     = "RLNCLIENTIPADDR"
+)
+
+func GetIP(in *http.Request) string {
+	//The IP address priority is as follows:
+	//0. HTTP_RLNCLIENTIPADDR  //For API
+	//1. HTTP_X_FORWARDED_IP
+	//2. HTTP_X_CLUSTER_CLIENT_IP
+	//3. HTTP_SOURCE_IP
+	//4. REMOTE_ADDR
+	ip := in.Header.Get(RlnClientIP)
+	if ip == "" {
+		ip = in.Header.Get(SourceIP)
+		if ip == "" {
+			ip = in.Header.Get(ClusterClientIP)
+			if ip == "" {
+				ip = in.Header.Get(XForwarded)
+				if ip == "" {
+					//RemoteAddr parses the header REMOTE_ADDR
+					ip = in.Header.Get(RemoteAddr)
+					if ip == "" {
+						ip, _, _ = net.SplitHostPort(in.RemoteAddr)
+					}
+				}
+			}
+		}
+	}
+	ips := strings.Split(ip, ",")
+	if len(ips) != 0 {
+		return ips[0]
+	}
+
+	return ""
 }

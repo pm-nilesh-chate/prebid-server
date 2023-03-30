@@ -211,8 +211,6 @@ func (m OpenWrap) handleBeforeValidationHook(
 		rCtx.ImpBidCtx[imp.ID] = impCtx
 	} // for(imp
 
-	adunitconfig.ReplaceAppObjectFromAdUnitConfig(rCtx, payload.BidRequest.App)
-	adunitconfig.ReplaceDeviceTypeFromAdUnitConfig(rCtx, payload.BidRequest.Device)
 	adunitconfig.UpdateFloorsExtObjectFromAdUnitConfig(rCtx, &requestExt)
 	setPriceFloorFetchURL(&requestExt, rCtx.PartnerConfigMap)
 
@@ -251,9 +249,15 @@ func (m *OpenWrap) applyProfileChanges(rctx models.RequestCtx, bidRequest *openr
 		bidRequest.Cur = []string{cur}
 	}
 
+	if bidRequest.TMax == 0 {
+		bidRequest.TMax = m.setTimeout(rctx)
+	}
+
 	if bidRequest.Source == nil {
 		bidRequest.Source = &openrtb2.Source{}
 	}
+
+	bidRequest.Source.TID = bidRequest.ID
 
 	for i := 0; i < len(bidRequest.Imp); i++ {
 		m.applyBannerAdUnitConfig(rctx, &bidRequest.Imp[i])
@@ -267,6 +271,10 @@ func (m *OpenWrap) applyProfileChanges(rctx models.RequestCtx, bidRequest *openr
 			setSchainInSourceObject(bidRequest.Source, sChainObj)
 		}
 	}
+
+	adunitconfig.ReplaceAppObjectFromAdUnitConfig(rctx, bidRequest.App)
+	adunitconfig.ReplaceDeviceTypeFromAdUnitConfig(rctx, bidRequest.Device)
+	bidRequest.Device.IP = rctx.IP
 
 	bidRequest.Ext = rctx.NewReqExt
 	return bidRequest, nil
@@ -508,4 +516,45 @@ func updateAliasGVLIds(aliasgvlids map[string]uint16, bidderCode string, partner
 		}
 		aliasgvlids[bidderCode] = uint16(vid)
 	}
+}
+
+// setTimeout - This utility returns timeout applicable for a profile
+func (m OpenWrap) setTimeout(rCtx models.RequestCtx) int64 {
+	var auctionTimeout int64
+
+	//check for ssTimeout in the partner config
+	ssTimeout := models.GetVersionLevelPropertyFromPartnerConfig(rCtx.PartnerConfigMap, models.SSTimeoutKey)
+	if ssTimeout != "" {
+		ssTimeoutDB, err := strconv.Atoi(ssTimeout)
+		if err == nil {
+			auctionTimeout = int64(ssTimeoutDB)
+		}
+	}
+
+	// found tmax value in request or db
+	if auctionTimeout != 0 {
+		if auctionTimeout < m.cfg.OpenWrap.Timeout.MinTimeout {
+			return m.cfg.OpenWrap.Timeout.MinTimeout
+		} else if auctionTimeout > m.cfg.OpenWrap.Timeout.MaxTimeout {
+			return m.cfg.OpenWrap.Timeout.MaxTimeout
+		}
+		return auctionTimeout
+	}
+
+	//Below piece of code is applicable for older profiles where ssTimeout is not set
+	//Here we will check the partner timeout and select max timeout considering timeout range
+	auctionTimeout = m.cfg.OpenWrap.Timeout.MinTimeout
+	for _, partnerConfig := range rCtx.PartnerConfigMap {
+		partnerTO, _ := strconv.Atoi(partnerConfig[models.TIMEOUT])
+		if int64(partnerTO) > m.cfg.OpenWrap.Timeout.MaxTimeout {
+			auctionTimeout = m.cfg.OpenWrap.Timeout.MaxTimeout
+			break
+		}
+		if int64(partnerTO) >= m.cfg.OpenWrap.Timeout.MinTimeout {
+			if auctionTimeout < int64(partnerTO) {
+				auctionTimeout = int64(partnerTO)
+			}
+		}
+	}
+	return auctionTimeout
 }
