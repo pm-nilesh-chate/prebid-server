@@ -57,7 +57,7 @@ func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 		for j, bid := range seatBid.Bid {
 			tagid := ""
 			secure := 0
-			netECPM := 0
+			netECPM := float64(0)
 			matchedSlot := ""
 			price := bid.Price
 			isRewardInventory := 0
@@ -67,7 +67,7 @@ func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 					if bidResponse.Cur != "USD" {
 						price = bidCtx.OriginalBidCPMUSD
 					}
-					netECPM = int(bidCtx.NetECPM)
+					netECPM = bidCtx.NetECPM
 				}
 
 				if bidderMeta, ok := impCtx.Bidders[seatBid.Seat]; ok {
