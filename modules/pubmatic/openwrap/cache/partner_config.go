@@ -2,8 +2,13 @@ package cache
 
 // NYC_TODO: Return DB level errors for module logging
 func (c *cache) GetPartnerConfigMap(pubid, profileid, displayversion int) (map[int]map[string]string, error) {
-	c.populateCacheWithPubSlotNameHash(pubid)
-	c.populatePublisherVASTTags(pubid)
+	if mapNameHash, ok := c.cache.Get(key(PubSlotNameHash, pubid)); !ok || mapNameHash == nil {
+		c.populateCacheWithPubSlotNameHash(pubid)
+	}
+
+	if vastTags, ok := c.cache.Get(key(PubVASTTags, pubid)); !ok || vastTags == nil {
+		c.populatePublisherVASTTags(pubid)
+	}
 
 	cacheKey := key(PUB_HB_PARTNER, pubid, profileid, displayversion)
 	if obj, ok := c.cache.Get(cacheKey); ok {

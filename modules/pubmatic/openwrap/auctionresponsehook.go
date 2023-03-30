@@ -137,6 +137,10 @@ func (m OpenWrap) handleAuctionResponseHook(
 }
 
 func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) (*openrtb2.BidResponse, error) {
+	if len(bidResponse.SeatBid) == 0 {
+		return bidResponse, nil
+	}
+
 	for i, seatBid := range bidResponse.SeatBid {
 		for j, bid := range seatBid.Bid {
 			impCtx, ok := rctx.ImpBidCtx[bid.ImpID]
