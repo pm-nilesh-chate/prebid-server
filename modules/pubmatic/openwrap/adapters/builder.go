@@ -66,7 +66,7 @@ func getBuilder(adapterName string) builder {
 }
 
 // InitBidders will initialise bidder alias, default bidder parameter json and builders for each bidder
-func InitBidders() {
+func InitBidders() error {
 	initBidderBuilderFactory()
-	parseBidderParams()
+	return parseBidderParams()
 }
