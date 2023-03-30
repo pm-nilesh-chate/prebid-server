@@ -242,7 +242,7 @@ func addPWTTargetingForBid(rctx models.RequestCtx, bidResponse *openrtb2.BidResp
 				isWinningBid = true
 			}
 
-			if !(isWinningBid && rctx.SendAllBids) {
+			if !(isWinningBid || rctx.SendAllBids) {
 				droppedBids[seatBid.Seat] = append(droppedBids[seatBid.Seat], bid)
 			}
 
