@@ -29,6 +29,7 @@ type RequestCtx struct {
 	Cookies string
 
 	Debug bool
+	Trace bool
 
 	//tracker
 	PageURL        string

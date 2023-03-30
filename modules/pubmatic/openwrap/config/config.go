@@ -27,8 +27,8 @@ type Database struct {
 type Cache struct {
 	CacheConTimeout int // Connection timeout for cache
 
-	CacheDefaultExpiry int           // in seconds
-	VASTTagCacheExpiry time.Duration // in seconds
+	CacheDefaultExpiry int // in seconds
+	VASTTagCacheExpiry int // in seconds
 }
 
 // Config contains the values read from the config file at boot time
