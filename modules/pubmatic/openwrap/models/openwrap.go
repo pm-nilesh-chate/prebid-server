@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"net/http"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/adunitconfig"
@@ -25,8 +26,9 @@ type RequestCtx struct {
 	IsTestRequest bool
 	IsCTVRequest  bool
 
-	UA      string
-	Cookies string
+	UA        string
+	Cookies   string
+	UidCookie *http.Cookie
 
 	Debug bool
 	Trace bool
@@ -40,9 +42,10 @@ type RequestCtx struct {
 	URL string
 
 	// imp-bid ctx to avoid computing same thing for bidder params, logger and tracker
-	ImpBidCtx map[string]ImpCtx
-	Aliases   map[string]string
-	NewReqExt json.RawMessage
+	ImpBidCtx   map[string]ImpCtx
+	Aliases     map[string]string
+	NewReqExt   json.RawMessage
+	ResponseExt json.RawMessage
 
 	AdapterThrottleMap map[string]struct{}
 

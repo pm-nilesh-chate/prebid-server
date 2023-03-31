@@ -131,6 +131,25 @@ func (m OpenWrap) handleAuctionResponseHook(
 		result.Warnings = append(result.Warnings, warnings...)
 	}
 
+	responseExt := make(map[string]interface{})
+	// TODO use concrete structure
+	if len(payload.BidResponse.Ext) != 0 {
+		if err := json.Unmarshal(payload.BidResponse.Ext, &responseExt); err != nil {
+			result.Errors = append(result.Errors, "failed to unmarshal response.ext err: "+err.Error())
+		}
+	}
+
+	// TODO: PBS-Core should pass the hostcookie for module to usersync.ParseCookieFromRequest()
+	if matchedImpression := getMatchedImpression(rctx); matchedImpression != nil {
+		responseExt[models.MatchedImpression] = matchedImpression
+	}
+
+	var err error
+	rctx.ResponseExt, err = json.Marshal(responseExt)
+	if err != nil {
+		result.Errors = append(result.Errors, "failed to marshal response.ext err: "+err.Error())
+	}
+
 	result.ChangeSet.AddMutation(func(ap hookstage.AuctionResponsePayload) (hookstage.AuctionResponsePayload, error) {
 		rctx := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
 		var err error
@@ -144,6 +163,8 @@ func (m OpenWrap) handleAuctionResponseHook(
 		}
 
 		ap.BidResponse, err = m.addDefaultBids(rctx, ap.BidResponse)
+
+		ap.BidResponse.Ext = rctx.ResponseExt
 		return ap, err
 	}, hookstage.MutationUpdate, "response-body-with-sshb-format")
 
