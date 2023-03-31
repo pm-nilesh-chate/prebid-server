@@ -224,6 +224,7 @@ const (
 	KADUSERCOOKIE      = "KADUSERCOOKIE"
 	COOKIE             = "Cookie"
 	WrapperLoggerImpID = "wiid"
+	UidCookieName      = "uids"
 
 	//constant for gzip response
 	AcceptEncodingHeader = "Accept-Encoding"

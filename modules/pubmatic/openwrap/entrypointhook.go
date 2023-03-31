@@ -2,6 +2,7 @@ package openwrap
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/prebid/prebid-server/hooks/hookexecution"
@@ -71,12 +72,16 @@ func (m OpenWrap) handleEntrypointHook(
 		Aliases:            make(map[string]string),
 		IsCTVRequest:       models.IsCTVAPIRequest(payload.Request.URL.Path),
 		UA:                 payload.Request.Header.Get("User-Agent"),
-		Cookies:            payload.Request.Header.Get(models.COOKIE),
 		Debug:              queryParams.Get(models.Debug) == "1",
 		StartTime:          time.Now().Unix(),
 		ImpBidCtx:          make(map[string]models.ImpCtx),
 		URL:                m.cfg.OpenWrap.Logger.PublicEndpoint,
 		IP:                 models.GetIP(payload.Request),
+	}
+
+	rCtx.UidCookie, err = payload.Request.Cookie(models.UidCookieName)
+	if err != nil && err != http.ErrNoCookie {
+		result.Errors = append(result.Errors, "failed to parse cookie uid err: "+err.Error())
 	}
 
 	if rCtx.LoggerImpressionID == "" {
