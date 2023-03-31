@@ -10,6 +10,23 @@ import (
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
 )
 
+var ignoreKeys = map[string]bool{
+	models.PARTNER_ACCOUNT_NAME: true,
+	models.ADAPTER_NAME:         true,
+	models.ADAPTER_ID:           true,
+	models.TIMEOUT:              true,
+	models.KEY_GEN_PATTERN:      true,
+	models.PREBID_PARTNER_NAME:  true,
+	models.PROTOCOL:             true,
+	models.SERVER_SIDE_FLAG:     true,
+	models.LEVEL:                true,
+	models.PARTNER_ID:           true,
+	models.REVSHARE:             true,
+	models.THROTTLE:             true,
+	models.BidderCode:           true,
+	models.IsAlias:              true,
+}
+
 func getSlotMeta(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int) ([]string, map[string]models.SlotMapping, models.SlotMappingInfo, [][2]int64) {
 	var slotMap map[string]models.SlotMapping
 	var slotMappingInfo models.SlotMappingInfo
