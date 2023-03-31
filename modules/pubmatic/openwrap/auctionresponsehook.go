@@ -310,13 +310,23 @@ func addPWTTargetingForBid(rctx models.RequestCtx, bidResponse *openrtb2.BidResp
 
 func (m *OpenWrap) addDefaultBids(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) (*openrtb2.BidResponse, error) {
 	// responded bidders per impression
-	seatBids := make(map[string]map[string]struct{}, 0)
+	seatBids := make(map[string]map[string]struct{}, len(bidResponse.SeatBid))
 	for _, seatBid := range bidResponse.SeatBid {
 		for _, bid := range seatBid.Bid {
 			if seatBids[bid.ImpID] == nil {
 				seatBids[bid.ImpID] = make(map[string]struct{})
 			}
 			seatBids[bid.ImpID][seatBid.Seat] = struct{}{}
+		}
+	}
+
+	// included dropped bids in responded to avoid false nobid entry.
+	for seat, bids := range rctx.DroppedBids {
+		for _, bid := range bids {
+			if seatBids[bid.ImpID] == nil {
+				seatBids[bid.ImpID] = make(map[string]struct{})
+			}
+			seatBids[bid.ImpID][seat] = struct{}{}
 		}
 	}
 
