@@ -169,6 +169,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 			}
 
 			if err != nil || len(bidderParams) == 0 {
+				result.Errors = append(result.Errors, fmt.Sprintf("no bidder params found for imp:%s partner: %s", imp.ID, bidder))
 				continue
 			}
 

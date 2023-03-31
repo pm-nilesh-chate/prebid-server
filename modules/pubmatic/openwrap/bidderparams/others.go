@@ -11,6 +11,11 @@ import (
 )
 
 func PrepareAdapterParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int) (string, []byte, errorcodes.IError) {
+	partnerConfig, ok := rctx.PartnerConfigMap[partnerID]
+	if !ok {
+		return "", nil, errorcodes.ErrBidderParamsValidationError
+	}
+
 	slots, slotMap, _, wh := getSlotMeta(rctx, cache, bidRequest, imp, impExt, partnerID)
 	for i, slot := range slots {
 		slotMappingObj, ok := slotMap[strings.ToLower(slot)]
@@ -18,9 +23,16 @@ func PrepareAdapterParamsV25(rctx models.RequestCtx, cache cache.Cache, bidReque
 			continue
 		}
 
+		bidderParams := slotMappingObj.SlotMappings
+		for key, value := range partnerConfig {
+			if !ignoreKeys[key] {
+				bidderParams[key] = value
+			}
+		}
+
 		w := wh[i][0]
 		h := wh[i][1]
-		params, err := adapters.PrepareBidParamJSONForPartner(&w, &h, slotMappingObj.SlotMappings, slot, rctx.PartnerConfigMap[partnerID][models.PREBID_PARTNER_NAME], rctx.PartnerConfigMap[partnerID][models.BidderCode], &impExt)
+		params, err := adapters.PrepareBidParamJSONForPartner(&w, &h, slotMappingObj.SlotMappings, slot, partnerConfig[models.PREBID_PARTNER_NAME], partnerConfig[models.BidderCode], &impExt)
 		if err != nil || params == nil {
 			continue
 		}
