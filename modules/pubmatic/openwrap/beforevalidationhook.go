@@ -238,6 +238,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 
 	requestExt.Prebid.AliasGVLIDs = aliasgvlids
 
+	requestExt.Wrapper = nil
 	rCtx.NewReqExt, err = json.Marshal(requestExt)
 	if err != nil {
 		result.Errors = append(result.Errors, "failed to update request.ext "+err.Error())
