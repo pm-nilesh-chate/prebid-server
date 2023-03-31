@@ -211,13 +211,16 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 					}
 					return price
 				}(),
-				GrossECPM:       GetGrossEcpm(price),
-				OriginalCPM:     GetGrossEcpm(bidExt.OriginalBidCPM),
-				OriginalCur:     bidExt.OriginalBidCur,
-				PartnerSize:     getSizeForPlatform(bid.W, bid.H, rCtx.Platform),
-				DealID:          bid.DealID,
-				Adformat:        GetAdFormat(bid.AdM),
-				WinningBidStaus: bidExt.Winner,
+				GrossECPM:   GetGrossEcpm(price),
+				OriginalCPM: GetGrossEcpm(bidExt.OriginalBidCPM),
+				OriginalCur: bidExt.OriginalBidCur,
+				PartnerSize: getSizeForPlatform(bid.W, bid.H, rCtx.Platform),
+				DealID:      bid.DealID,
+				Adformat:    GetAdFormat(bid.AdM),
+			}
+
+			if b, ok := rCtx.WinningBids[bid.ImpID]; ok && b.ID == bid.ID {
+				pr.WinningBidStaus = 1
 			}
 
 			if len(pr.OriginalCur) == 0 {
