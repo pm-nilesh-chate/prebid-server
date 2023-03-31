@@ -203,6 +203,11 @@ func (m OpenWrap) handleBeforeValidationHook(
 			impExt.Prebid.Bidder[bidder] = meta.Params
 		}
 
+		// reuse the existing impExt instead of allocating a new one
+		reward := impExt.Reward
+		impExt.Wrapper = nil
+		impExt.Reward = nil
+		impExt.Bidder = nil
 		newExt, err := json.Marshal(impExt)
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("failed to update bidder params for impression %s", imp.ID))
@@ -212,7 +217,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 		if _, ok := rCtx.ImpBidCtx[imp.ID]; !ok {
 			rCtx.ImpBidCtx[imp.ID] = models.ImpCtx{
 				TagID:             imp.TagID,
-				IsRewardInventory: impExt.Reward,
+				IsRewardInventory: reward,
 				Type:              slotType,
 				Bidders:           make(map[string]models.PartnerData),
 				BidCtx:            make(map[string]models.BidCtx),
@@ -239,7 +244,9 @@ func (m OpenWrap) handleBeforeValidationHook(
 
 	requestExt.Prebid.AliasGVLIDs = aliasgvlids
 
+	// similar to impExt, reuse the existing requestExt to avoid additional memory requests
 	requestExt.Wrapper = nil
+	requestExt.Bidder = nil
 	rCtx.NewReqExt, err = json.Marshal(requestExt)
 	if err != nil {
 		result.Errors = append(result.Errors, "failed to update request.ext "+err.Error())
