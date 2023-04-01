@@ -194,9 +194,14 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 			}
 
 			// marketplace/alternatebiddercodes feature
-			if bidExt.Prebid.Meta != nil && len(bidExt.Prebid.Meta.AdapterCode) != 0 &&
-				bidExt.Prebid.Meta.AdapterCode != seat {
-				partnerID = seat
+			if bidExt.Prebid.Meta != nil && len(bidExt.Prebid.Meta.AdapterCode) != 0 && partnerID != bidExt.Prebid.Meta.AdapterCode {
+				partnerID = bidExt.Prebid.Meta.AdapterCode
+
+				if aliasSeat, ok := rCtx.PrebidBidderCode[partnerID]; ok {
+					if bidderMeta, ok := impCtx.Bidders[aliasSeat]; ok {
+						matchedSlot = bidderMeta.MatchedSlot
+					}
+				}
 			}
 
 			pr := PartnerRecord{
@@ -258,6 +263,8 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 			ipr[bid.ImpID] = append(ipr[bid.ImpID], pr)
 		}
 	}
+
+	// parent bidder could in one of the above and we need them by prebid's bidderCode and not seat(could be alias)
 
 	slots := make([]SlotRecord, 0)
 	for _, imp := range ao.Request.Imp {

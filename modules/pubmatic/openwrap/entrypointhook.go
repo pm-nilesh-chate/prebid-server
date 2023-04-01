@@ -77,11 +77,17 @@ func (m OpenWrap) handleEntrypointHook(
 		ImpBidCtx:          make(map[string]models.ImpCtx),
 		URL:                m.cfg.OpenWrap.Logger.PublicEndpoint,
 		IP:                 models.GetIP(payload.Request),
+		PrebidBidderCode:   make(map[string]string),
 	}
 
 	rCtx.UidCookie, err = payload.Request.Cookie(models.UidCookieName)
 	if err != nil && err != http.ErrNoCookie {
-		result.Errors = append(result.Errors, "failed to parse cookie uid err: "+err.Error())
+		result.Errors = append(result.Errors, "failed to parse cookie: uids err: "+err.Error())
+	}
+
+	rCtx.KADUSERCookie, err = payload.Request.Cookie(models.KADUSERCOOKIE)
+	if err != nil && err != http.ErrNoCookie {
+		result.Errors = append(result.Errors, "failed to parse cookie: KADUSERCOOKIE err: "+err.Error())
 	}
 
 	if rCtx.LoggerImpressionID == "" {
