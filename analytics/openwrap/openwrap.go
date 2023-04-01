@@ -194,7 +194,7 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 			}
 
 			// marketplace/alternatebiddercodes feature
-			if bidExt.Prebid.Meta != nil && len(bidExt.Prebid.Meta.AdapterCode) != 0 && partnerID != bidExt.Prebid.Meta.AdapterCode {
+			if bidExt.Prebid.Meta != nil && len(bidExt.Prebid.Meta.AdapterCode) != 0 && seat != bidExt.Prebid.Meta.AdapterCode {
 				partnerID = bidExt.Prebid.Meta.AdapterCode
 
 				if aliasSeat, ok := rCtx.PrebidBidderCode[partnerID]; ok {
