@@ -1,4 +1,4 @@
-package openwrap
+package adunitconfig
 
 import (
 	"regexp"

@@ -8,11 +8,14 @@ import (
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/adunitconfig"
 )
 
-func selectSlot(rCtx models.RequestCtx, h, w int64, kgp, tagid, div string) (slotAdUnitConfig *adunitconfig.AdConfig, slotName string, isRegex bool, matchedRegex string) {
+func selectSlot(rCtx models.RequestCtx, h, w int64, tagid, div, source string) (slotAdUnitConfig *adunitconfig.AdConfig, slotName string, isRegex bool, matchedRegex string) {
 	slotName = bidderparams.GenerateSlotName(h, w, rCtx.AdUnitConfig.ConfigPattern, tagid, div, rCtx.Source)
 
 	if slotAdUnitConfig, ok := rCtx.AdUnitConfig.Config[slotName]; ok {
 		return slotAdUnitConfig, slotName, false, ""
+	} else if rCtx.AdUnitConfig.Regex {
+		matchedRegex = getRegexMatch(rCtx, slotName)
+		return rCtx.AdUnitConfig.Config[matchedRegex], slotName, true, matchedRegex
 	}
 
 	return nil, "", false, ""
