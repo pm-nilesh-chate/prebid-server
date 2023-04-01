@@ -16,11 +16,11 @@ func GetAdapterThrottleMap(partnerConfigMap map[int]map[string]string) (map[stri
 		if "" == partnerConfig[models.SERVER_SIDE_FLAG] || partnerConfig[models.SERVER_SIDE_FLAG] == "0" {
 			continue
 		}
-		val := ThrottleAdapter(partnerConfig)
-		if !val {
+		if ThrottleAdapter(partnerConfig) {
+			adapterThrottleMap[partnerConfig[models.BidderCode]] = struct{}{}
+		} else if allPartnersThrottledFlag {
 			allPartnersThrottledFlag = false
 		}
-		adapterThrottleMap[partnerConfig[models.BidderCode]] = struct{}{}
 	}
 	if allPartnersThrottledFlag {
 		return adapterThrottleMap, errorcodes.ErrAllPartnerThrottled
