@@ -61,17 +61,32 @@ func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 			matchedSlot := ""
 			price := bid.Price
 			isRewardInventory := 0
+			partnerID := seatBid.Seat
 
 			if impCtx, ok := rctx.ImpBidCtx[bid.ImpID]; ok {
+				if bidderMeta, ok := impCtx.Bidders[seatBid.Seat]; ok {
+					matchedSlot = bidderMeta.MatchedSlot
+					partnerID = bidderMeta.PrebidBidderCode
+				}
+
 				if bidCtx, ok := impCtx.BidCtx[bid.ID]; ok {
 					if bidResponse.Cur != "USD" {
 						price = bidCtx.OriginalBidCPMUSD
 					}
 					netECPM = bidCtx.NetECPM
-				}
 
-				if bidderMeta, ok := impCtx.Bidders[seatBid.Seat]; ok {
-					matchedSlot = bidderMeta.MatchedSlot
+					// TODO do most calculation in wt
+					// marketplace/alternatebiddercodes feature
+					bidExt := bidCtx.BidExt
+					if bidExt.Prebid.Meta != nil && len(bidExt.Prebid.Meta.AdapterCode) != 0 && seatBid.Seat != bidExt.Prebid.Meta.AdapterCode {
+						partnerID = bidExt.Prebid.Meta.AdapterCode
+
+						if aliasSeat, ok := rctx.PrebidBidderCode[partnerID]; ok {
+							if bidderMeta, ok := impCtx.Bidders[aliasSeat]; ok {
+								matchedSlot = bidderMeta.MatchedSlot
+							}
+						}
+					}
 				}
 
 				tagid = impCtx.TagID
@@ -83,7 +98,7 @@ func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 			tracker.SlotID = fmt.Sprintf("%s_%s", bid.ImpID, tagid)
 			tracker.RewardedInventory = isRewardInventory
 			tracker.PartnerInfo = &Partner{
-				PartnerID:  seatBid.Seat,
+				PartnerID:  partnerID,
 				BidderCode: seatBid.Seat,
 				BidID:      bid.ID,
 				OrigBidID:  bid.ID,
