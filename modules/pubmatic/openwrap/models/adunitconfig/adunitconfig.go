@@ -12,6 +12,8 @@ type AdUnitConfig struct {
 	ConfigPattern string               `json:"configPattern"`
 	Regex         bool                 `json:"regex"`
 	Config        map[string]*AdConfig `json:"config"`
+	// TODO add seperate default field
+	// Default map[string]*AdConfig `json:"default"`
 }
 type Content struct {
 	Mappings  map[string]openrtb_ext.TransparencyRule `json:"mappings,omitempty"`

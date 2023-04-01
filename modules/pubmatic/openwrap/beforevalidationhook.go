@@ -79,14 +79,14 @@ func (m OpenWrap) handleBeforeValidationHook(
 	}
 
 	rCtx.AdUnitConfig = m.cache.GetAdunitConfigFromCache(payload.BidRequest, rCtx.PubID, rCtx.ProfileID, rCtx.DisplayID)
-	if rCtx.AdUnitConfig != nil && rCtx.AdUnitConfig.Config[models.AdunitConfigRegex] != nil {
-		if v, ok := rCtx.AdUnitConfig.Config[models.AdunitConfigRegex]; ok && v.Regex != nil && *v.Regex == true {
-			errs := populateAndLogRegex(rCtx.AdUnitConfig)
-			for _, err := range errs {
-				result.Errors = append(result.Errors, err.Error())
-			}
-		}
-	}
+	// if rCtx.AdUnitConfig != nil && rCtx.AdUnitConfig.Config[models.AdunitConfigRegex] != nil {
+	// 	if v, ok := rCtx.AdUnitConfig.Config[models.AdunitConfigRegex]; ok && v.Regex != nil && *v.Regex == true {
+	// 		errs := populateAndLogRegex(rCtx.AdUnitConfig)
+	// 		for _, err := range errs {
+	// 			result.Errors = append(result.Errors, err.Error())
+	// 		}
+	// 	}
+	// }
 
 	requestExt.Prebid.Debug = rCtx.Debug
 	requestExt.Prebid.SupportDeals = rCtx.PreferDeals // && IsCTVAPIRequest(reqWrapper.RequestAPI),
@@ -156,14 +156,19 @@ func (m OpenWrap) handleBeforeValidationHook(
 
 			// bidderCode is in context with pubmatic. Ex. it could be appnexus-1, appnexus-2, etc.
 			bidderCode := partnerConfig[models.BidderCode]
-			// bidder is equivalent of PBS-Core's bidderCode
-			bidder := partnerConfig[models.PREBID_PARTNER_NAME]
+			// prebidBidderCode is equivalent of PBS-Core's bidderCode
+			prebidBidderCode := partnerConfig[models.PREBID_PARTNER_NAME]
+			//
+			rCtx.PrebidBidderCode[prebidBidderCode] = bidderCode
 
-			rCtx.PrebidBidderCode[bidder] = bidderCode
+			if _, ok := rCtx.AdapterThrottleMap[bidderCode]; ok {
+				result.Warnings = append(result.Warnings, "Dropping throttled adapter from auction: "+bidderCode)
+				continue
+			}
 
 			var slot string
 			var bidderParams json.RawMessage
-			switch bidder {
+			switch prebidBidderCode {
 			case string(openrtb_ext.BidderPubmatic), models.BidderPubMaticSecondaryAlias:
 				slot, bidderParams, err = bidderparams.PreparePubMaticParamsV25(rCtx, m.cache, *payload.BidRequest, imp, *impExt, partnerID)
 			case models.BidderVASTBidder:
@@ -173,13 +178,13 @@ func (m OpenWrap) handleBeforeValidationHook(
 			}
 
 			if err != nil || len(bidderParams) == 0 {
-				result.Errors = append(result.Errors, fmt.Sprintf("no bidder params found for imp:%s partner: %s", imp.ID, bidder))
+				result.Errors = append(result.Errors, fmt.Sprintf("no bidder params found for imp:%s partner: %s", imp.ID, prebidBidderCode))
 				continue
 			}
 
 			bidderMeta[bidderCode] = models.PartnerData{
 				PartnerID:        partnerID,
-				PrebidBidderCode: bidder,
+				PrebidBidderCode: prebidBidderCode,
 				MatchedSlot:      slot,
 				Params:           bidderParams,
 				KGPV:             rCtx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN],
