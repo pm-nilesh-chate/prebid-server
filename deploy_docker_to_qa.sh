@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash -e
 
 make build image
 rm -f pbsimage

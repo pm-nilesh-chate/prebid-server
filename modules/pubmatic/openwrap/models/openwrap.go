@@ -89,10 +89,11 @@ type ImpCtx struct {
 }
 
 type PartnerData struct {
-	PartnerID   int
-	MatchedSlot string
-	KGPV        string
-	Params      json.RawMessage
+	PartnerID        int
+	PrebidBidderCode string
+	MatchedSlot      string
+	KGPV             string
+	Params           json.RawMessage
 }
 
 type BidCtx struct {

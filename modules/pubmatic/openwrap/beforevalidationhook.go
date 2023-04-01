@@ -154,9 +154,11 @@ func (m OpenWrap) handleBeforeValidationHook(
 				continue
 			}
 
+			// bidderCode is in context with pubmatic. Ex. it could be appnexus-1, appnexus-2, etc.
 			bidderCode := partnerConfig[models.BidderCode]
-
+			// bidder is equivalent of PBS-Core's bidderCode
 			bidder := partnerConfig[models.PREBID_PARTNER_NAME]
+
 			var slot string
 			var bidderParams json.RawMessage
 			switch bidder {
@@ -173,6 +175,14 @@ func (m OpenWrap) handleBeforeValidationHook(
 				continue
 			}
 
+			bidderMeta[bidderCode] = models.PartnerData{
+				PartnerID:        partnerID,
+				PrebidBidderCode: bidder,
+				MatchedSlot:      slot,
+				Params:           bidderParams,
+				KGPV:             rCtx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN],
+			}
+
 			if alias, ok := partnerConfig[models.IsAlias]; ok && alias == "1" {
 				if prebidPartnerName, ok := partnerConfig[models.PREBID_PARTNER_NAME]; ok {
 					rCtx.Aliases[bidderCode] = adapters.ResolveOWBidder(prebidPartnerName)
@@ -181,13 +191,6 @@ func (m OpenWrap) handleBeforeValidationHook(
 
 			if partnerConfig[models.PREBID_PARTNER_NAME] == models.BidderVASTBidder {
 				updateAliasGVLIds(aliasgvlids, bidderCode, partnerConfig)
-			}
-
-			bidderMeta[bidderCode] = models.PartnerData{
-				PartnerID:   partnerID,
-				MatchedSlot: slot,
-				Params:      bidderParams,
-				KGPV:        rCtx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN],
 			}
 		} // for(rctx.PartnerConfigMap
 
