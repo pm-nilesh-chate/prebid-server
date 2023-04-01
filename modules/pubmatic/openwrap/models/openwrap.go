@@ -78,6 +78,7 @@ type ImpCtx struct {
 	Secure            int
 	KGPV              string
 	IsRewardInventory *int8
+	Video             *openrtb2.Video
 	Type              string // banner, video, native, etc
 	Bidders           map[string]PartnerData
 	NewExt            json.RawMessage

@@ -47,7 +47,7 @@ func (m OpenWrap) handleAuctionResponseHook(
 		for _, bid := range seatBid.Bid {
 			impCtx, ok := rctx.ImpBidCtx[bid.ImpID]
 			if !ok {
-				result.Errors = append(result.Errors, "invalid imp.ID for bid"+bid.ImpID)
+				result.Errors = append(result.Errors, "invalid impCtx.ID for bid"+bid.ImpID)
 				continue
 			}
 
@@ -85,19 +85,40 @@ func (m OpenWrap) handleAuctionResponseHook(
 
 				bidExt.NetECPM = models.GetNetEcpm(price, revShare)
 
-				if rctx.ClientConfigFlag == 1 {
-					if rctx.ImpBidCtx[bid.ImpID].Type == "banner" {
+				if impCtx.Video != nil && impCtx.Type == "video" && bidExt.CreativeType == "video" {
+					if bidExt.Video == nil {
+						bidExt.Video = &models.ExtBidVideo{}
+					}
+					if impCtx.Video.MaxDuration != 0 {
+						bidExt.Video.MaxDuration = impCtx.Video.MaxDuration
+					}
+					if impCtx.Video.MinDuration != 0 {
+						bidExt.Video.MinDuration = impCtx.Video.MinDuration
+					}
+					if impCtx.Video.Skip != nil {
+						bidExt.Video.Skip = impCtx.Video.Skip
+					}
+					if impCtx.Video.SkipAfter != 0 {
+						bidExt.Video.SkipAfter = impCtx.Video.SkipAfter
+					}
+					if impCtx.Video.SkipMin != 0 {
+						bidExt.Video.SkipMin = impCtx.Video.SkipMin
+					}
+					bidExt.Video.BAttr = impCtx.Video.BAttr
+					bidExt.Video.PlaybackMethod = impCtx.Video.PlaybackMethod
+					if rctx.ClientConfigFlag == 1 {
+						bidExt.Video.ClientConfig = adunitconfig.GetClientConfigForMediaType(rctx, bid.ImpID, rctx.AdUnitConfig, "video")
+					}
+				} else if rctx.ImpBidCtx[bid.ImpID].Type == "banner" && bidExt.CreativeType == "banner" && rctx.ClientConfigFlag == 1 {
+					cc := adunitconfig.GetClientConfigForMediaType(rctx, bid.ImpID, rctx.AdUnitConfig, "banner")
+					if len(cc) != 0 {
 						if bidExt.Banner == nil {
 							bidExt.Banner = &models.ExtBidBanner{}
 						}
-						bidExt.Banner.ClientConfig = adunitconfig.GetClientConfigForMediaType(rctx, bid.ImpID, rctx.AdUnitConfig, "banner")
-					} else if rctx.ImpBidCtx[bid.ImpID].Type == "video" {
-						if bidExt.Video == nil {
-							bidExt.Video = &models.ExtBidVideo{}
-						}
-						bidExt.Video.ClientConfig = adunitconfig.GetClientConfigForMediaType(rctx, bid.ImpID, rctx.AdUnitConfig, "video")
+						bidExt.Banner.ClientConfig = cc
 					}
 				}
+
 			}
 
 			owbid := models.OwBid{

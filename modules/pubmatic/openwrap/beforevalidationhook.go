@@ -219,6 +219,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 				TagID:             imp.TagID,
 				IsRewardInventory: reward,
 				Type:              slotType,
+				Video:             imp.Video,
 				Bidders:           make(map[string]models.PartnerData),
 				BidCtx:            make(map[string]models.BidCtx),
 				NewExt:            json.RawMessage(newExt),
