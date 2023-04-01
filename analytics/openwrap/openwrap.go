@@ -187,19 +187,20 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 			}
 
 			matchedSlot := ""
-			bidderMeta, ok := impCtx.Bidders[seat]
-			if ok {
+			partnerID := seat
+			if bidderMeta, ok := impCtx.Bidders[seat]; ok {
 				matchedSlot = bidderMeta.MatchedSlot
+				partnerID = bidderMeta.PrebidBidderCode
 			}
 
-			// partnerID := seat
-			// if bidExt.Prebid.Meta != nil && len(bidExt.Prebid.Meta.AdapterCode) != 0 {
-			// 	partnerID = bidExt.Prebid.Meta.AdapterCode
-			// }
+			// marketplace/alternatebiddercodes feature
+			if bidExt.Prebid.Meta != nil && len(bidExt.Prebid.Meta.AdapterCode) != 0 &&
+				bidExt.Prebid.Meta.AdapterCode != seat {
+				partnerID = seat
+			}
 
 			pr := PartnerRecord{
-				// PartnerID:        partnerID,
-				PartnerID:        seat,
+				PartnerID:        partnerID,
 				BidderCode:       seat,
 				KGPV:             matchedSlot,
 				KGPSV:            matchedSlot,
