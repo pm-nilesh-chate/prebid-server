@@ -16,7 +16,7 @@ func getRegexMatch(rctx models.RequestCtx, slotName string) string {
 			}
 
 			if re.MatchString(slotName) {
-				return slotName
+				return expression
 			}
 		}
 	}
