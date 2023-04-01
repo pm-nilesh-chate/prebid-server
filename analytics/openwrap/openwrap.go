@@ -192,13 +192,14 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 				matchedSlot = bidderMeta.MatchedSlot
 			}
 
-			partnerID := seat
-			if bidExt.Prebid.Meta != nil && len(bidExt.Prebid.Meta.AdapterCode) != 0 {
-				partnerID = bidExt.Prebid.Meta.AdapterCode
-			}
+			// partnerID := seat
+			// if bidExt.Prebid.Meta != nil && len(bidExt.Prebid.Meta.AdapterCode) != 0 {
+			// 	partnerID = bidExt.Prebid.Meta.AdapterCode
+			// }
 
 			pr := PartnerRecord{
-				PartnerID:        partnerID,
+				// PartnerID:        partnerID,
+				PartnerID:        seat,
 				BidderCode:       seat,
 				KGPV:             matchedSlot,
 				KGPSV:            matchedSlot,
