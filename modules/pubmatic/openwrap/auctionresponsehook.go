@@ -24,10 +24,12 @@ func (m OpenWrap) handleAuctionResponseHook(
 
 	// absence of rctx at this hook means the first hook failed!. Do nothing
 	if len(moduleCtx.ModuleContext) == 0 {
+		result.DebugMessages = append(result.DebugMessages, "error: module-ctx not found in handleBeforeValidationHook()")
 		return result, nil
 	}
 	rctx, ok := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
 	if !ok {
+		result.DebugMessages = append(result.DebugMessages, "error: request-ctx not found in handleBeforeValidationHook()")
 		return result, nil
 	}
 	defer func() {

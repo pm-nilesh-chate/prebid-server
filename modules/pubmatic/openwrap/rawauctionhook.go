@@ -20,6 +20,19 @@ func (m OpenWrap) handleRawAuctionHook(
 	result := hookstage.HookResult[hookstage.RawAuctionRequestPayload]{}
 	result.ChangeSet = hookstage.ChangeSet[hookstage.RawAuctionRequestPayload]{}
 
+	if len(moduleCtx.ModuleContext) == 0 {
+		result.DebugMessages = append(result.DebugMessages, "error: module-ctx not found in handleBeforeValidationHook()")
+		return result, nil
+	}
+	rCtx, ok := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
+	if !ok {
+		result.DebugMessages = append(result.DebugMessages, "error: request-ctx not found in handleBeforeValidationHook()")
+		return result, nil
+	}
+	defer func() {
+		moduleCtx.ModuleContext["rctx"] = rCtx
+	}()
+
 	// accountID/PublisherID validation not needed. Already done by PBS-Core
 	accountID, _, _ := pbsOpenrtb2.SearchAccountId(payload)
 
@@ -30,11 +43,7 @@ func (m OpenWrap) handleRawAuctionHook(
 		result.Errors = append(result.Errors, errorcodes.ErrInvalidPublisherID.Error())
 		return result, fmt.Errorf("invalid publisher id : %v", err)
 	}
-
-	// key presence validationnot needed as failure of EntryPointHook sets result.Reject = true
-	rCtx := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
 	rCtx.PubID = pubID
-	moduleCtx.ModuleContext["rctx"] = rCtx
 
 	return result, nil
 }

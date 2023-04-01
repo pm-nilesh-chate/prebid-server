@@ -27,17 +27,25 @@ func (m OpenWrap) handleBeforeValidationHook(
 		Reject: true,
 	}
 
+	if len(moduleCtx.ModuleContext) == 0 {
+		result.DebugMessages = append(result.DebugMessages, "error: module-ctx not found in handleBeforeValidationHook()")
+		return result, nil
+	}
+	rCtx, ok := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
+	if !ok {
+		result.DebugMessages = append(result.DebugMessages, "error: request-ctx not found in handleBeforeValidationHook()")
+		return result, nil
+	}
+	defer func() {
+		moduleCtx.ModuleContext["rctx"] = rCtx
+	}()
+
 	requestExt, err := models.GetRequestExt(payload.BidRequest.Ext)
 	if err != nil {
 		result.NbrCode = errorcodes.ErrInvalidRequestExtension.Code()
 		result.Errors = append(result.Errors, errorcodes.ErrInvalidRequestExtension.Error())
 		return result, err
 	}
-
-	rCtx := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
-	defer func() {
-		moduleCtx.ModuleContext["rctx"] = rCtx
-	}()
 
 	rCtx.IsTestRequest = payload.BidRequest.Test == 2
 

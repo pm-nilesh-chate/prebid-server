@@ -16,10 +16,12 @@ func (m OpenWrap) HandleProcessedAuctionHook(
 	result.ChangeSet = hookstage.ChangeSet[hookstage.ProcessedAuctionRequestPayload]{}
 
 	if len(moduleCtx.ModuleContext) == 0 {
+		result.DebugMessages = append(result.DebugMessages, "error: module-ctx not found in handleBeforeValidationHook()")
 		return result, nil
 	}
 	rctx, ok := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
 	if !ok {
+		result.DebugMessages = append(result.DebugMessages, "error: request-ctx not found in handleBeforeValidationHook()")
 		return result, nil
 	}
 
