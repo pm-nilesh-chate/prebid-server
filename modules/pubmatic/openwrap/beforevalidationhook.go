@@ -159,6 +159,8 @@ func (m OpenWrap) handleBeforeValidationHook(
 			// bidder is equivalent of PBS-Core's bidderCode
 			bidder := partnerConfig[models.PREBID_PARTNER_NAME]
 
+			rCtx.PrebidBidderCode[bidder] = bidderCode
+
 			var slot string
 			var bidderParams json.RawMessage
 			switch bidder {
@@ -303,6 +305,22 @@ func (m *OpenWrap) applyProfileChanges(rctx models.RequestCtx, bidRequest *openr
 	adunitconfig.ReplaceAppObjectFromAdUnitConfig(rctx, bidRequest.App)
 	adunitconfig.ReplaceDeviceTypeFromAdUnitConfig(rctx, bidRequest.Device)
 	bidRequest.Device.IP = rctx.IP
+	bidRequest.Device.Language = getValidLanguage(bidRequest.Device.Language)
+	if bidRequest.User != nil {
+		bidRequest.User = &openrtb2.User{}
+	}
+	if bidRequest.User.CustomData == "" && rctx.KADUSERCookie != nil {
+		bidRequest.User.CustomData = rctx.KADUSERCookie.Value
+	}
+	for i := 0; i < len(bidRequest.WLang); i++ {
+		bidRequest.WLang[i] = getValidLanguage(bidRequest.WLang[i])
+	}
+
+	if bidRequest.Site != nil && bidRequest.Site.Content != nil {
+		bidRequest.Site.Content.Language = getValidLanguage(bidRequest.Site.Content.Language)
+	} else if bidRequest.App != nil && bidRequest.App.Content != nil {
+		bidRequest.App.Content.Language = getValidLanguage(bidRequest.App.Content.Language)
+	}
 
 	bidRequest.Ext = rctx.NewReqExt
 	return bidRequest, nil
@@ -612,4 +630,14 @@ func isSendAllBids(rctx models.RequestCtx) bool {
 		}
 	}
 	return false
+}
+
+func getValidLanguage(language string) string {
+	if len(language) > 2 {
+		lang := language[0:2]
+		if models.ValidCode(lang) {
+			return lang
+		}
+	}
+	return language
 }

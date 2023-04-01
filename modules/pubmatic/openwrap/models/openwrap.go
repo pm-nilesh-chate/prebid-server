@@ -26,9 +26,10 @@ type RequestCtx struct {
 	IsTestRequest bool
 	IsCTVRequest  bool
 
-	UA        string
-	Cookies   string
-	UidCookie *http.Cookie
+	UA            string
+	Cookies       string
+	UidCookie     *http.Cookie
+	KADUSERCookie *http.Cookie
 
 	Debug bool
 	Trace bool
@@ -40,6 +41,9 @@ type RequestCtx struct {
 
 	//logger
 	URL string
+
+	//prebid-biddercode to seat/alias mapping
+	PrebidBidderCode map[string]string
 
 	// imp-bid ctx to avoid computing same thing for bidder params, logger and tracker
 	ImpBidCtx   map[string]ImpCtx
