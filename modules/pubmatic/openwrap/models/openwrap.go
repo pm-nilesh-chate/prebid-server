@@ -24,6 +24,7 @@ type RequestCtx struct {
 
 	//NYC_TODO: use enum?
 	IsTestRequest bool
+	ABTestConfig  int
 	IsCTVRequest  bool
 
 	UA            string
