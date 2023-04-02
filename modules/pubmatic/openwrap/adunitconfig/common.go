@@ -14,8 +14,9 @@ func selectSlot(rCtx models.RequestCtx, h, w int64, tagid, div, source string) (
 	if slotAdUnitConfig, ok := rCtx.AdUnitConfig.Config[slotName]; ok {
 		return slotAdUnitConfig, slotName, false, ""
 	} else if rCtx.AdUnitConfig.Regex {
-		matchedRegex = getRegexMatch(rCtx, slotName)
-		return rCtx.AdUnitConfig.Config[matchedRegex], slotName, true, matchedRegex
+		if matchedRegex = getRegexMatch(rCtx, slotName); matchedRegex != "" {
+			return rCtx.AdUnitConfig.Config[matchedRegex], slotName, true, matchedRegex
+		}
 	}
 
 	return nil, "", false, ""
@@ -32,27 +33,15 @@ func GetClientConfigForMediaType(rctx models.RequestCtx, impID string, adUnitCfg
 		return nil
 	}
 
-	if cfg, ok := adUnitCfgMap.Config[impData.TagID]; ok {
-		if mediaType == models.AdunitConfigSlotBannerKey {
-			if cfg.Banner != nil && cfg.Banner.Config != nil {
-				return cfg.Banner.Config.ClientConfig
-			}
-		} else if mediaType == models.AdunitConfigSlotVideoKey {
-			if cfg.Video != nil && cfg.Video.Config != nil {
-				return cfg.Video.Config.ClientConfig
-			}
+	if mediaType == "banner" {
+		if impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig != nil && impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner != nil &&
+			impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner.Config != nil {
+			return impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner.Config.ClientConfig
 		}
-	}
-
-	if cfg, ok := adUnitCfgMap.Config[models.AdunitConfigDefaultKey]; ok {
-		if mediaType == models.AdunitConfigSlotBannerKey {
-			if cfg.Banner != nil && cfg.Banner.Config != nil {
-				return cfg.Banner.Config.ClientConfig
-			}
-		} else if mediaType == models.AdunitConfigSlotVideoKey {
-			if cfg.Video != nil && cfg.Video.Config != nil {
-				return cfg.Video.Config.ClientConfig
-			}
+	} else if mediaType == "video" {
+		if impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig != nil && impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Video != nil &&
+			impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Video.Config != nil {
+			return impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Video.Config.ClientConfig
 		}
 	}
 
