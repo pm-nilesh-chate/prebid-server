@@ -64,6 +64,7 @@ func (m OpenWrap) handleEntrypointHook(
 		DisplayID:          requestExtWrapper.VersionId,
 		LogInfoFlag:        requestExtWrapper.LogInfoFlag,
 		PreferDeals:        requestExtWrapper.SupportDeals,
+		ABTestConfig:       requestExtWrapper.ABTestConfig,
 		SSAuction:          requestExtWrapper.SSAuctionFlag,
 		SummaryDisable:     requestExtWrapper.SumryDisableFlag,
 		LoggerImpressionID: requestExtWrapper.LoggerImpressionID,

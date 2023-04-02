@@ -57,6 +57,12 @@ func (m OpenWrap) handleBeforeValidationHook(
 	}
 
 	rCtx.PartnerConfigMap = partnerConfigMap // keep a copy at module level as well
+
+	if newPartnerConfigMap, ok := ABTestProcessing(rCtx); ok {
+		rCtx.PartnerConfigMap = newPartnerConfigMap
+		result.Warnings = append(result.Warnings, "update the rCtx.PartnerConfigMap with ABTest data")
+	}
+
 	rCtx.Platform, _ = rCtx.GetVersionLevelKey(models.PLATFORM_KEY)
 	rCtx.PageURL = getPageURL(payload.BidRequest)
 	rCtx.DevicePlatform = GetDevicePlatform(rCtx.UA, payload.BidRequest, rCtx.Platform)
