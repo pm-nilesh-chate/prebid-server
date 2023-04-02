@@ -80,8 +80,8 @@ func (r RequestCtx) GetVersionLevelKey(key string) (string, bool) {
 type ImpCtx struct {
 	ImpID             string
 	TagID             string
+	Div               string
 	Secure            int
-	KGPV              string
 	IsRewardInventory *int8
 	Video             *openrtb2.Video
 	Type              string // banner, video, native, etc
@@ -97,7 +97,9 @@ type PartnerData struct {
 	PartnerID        int
 	PrebidBidderCode string
 	MatchedSlot      string
+	KGP              string
 	KGPV             string
+	IsRegex          bool
 	Params           json.RawMessage
 }
 

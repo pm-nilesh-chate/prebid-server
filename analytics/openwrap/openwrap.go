@@ -179,8 +179,37 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 			}
 
 			revShare := 0.0
-			if pd, ok := impCtx.Bidders[seat]; ok {
-				revShare, _ = strconv.ParseFloat(rCtx.PartnerConfigMap[pd.PartnerID][models.REVSHARE], 64)
+			partnerID := seat
+			var isRegex bool
+			var kgp, kgpv, kgpsv string
+
+			if bidderMeta, ok := impCtx.Bidders[seat]; ok {
+				revShare, _ = strconv.ParseFloat(rCtx.PartnerConfigMap[bidderMeta.PartnerID][models.REVSHARE], 64)
+				partnerID = bidderMeta.PrebidBidderCode
+				kgp = bidderMeta.KGP
+				kgpv = bidderMeta.KGPV
+				kgpsv = bidderMeta.MatchedSlot
+				isRegex = bidderMeta.IsRegex
+			}
+
+			// 1. nobid
+			if bid.Price == 0 && bid.H == 0 && bid.W == 0 {
+				//NOTE: kgpsv = bidderMeta.MatchedSlot above. Use the same
+				if !isRegex && kgpv != "" { // unmapped pubmatic's slot
+					kgpsv = kgpv
+				} else {
+					kgpv = kgpsv
+				}
+			} else if !isRegex {
+				if kgpv != "" { // unmapped pubmatic's slot
+					kgpsv = kgpv
+				} else {
+					// 2. valid bid
+					// kgpv has regex, do not generate slotName again
+					// kgpsv could be unmapped or mapped slot, generate slotName again based on bid.H and bid.W
+					kgpsv := GenerateSlotName(bid.H, bid.W, kgp, impCtx.TagID, impCtx.Div, rCtx.Source)
+					kgpv = kgpsv
+				}
 			}
 
 			bidExt := models.BidExt{}
@@ -191,20 +220,13 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 				price = bidExt.OriginalBidCPMUSD
 			}
 
-			matchedSlot := ""
-			partnerID := seat
-			if bidderMeta, ok := impCtx.Bidders[seat]; ok {
-				matchedSlot = bidderMeta.MatchedSlot
-				partnerID = bidderMeta.PrebidBidderCode
-			}
-
 			// marketplace/alternatebiddercodes feature
 			if bidExt.Prebid != nil && bidExt.Prebid.Meta != nil && len(bidExt.Prebid.Meta.AdapterCode) != 0 && seat != bidExt.Prebid.Meta.AdapterCode {
 				partnerID = bidExt.Prebid.Meta.AdapterCode
 
 				if aliasSeat, ok := rCtx.PrebidBidderCode[partnerID]; ok {
 					if bidderMeta, ok := impCtx.Bidders[aliasSeat]; ok {
-						matchedSlot = bidderMeta.MatchedSlot
+						kgpsv = bidderMeta.MatchedSlot
 					}
 				}
 			}
@@ -212,8 +234,8 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 			pr := PartnerRecord{
 				PartnerID:        partnerID,
 				BidderCode:       seat,
-				KGPV:             matchedSlot,
-				KGPSV:            matchedSlot,
+				KGPV:             kgpv,
+				KGPSV:            kgpsv,
 				BidID:            bid.ID,
 				OrigBidID:        bid.ID,
 				DefaultBidStatus: 0,

@@ -135,13 +135,13 @@ func (m OpenWrap) handleBeforeValidationHook(
 			}
 		}
 
+		div := ""
+		if impExt.Wrapper != nil {
+			div = impExt.Wrapper.Div
+		}
+
 		var videoAdUnitCtx, bannerAdUnitCtx models.AdUnitCtx
 		if rCtx.AdUnitConfig != nil {
-			div := ""
-			if impExt.Wrapper != nil {
-				div = impExt.Wrapper.Div
-			}
-
 			videoAdUnitCtx = adunitconfig.UpdateVideoObjectWithAdunitConfig(rCtx, imp, div, payload.BidRequest.Device.ConnectionType)
 			bannerAdUnitCtx = adunitconfig.UpdateBannerObjectWithAdunitConfig(rCtx, imp, div)
 		}
@@ -185,11 +185,12 @@ func (m OpenWrap) handleBeforeValidationHook(
 				continue
 			}
 
-			var slot string
+			var isRegex bool
+			var slot, kgpv string
 			var bidderParams json.RawMessage
 			switch prebidBidderCode {
 			case string(openrtb_ext.BidderPubmatic), models.BidderPubMaticSecondaryAlias:
-				slot, bidderParams, err = bidderparams.PreparePubMaticParamsV25(rCtx, m.cache, *payload.BidRequest, imp, *impExt, partnerID)
+				slot, kgpv, isRegex, bidderParams, err = bidderparams.PreparePubMaticParamsV25(rCtx, m.cache, *payload.BidRequest, imp, *impExt, partnerID)
 			case models.BidderVASTBidder:
 				slot, bidderParams, err = bidderparams.PrepareVASTBidderParams(rCtx, m.cache, *payload.BidRequest, imp, *impExt, partnerID, adpodExt)
 			default:
@@ -206,7 +207,9 @@ func (m OpenWrap) handleBeforeValidationHook(
 				PrebidBidderCode: prebidBidderCode,
 				MatchedSlot:      slot,
 				Params:           bidderParams,
-				KGPV:             rCtx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN],
+				KGP:              rCtx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN], //acutual slot
+				KGPV:             kgpv,                                                     //regex pattern, use this field for pubmatic default unmapped slot as well using isRegex
+				IsRegex:          isRegex,                                                  //regex pattern
 			}
 
 			if alias, ok := partnerConfig[models.IsAlias]; ok && alias == "1" {
@@ -246,6 +249,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 		if _, ok := rCtx.ImpBidCtx[imp.ID]; !ok {
 			rCtx.ImpBidCtx[imp.ID] = models.ImpCtx{
 				TagID:             imp.TagID,
+				Div:               div,
 				IsRewardInventory: reward,
 				Type:              slotType,
 				Video:             imp.Video,
