@@ -23,8 +23,8 @@ func selectSlot(rCtx models.RequestCtx, h, w int64, tagid, div, source string) (
 }
 
 /*GetClientConfigForMediaType function fetches the client config data from the ad unit config JSON for the given media type*/
-func GetClientConfigForMediaType(rctx models.RequestCtx, impID string, adUnitCfgMap *adunitconfig.AdUnitConfig, mediaType string) json.RawMessage {
-	if adUnitCfgMap == nil || adUnitCfgMap.Config == nil {
+func GetClientConfigForMediaType(rctx models.RequestCtx, impID string, mediaType string) json.RawMessage {
+	if rctx.AdUnitConfig == nil || rctx.AdUnitConfig.Config == nil {
 		return nil
 	}
 
@@ -33,17 +33,33 @@ func GetClientConfigForMediaType(rctx models.RequestCtx, impID string, adUnitCfg
 		return nil
 	}
 
-	if mediaType == "banner" {
-		if impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig != nil && impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner != nil &&
-			impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner.Config != nil {
-			return impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner.Config.ClientConfig
+	// nobid needs both banner and video clientconfig, hence check both
+	// bannerImp -> banner and video clientconfig
+	// videoImp -> banner and video clientconfig
+	if impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig != nil {
+		if mediaType == models.AdunitConfigSlotBannerKey {
+			if impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner != nil &&
+				impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner.Config != nil {
+				return impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner.Config.ClientConfig
+			}
+		} else if mediaType == models.AdunitConfigSlotVideoKey {
+			if impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Video != nil &&
+				impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Video.Config != nil {
+				return impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Video.Config.ClientConfig
+			}
 		}
-	} else if mediaType == "video" {
-		if impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig != nil && impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Video != nil &&
-			impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Video.Config != nil {
-			return impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Video.Config.ClientConfig
+	} else if impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig != nil {
+		if mediaType == models.AdunitConfigSlotBannerKey {
+			if impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Banner != nil &&
+				impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Banner.Config != nil {
+				return impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Banner.Config.ClientConfig
+			}
+		} else if mediaType == models.AdunitConfigSlotVideoKey {
+			if impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Video != nil &&
+				impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Video.Config != nil {
+				return impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Video.Config.ClientConfig
+			}
 		}
 	}
-
 	return nil
 }
