@@ -199,7 +199,7 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 			}
 
 			// marketplace/alternatebiddercodes feature
-			if bidExt.Prebid.Meta != nil && len(bidExt.Prebid.Meta.AdapterCode) != 0 && seat != bidExt.Prebid.Meta.AdapterCode {
+			if bidExt.Prebid != nil && bidExt.Prebid.Meta != nil && len(bidExt.Prebid.Meta.AdapterCode) != 0 && seat != bidExt.Prebid.Meta.AdapterCode {
 				partnerID = bidExt.Prebid.Meta.AdapterCode
 
 				if aliasSeat, ok := rCtx.PrebidBidderCode[partnerID]; ok {
@@ -250,15 +250,15 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 				pr.DealChannel = models.DEFAULT_DEALCHANNEL
 			}
 
-			if bidExt.Prebid.DealTierSatisfied && bidExt.Prebid.DealPriority > 0 {
+			if bidExt.Prebid != nil && bidExt.Prebid.DealTierSatisfied && bidExt.Prebid.DealPriority > 0 {
 				pr.DealPriority = bidExt.Prebid.DealPriority
 			}
 
-			if bidExt.Prebid.Video != nil && bidExt.Prebid.Video.Duration > 0 {
+			if bidExt.Prebid != nil && bidExt.Prebid.Video != nil && bidExt.Prebid.Video.Duration > 0 {
 				pr.AdDuration = &bidExt.Prebid.Video.Duration
 			}
 			//prepare Meta Object
-			if bidExt.Prebid.Meta != nil {
+			if bidExt.Prebid != nil && bidExt.Prebid.Meta != nil {
 				pr.setMetaDataObject(bidExt.Prebid.Meta)
 			}
 

@@ -78,7 +78,7 @@ func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 					// TODO do most calculation in wt
 					// marketplace/alternatebiddercodes feature
 					bidExt := bidCtx.BidExt
-					if bidExt.Prebid.Meta != nil && len(bidExt.Prebid.Meta.AdapterCode) != 0 && seatBid.Seat != bidExt.Prebid.Meta.AdapterCode {
+					if bidExt.Prebid != nil && bidExt.Prebid.Meta != nil && len(bidExt.Prebid.Meta.AdapterCode) != 0 && seatBid.Seat != bidExt.Prebid.Meta.AdapterCode {
 						partnerID = bidExt.Prebid.Meta.AdapterCode
 
 						if aliasSeat, ok := rctx.PrebidBidderCode[partnerID]; ok {
