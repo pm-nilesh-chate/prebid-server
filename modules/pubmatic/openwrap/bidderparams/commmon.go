@@ -7,7 +7,6 @@ import (
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/cache"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
 )
 
 var ignoreKeys = map[string]bool{
@@ -118,14 +117,15 @@ func GenerateSlotName(h, w int64, kgp, tagid, div, src string) string {
 	return ""
 }
 
-func CheckSlotName(slotName string, isRegex bool, slotMap map[string]models.SlotMapping) (map[string]interface{}, error) {
-	if isRegex {
-		// fieldMap, matchingRegex = RunRegexMatch(*models.Id, slotMap, slotMappingInfo, slotKey, pubIDInt, partnerID, profileID, versionID, partnerConf[models.BidderCode])
+/*
+formSlotForDefaultMapping: In this method, we are removing wxh from the kgp because
+pubmatic adapter sets wxh that we send in imp.ext.pubmatic.adslot as primary size while calling translator.
+In case of default mappings, since all sizes are unmapped, we don't want to treat any size as primary
+thats why we are removing size from kgp
+*/
+func getDefaultMappingKGP(keyGenPattern string) string {
+	if strings.Contains(keyGenPattern, "@_W_x_H_") {
+		return strings.ReplaceAll(keyGenPattern, "@_W_x_H_", "")
 	}
-
-	slotMappingObj, ok := slotMap[strings.ToLower(slotName)]
-	if !ok {
-		return nil, errorcodes.ErrGADSMissingConfig
-	}
-	return slotMappingObj.SlotMappings, nil
+	return keyGenPattern
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/cache"
@@ -12,66 +13,97 @@ import (
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
-func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int) (string, []byte, errorcodes.IError) {
-	slots, slotMap, slotMappingInfo, _ := getSlotMeta(rctx, cache, bidRequest, imp, impExt, partnerID)
-	for _, slot := range slots {
-		params, err := prepareBidParamForPubmaticV25(rctx, slot, slotMap, slotMappingInfo, bidRequest, imp, impExt, partnerID, false)
-		if err != nil || params == nil {
-			continue
-		}
-		return slot, params, nil
-	}
-	// isRegex := kgp == models.REGEX_KGP
-	// _ = isRegex
-	//isRegex
-	// for _, slot := range slots {
-	// 	slot =
-	// 	prepareBidParamForPubmaticV25(rctx, slot, slotMap, slotMappingInfo, bidRequest, imp, impExt, partnerID, true)
-	// }
-
-	return "", nil, nil
-}
-
-func prepareBidParamForPubmaticV25(rctx models.RequestCtx, slot string, slotMap map[string]models.SlotMapping, slotMappingInfo models.SlotMappingInfo, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int, isRegex bool) ([]byte, error) {
-	var fieldMap map[string]interface{}
-	var err error
-	if !rctx.IsTestRequest && !isRegex {
-		fieldMap, err = CheckSlotName(slot, isRegex, slotMap)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// use owSlotName to addres case insensitive slotname. EX slot= "/43743431/DMDEMO@300x250" and owSlotName="/43743431/DMDemo@300x250"
-	if fieldMap != nil && fieldMap["owSlotName"] != nil {
-		if owSlotName, ok := fieldMap["owSlotName"].(string); ok {
-			slot = owSlotName
-		}
-	}
-
+func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int) (string, []byte, error) {
 	wrapExt := fmt.Sprintf(`{"%s":%d,"%s":%d}`, models.SS_PM_VERSION_ID, rctx.DisplayID, models.SS_PM_PROFILE_ID, rctx.ProfileID)
 	extImpPubMatic := openrtb_ext.ExtImpPubmatic{
 		PublisherId: strconv.Itoa(rctx.PubID),
 		WrapExt:     json.RawMessage(wrapExt),
-		AdSlot:      slot,
 		Keywords:    getImpExtPubMaticKeyWords(impExt, rctx.PartnerConfigMap[partnerID][models.BidderCode]),
 		DealTier:    getDealTier(impExt, rctx.PartnerConfigMap[partnerID][models.BidderCode]),
 	}
 
-	// NYC_TODO: check with translator if this is required.
-	// if partnerConf[constant.KEY_GEN_PATTERN] == constant.REGEX_KGP {
-	// 	slotKey = hashValue
-	// } else if value, ok := fieldMap[constant.KEY_OW_SLOT_NAME]; ok && nil != value {
-	// 	slotKey = fmt.Sprintf("%v", value)
-	// }
-	//
-	// Update slot key for PubMatic secondary flow
-	// if value, ok := fieldMap[constant.KEY_SLOT_NAME]; ok && nil != value {
-	// 	slotKey = fmt.Sprintf("%v", value)
-	// }
-	_ = fieldMap
+	slots, slotMap, slotMappingInfo, _ := getSlotMeta(rctx, cache, bidRequest, imp, impExt, partnerID)
 
-	return json.Marshal(extImpPubMatic)
+	if rctx.IsTestRequest {
+		extImpPubMatic.AdSlot = slots[0]
+		params, err := json.Marshal(extImpPubMatic)
+		return extImpPubMatic.AdSlot, params, err
+	}
+
+	var paramMap map[string]interface{}
+	var err error
+
+	// simple key match
+	for _, slot := range slots {
+		paramMap, err = getMatchingSlot(rctx, slot, slotMap)
+		if err == nil {
+			extImpPubMatic.AdSlot = slot
+			break
+		}
+	}
+
+	//regex match
+	matchingRegex := ""
+	hash := ""
+	isRegex := rctx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN] == models.REGEX_KGP
+	if !isRegex {
+		for _, slot := range slots {
+			matchingRegex = getRegexMatchingSlot(rctx, slot, slotMap, slotMappingInfo)
+			if matchingRegex != "" && slotMappingInfo.HashValueMap != nil {
+				if v, ok := slotMappingInfo.HashValueMap[matchingRegex]; ok {
+					extImpPubMatic.AdSlot = v
+					imp.TagID = hash // TODO, make imp pointer. But do other bidders accept hash as TagID?
+				}
+				break
+			}
+		}
+	}
+	_ = slotMappingInfo
+
+	//overwrite
+	if paramMap != nil {
+		// use owSlotName to addres case insensitive slotname. EX slot= "/43743431/DMDEMO@300x250" and owSlotName="/43743431/DMDemo@300x250"
+		if v, ok := paramMap[models.KEY_OW_SLOT_NAME]; ok {
+			if owSlotName, ok := v.(string); ok {
+				extImpPubMatic.AdSlot = owSlotName
+			}
+		}
+
+		//Update slot key for PubMatic secondary flow
+		if v, ok := paramMap[models.KEY_SLOT_NAME]; ok {
+			if secondarySlotName, ok := v.(string); ok {
+				extImpPubMatic.AdSlot = secondarySlotName
+			}
+		}
+	}
+
+	//last resort
+	if extImpPubMatic.AdSlot == "" {
+		var div string
+		if impExt.Wrapper != nil {
+			div = impExt.Wrapper.Div
+		}
+		unmappedKPG := getDefaultMappingKGP(rctx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN])
+		extImpPubMatic.AdSlot = GenerateSlotName(0, 0, unmappedKPG, imp.TagID, div, rctx.Source)
+	}
+
+	params, err := json.Marshal(extImpPubMatic)
+	return extImpPubMatic.AdSlot, params, err
+}
+
+func getMatchingSlot(rctx models.RequestCtx, slot string, slotMap map[string]models.SlotMapping) (map[string]interface{}, error) {
+	slotMappingObj, ok := slotMap[strings.ToLower(slot)]
+	if !ok {
+		return nil, errorcodes.ErrGADSMissingConfig
+	}
+	return slotMappingObj.SlotMappings, nil
+}
+
+func getRegexMatchingSlot(rctx models.RequestCtx, slot string, slotMap map[string]models.SlotMapping, slotMappingInfo models.SlotMappingInfo) string {
+
+	// cacheKey := fmt.Sprintf(database.PubSlotRegex)
+
+	return ""
 }
 
 func getDealTier(impExt models.ImpExtension, bidderCode string) *openrtb_ext.DealTier {
