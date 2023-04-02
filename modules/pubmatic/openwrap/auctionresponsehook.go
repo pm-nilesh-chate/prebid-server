@@ -70,7 +70,7 @@ func (m OpenWrap) handleAuctionResponseHook(
 				}
 
 				// NYC_TODO: fix this in PBS-Core or ExecuteAllProcessedBidResponsesStage
-				if bidExt.Prebid.Video != nil && bidExt.Prebid.Video.Duration == 0 &&
+				if bidExt.Prebid != nil && bidExt.Prebid.Video != nil && bidExt.Prebid.Video.Duration == 0 &&
 					bidExt.Prebid.Video.PrimaryCategory == "" && bidExt.Prebid.Video.VASTTagID == "" {
 					bidExt.Prebid.Video = nil
 				}
@@ -82,7 +82,9 @@ func (m OpenWrap) handleAuctionResponseHook(
 					}
 				}
 
-				bidExt.CreativeType = string(bidExt.Prebid.Type)
+				if bidExt.Prebid != nil {
+					bidExt.CreativeType = string(bidExt.Prebid.Type)
+				}
 				if bidExt.CreativeType == "" {
 					bidExt.CreativeType = models.GetAdFormat(bid.AdM)
 				}
@@ -128,10 +130,15 @@ func (m OpenWrap) handleAuctionResponseHook(
 				}
 			}
 
+			bidDealTierSatisfied := false
+			if bidExt.Prebid != nil {
+				bidDealTierSatisfied = bidExt.Prebid.DealTierSatisfied
+			}
+
 			owbid := models.OwBid{
 				Bid:                  &bid,
 				NetEcpm:              bidExt.NetECPM,
-				BidDealTierSatisfied: bidExt.Prebid.DealTierSatisfied,
+				BidDealTierSatisfied: bidDealTierSatisfied,
 			}
 			wbid, ok := winningBids[bid.ImpID]
 			if !ok || isNewWinningBid(owbid, wbid, rctx.PreferDeals) {
