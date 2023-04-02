@@ -69,9 +69,10 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 
 	wlog := WloggerRecord{
 		record: record{
-			IID:          rCtx.LoggerImpressionID,
-			Timestamp:    rCtx.StartTime,
-			ServerLogger: 1,
+			IID:               rCtx.LoggerImpressionID,
+			Timestamp:         rCtx.StartTime,
+			ServerLogger:      1,
+			TestConfigApplied: rCtx.ABTestConfigApplied,
 		},
 	}
 
