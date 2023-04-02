@@ -181,6 +181,10 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 			bidExt := models.BidExt{}
 			_ = json.Unmarshal(bid.Ext, &bidExt)
 
+			if bidExt.Throttled {
+				continue
+			}
+
 			price := bid.Price
 			if ao.Response.Cur != "USD" {
 				price = bidExt.OriginalBidCPMUSD
