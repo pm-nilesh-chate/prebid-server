@@ -59,6 +59,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 	rCtx.PartnerConfigMap = partnerConfigMap // keep a copy at module level as well
 
 	if newPartnerConfigMap, ok := ABTestProcessing(rCtx); ok {
+		rCtx.ABTestConfigApplied = 1
 		rCtx.PartnerConfigMap = newPartnerConfigMap
 		result.Warnings = append(result.Warnings, "update the rCtx.PartnerConfigMap with ABTest data")
 	}
@@ -110,7 +111,11 @@ func (m OpenWrap) handleBeforeValidationHook(
 		IncludeBidderKeys: true,
 		IncludeWinners:    true,
 	}
-	requestExt.Prebid.BidderParams, _ = updateRequestExtBidderParamsPubmatic(requestExt.Prebid.BidderParams, rCtx.Cookies, rCtx.LoggerImpressionID, string(openrtb_ext.BidderPubmatic))
+
+	// TODO make this generic.
+	if _, ok := rCtx.AdapterThrottleMap[string(openrtb_ext.BidderPubmatic)]; !ok {
+		requestExt.Prebid.BidderParams, _ = updateRequestExtBidderParamsPubmatic(requestExt.Prebid.BidderParams, rCtx.Cookies, rCtx.LoggerImpressionID, string(openrtb_ext.BidderPubmatic))
+	}
 
 	aliasgvlids := make(map[string]uint16)
 	for i := 0; i < len(payload.BidRequest.Imp); i++ {
