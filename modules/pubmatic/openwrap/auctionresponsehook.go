@@ -167,6 +167,10 @@ func (m OpenWrap) handleAuctionResponseHook(
 		responseExt[models.MatchedImpression] = matchedImpression
 	}
 
+	if rctx.SendAllBids {
+		responseExt[models.SendAllBidsFlagKey] = 1
+	}
+
 	var err error
 	rctx.ResponseExt, err = json.Marshal(responseExt)
 	if err != nil {
@@ -190,6 +194,10 @@ func (m OpenWrap) handleAuctionResponseHook(
 		ap.BidResponse.Ext = rctx.ResponseExt
 		return ap, err
 	}, hookstage.MutationUpdate, "response-body-with-sshb-format")
+
+	// TODO: move debug here
+	// result.ChangeSet.AddMutation(func(ap hookstage.AuctionResponsePayload) (hookstage.AuctionResponsePayload, error) {
+	// }, hookstage.MutationUpdate, "response-body-with-sshb-format")
 
 	return result, nil
 }
