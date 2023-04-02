@@ -225,7 +225,11 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 				OriginalCur: bidExt.OriginalBidCur,
 				PartnerSize: getSizeForPlatform(bid.W, bid.H, rCtx.Platform),
 				DealID:      bid.DealID,
-				Adformat:    bidExt.CreativeType,
+			}
+
+			// don't want default banner for nobid in wl
+			if len(bid.AdM) != 0 {
+				pr.Adformat = models.GetAdFormat(bid.AdM)
 			}
 
 			if b, ok := rCtx.WinningBids[bid.ImpID]; ok && b.ID == bid.ID {
