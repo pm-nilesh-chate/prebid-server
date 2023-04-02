@@ -42,6 +42,13 @@ func prepareBidParamForPubmaticV25(rctx models.RequestCtx, slot string, slotMap 
 		}
 	}
 
+	// use owSlotName to addres case insensitive slotname. EX slot= "/43743431/DMDEMO@300x250" and owSlotName="/43743431/DMDemo@300x250"
+	if fieldMap != nil && fieldMap["owSlotName"] != nil {
+		if owSlotName, ok := fieldMap["owSlotName"].(string); ok {
+			slot = owSlotName
+		}
+	}
+
 	wrapExt := fmt.Sprintf(`{"%s":%d,"%s":%d}`, models.SS_PM_VERSION_ID, rctx.DisplayID, models.SS_PM_PROFILE_ID, rctx.ProfileID)
 	extImpPubMatic := openrtb_ext.ExtImpPubmatic{
 		PublisherId: strconv.Itoa(rctx.PubID),
