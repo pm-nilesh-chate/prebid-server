@@ -167,6 +167,10 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 			continue
 		}
 
+		if _, ok := rCtx.AdapterThrottleMap[seat]; ok {
+			continue
+		}
+
 		for _, bid := range bids {
 			impCtx, ok := rCtx.ImpBidCtx[bid.ImpID]
 			if !ok {
@@ -180,10 +184,6 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 
 			bidExt := models.BidExt{}
 			_ = json.Unmarshal(bid.Ext, &bidExt)
-
-			if bidExt.Throttled {
-				continue
-			}
 
 			price := bid.Price
 			if ao.Response.Cur != "USD" {

@@ -403,7 +403,7 @@ func (m *OpenWrap) addDefaultBids(rctx models.RequestCtx, bidResponse *openrtb2.
 				noSeatBids[impID][bidder] = append(noSeatBids[impID][bidder], openrtb2.Bid{
 					ID:    impID,
 					ImpID: impID,
-					Ext:   newNoBidExt(rctx, impID, false),
+					Ext:   newNoBidExt(rctx, impID),
 				})
 			}
 		}
@@ -420,7 +420,7 @@ func (m *OpenWrap) addDefaultBids(rctx models.RequestCtx, bidResponse *openrtb2.
 				{
 					ID:    impID,
 					ImpID: impID,
-					Ext:   newNoBidExt(rctx, impID, true),
+					Ext:   newNoBidExt(rctx, impID),
 				},
 			}
 		}
@@ -452,7 +452,7 @@ func (m *OpenWrap) addDefaultBids(rctx models.RequestCtx, bidResponse *openrtb2.
 	return bidResponse, nil
 }
 
-func newNoBidExt(rctx models.RequestCtx, impID string, throttled bool) json.RawMessage {
+func newNoBidExt(rctx models.RequestCtx, impID string) json.RawMessage {
 	bidExt := models.BidExt{
 		NetECPM: 0,
 	}
@@ -472,7 +472,6 @@ func newNoBidExt(rctx models.RequestCtx, impID string, throttled bool) json.RawM
 		}
 	}
 
-	bidExt.Throttled = throttled
 	newBidExt, err := json.Marshal(bidExt)
 	if err != nil {
 		return nil
