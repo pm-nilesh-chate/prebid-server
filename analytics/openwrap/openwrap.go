@@ -225,7 +225,7 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 				OriginalCur: bidExt.OriginalBidCur,
 				PartnerSize: getSizeForPlatform(bid.W, bid.H, rCtx.Platform),
 				DealID:      bid.DealID,
-				Adformat:    GetAdFormat(bid.AdM),
+				Adformat:    bidExt.CreativeType,
 			}
 
 			if b, ok := rCtx.WinningBids[bid.ImpID]; ok && b.ID == bid.ID {
