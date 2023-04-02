@@ -13,7 +13,7 @@ import (
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
-func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int) (string, []byte, error) {
+func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int) (string, string, bool, []byte, error) {
 	wrapExt := fmt.Sprintf(`{"%s":%d,"%s":%d}`, models.SS_PM_VERSION_ID, rctx.DisplayID, models.SS_PM_PROFILE_ID, rctx.ProfileID)
 	extImpPubMatic := openrtb_ext.ExtImpPubmatic{
 		PublisherId: strconv.Itoa(rctx.PubID),
@@ -27,7 +27,7 @@ func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequ
 	if rctx.IsTestRequest {
 		extImpPubMatic.AdSlot = slots[0]
 		params, err := json.Marshal(extImpPubMatic)
-		return extImpPubMatic.AdSlot, params, err
+		return extImpPubMatic.AdSlot, "", false, params, err
 	}
 
 	var paramMap map[string]interface{}
@@ -43,14 +43,14 @@ func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequ
 	}
 
 	//regex match
-	matchingRegex := ""
+	kgpv := ""
 	hash := ""
 	isRegex := rctx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN] == models.REGEX_KGP
 	if !isRegex {
 		for _, slot := range slots {
-			matchingRegex = getRegexMatchingSlot(rctx, slot, slotMap, slotMappingInfo)
-			if matchingRegex != "" && slotMappingInfo.HashValueMap != nil {
-				if v, ok := slotMappingInfo.HashValueMap[matchingRegex]; ok {
+			kgpv = getRegexMatchingSlot(rctx, slot, slotMap, slotMappingInfo)
+			if kgpv != "" && slotMappingInfo.HashValueMap != nil {
+				if v, ok := slotMappingInfo.HashValueMap[kgpv]; ok {
 					extImpPubMatic.AdSlot = v
 					imp.TagID = hash // TODO, make imp pointer. But do other bidders accept hash as TagID?
 				}
@@ -85,10 +85,13 @@ func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequ
 		}
 		unmappedKPG := getDefaultMappingKGP(rctx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN])
 		extImpPubMatic.AdSlot = GenerateSlotName(0, 0, unmappedKPG, imp.TagID, div, rctx.Source)
+		if len(slots) != 0 { // reuse this field for wt and wl in combination with isRegex
+			kgpv = slots[0]
+		}
 	}
 
 	params, err := json.Marshal(extImpPubMatic)
-	return extImpPubMatic.AdSlot, params, err
+	return extImpPubMatic.AdSlot, kgpv, isRegex, params, err
 }
 
 func getMatchingSlot(rctx models.RequestCtx, slot string, slotMap map[string]models.SlotMapping) (map[string]interface{}, error) {

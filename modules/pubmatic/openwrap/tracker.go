@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
+	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/bidderparams"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 )
 
@@ -63,6 +64,9 @@ func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 			isRewardInventory := 0
 			partnerID := seatBid.Seat
 
+			var isRegex bool
+			var kgp, kgpv, kgpsv string
+
 			if impCtx, ok := rctx.ImpBidCtx[bid.ImpID]; ok {
 				if bidderMeta, ok := impCtx.Bidders[seatBid.Seat]; ok {
 					matchedSlot = bidderMeta.MatchedSlot
@@ -89,6 +93,34 @@ func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 					}
 				}
 
+				_ = matchedSlot
+				// --------------------------------------------------------------------------------------------------
+				// Move this code to a function. Confirm the kgp, kgpv, kgpsv relation in wt and wl.
+				// --------------------------------------------------------------------------------------------------
+				// var kgp, kgpv, kgpsv string
+
+				if bidderMeta, ok := impCtx.Bidders[seatBid.Seat]; ok {
+					partnerID = bidderMeta.PrebidBidderCode
+					kgp = bidderMeta.KGP
+					kgpv = bidderMeta.KGPV
+					kgpsv = bidderMeta.MatchedSlot
+					isRegex = bidderMeta.IsRegex
+				}
+
+				// 1. nobid
+				if bid.Price == 0 && bid.H == 0 && bid.W == 0 {
+					//NOTE: kgpsv = bidderMeta.MatchedSlot above. Use the same
+					kgpv = kgpsv
+				} else if !isRegex {
+					// 2. valid bid
+					// kgpv has regex, do not generate slotName again
+					// kgpsv could be unmapped or mapped slot, generate slotName again based on bid.H and bid.W
+					kgpsv := bidderparams.GenerateSlotName(bid.H, bid.W, kgp, impCtx.TagID, impCtx.Div, rctx.Source)
+					kgpv = kgpsv
+				}
+				_ = kgpv
+				// --------------------------------------------------------------------------------------------------
+
 				tagid = impCtx.TagID
 				secure = impCtx.Secure
 				isRewardInventory = getRewardedInventoryFlag(rctx.ImpBidCtx[bid.ImpID].IsRewardInventory)
@@ -102,7 +134,7 @@ func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 				BidderCode: seatBid.Seat,
 				BidID:      bid.ID,
 				OrigBidID:  bid.ID,
-				KGPV:       matchedSlot,
+				KGPV:       kgpsv,
 				NetECPM:    float64(netECPM),
 				GrossECPM:  models.GetGrossEcpm(price),
 			}
