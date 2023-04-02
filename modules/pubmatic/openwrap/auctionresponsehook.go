@@ -69,6 +69,12 @@ func (m OpenWrap) handleAuctionResponseHook(
 					// continue
 				}
 
+				// NYC_TODO: fix this in PBS-Core or ExecuteAllProcessedBidResponsesStage
+				if bidExt.Prebid.Video != nil && bidExt.Prebid.Video.Duration == 0 &&
+					bidExt.Prebid.Video.PrimaryCategory == "" && bidExt.Prebid.Video.VASTTagID == "" {
+					bidExt.Prebid.Video = nil
+				}
+
 				if v, ok := rctx.PartnerConfigMap[models.VersionLevelConfigID]["refreshInterval"]; ok {
 					n, err := strconv.Atoi(v)
 					if err == nil {
@@ -120,7 +126,6 @@ func (m OpenWrap) handleAuctionResponseHook(
 						bidExt.Banner.ClientConfig = cc
 					}
 				}
-
 			}
 
 			owbid := models.OwBid{

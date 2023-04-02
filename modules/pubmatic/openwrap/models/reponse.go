@@ -8,6 +8,8 @@ import (
 )
 
 type BidExt struct {
+	openrtb_ext.ExtBid
+
 	ErrorCode       int    `json:"errorCode,omitempty"`
 	ErrorMsg        string `json:"errorMessage,omitempty"`
 	Partner         string `json:"partner,omitempty"`
