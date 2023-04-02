@@ -403,8 +403,25 @@ func (m *OpenWrap) addDefaultBids(rctx models.RequestCtx, bidResponse *openrtb2.
 				noSeatBids[impID][bidder] = append(noSeatBids[impID][bidder], openrtb2.Bid{
 					ID:    impID,
 					ImpID: impID,
-					Ext:   newNoBidExt(rctx, impID),
+					Ext:   newNoBidExt(rctx, impID, false),
 				})
+			}
+		}
+	}
+
+	// add nobids for throttled adapter to all the impressions (how do we change bidders at impression level?)
+	for bidder := range rctx.AdapterThrottleMap {
+		for impID, _ := range rctx.ImpBidCtx { // ImpBidCtx is used only for list of impID, it does not have data of throttled adapters
+			if noSeatBids[impID] == nil {
+				noSeatBids[impID] = make(map[string][]openrtb2.Bid)
+			}
+
+			noSeatBids[impID][bidder] = []openrtb2.Bid{
+				{
+					ID:    impID,
+					ImpID: impID,
+					Ext:   newNoBidExt(rctx, impID, true),
+				},
 			}
 		}
 	}
@@ -435,7 +452,7 @@ func (m *OpenWrap) addDefaultBids(rctx models.RequestCtx, bidResponse *openrtb2.
 	return bidResponse, nil
 }
 
-func newNoBidExt(rctx models.RequestCtx, impID string) json.RawMessage {
+func newNoBidExt(rctx models.RequestCtx, impID string, throttled bool) json.RawMessage {
 	bidExt := models.BidExt{
 		NetECPM: 0,
 	}
@@ -455,6 +472,7 @@ func newNoBidExt(rctx models.RequestCtx, impID string) json.RawMessage {
 		}
 	}
 
+	bidExt.Throttled = throttled
 	newBidExt, err := json.Marshal(bidExt)
 	if err != nil {
 		return nil
