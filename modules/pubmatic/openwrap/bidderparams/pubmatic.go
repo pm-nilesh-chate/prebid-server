@@ -32,16 +32,20 @@ func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequ
 	hash := ""
 	var err error
 	var paramMap map[string]interface{}
+	selectSlot := ""
+	isRegexSlot := false
 
-	isRegex := rctx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN] == models.REGEX_KGP
+	isRegexKGP := rctx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN] == models.REGEX_KGP
 
 	// simple+regex key match
 	for _, slot := range slots {
-		matchedSlot, matchedPattern := GetMatchingSlot(rctx, cache, slot, slotMap, slotMappingInfo, isRegex, partnerID)
+		matchedSlot, matchedPattern := GetMatchingSlot(rctx, cache, slot, slotMap, slotMappingInfo, isRegexKGP, partnerID)
 		if matchedSlot != "" {
+			selectSlot = matchedSlot
 			extImpPubMatic.AdSlot = matchedSlot
 
 			if matchedPattern != "" {
+				isRegexSlot = true
 				kgpv = matchedPattern
 				// imp.TagID = hash
 
@@ -89,7 +93,7 @@ func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequ
 	}
 
 	params, err := json.Marshal(extImpPubMatic)
-	return extImpPubMatic.AdSlot, kgpv, isRegex, params, err
+	return selectSlot, kgpv, isRegexSlot, params, err
 }
 
 func getDealTier(impExt models.ImpExtension, bidderCode string) *openrtb_ext.DealTier {

@@ -201,7 +201,7 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 				//NOTE: kgpsv = bidderMeta.MatchedSlot above. Use the same
 				if !isRegex && kgpv != "" { // unmapped pubmatic's slot
 					kgpsv = kgpv
-				} else {
+				} else if !isRegex {
 					kgpv = kgpsv
 				}
 			} else if !isRegex {
