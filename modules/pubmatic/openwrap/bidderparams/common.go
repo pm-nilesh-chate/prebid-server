@@ -106,10 +106,7 @@ func GenerateSlotName(h, w int64, kgp, tagid, div, src string) string {
 	case "_W_x_H_@_W_x_H_":
 		return fmt.Sprintf("%dx%d@%dx%d", w, h, w, h)
 	case "_AU_@_DIV_@_W_x_H_":
-		if div == "" {
-			return fmt.Sprintf("%s@%s@s%dx%d", tagid, div, w, h)
-		}
-		return fmt.Sprintf("%s@%s@s%dx%d", tagid, div, w, h)
+		return fmt.Sprintf("%s@%s@%dx%d", tagid, div, w, h)
 	case "_AU_@_SRC_@_VASTTAG_":
 		return fmt.Sprintf("%s@%s@s_VASTTAG_", tagid, src) //TODO check where/how _VASTTAG_ is updated
 	default:
@@ -133,7 +130,7 @@ func getDefaultMappingKGP(keyGenPattern string) string {
 }
 
 func GetMatchingSlot(rctx models.RequestCtx, cache cache.Cache, slot string, slotMap map[string]models.SlotMapping, slotMappingInfo models.SlotMappingInfo, isRegexKGP bool, partnerID int) (string, string) {
-	if _, ok := slotMap[strings.ToLower(slot)]; !ok {
+	if _, ok := slotMap[strings.ToLower(slot)]; ok {
 		return slot, ""
 	}
 
