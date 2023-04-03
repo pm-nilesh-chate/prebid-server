@@ -193,6 +193,9 @@ func handleHookResponse[P any](
 	switch true {
 	case hr.Err != nil:
 		handleHookError(hr, &hookOutcome, metricEngine, labels)
+		if hr.Result.Reject { // TODO check with PBS that hr.Err should also check for Reject
+			rejectErr = handleHookReject(ctx, hr, &hookOutcome, metricEngine, labels)
+		}
 	case hr.Result.Reject:
 		rejectErr = handleHookReject(ctx, hr, &hookOutcome, metricEngine, labels)
 	default:
