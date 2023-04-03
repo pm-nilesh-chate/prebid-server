@@ -447,7 +447,7 @@ func (m *OpenWrap) applyVideoAdUnitConfig(rCtx models.RequestCtx, imp *openrtb2.
 		imp.Video.Protocol = configObjInVideoConfig.Protocol
 	}
 
-	if len(configObjInVideoConfig.Protocols) == 0 {
+	if len(imp.Video.Protocols) == 0 {
 		imp.Video.Protocols = configObjInVideoConfig.Protocols
 	}
 
@@ -467,7 +467,7 @@ func (m *OpenWrap) applyVideoAdUnitConfig(rCtx models.RequestCtx, imp *openrtb2.
 		imp.Video.BoxingAllowed = configObjInVideoConfig.BoxingAllowed
 	}
 
-	if imp.Video.PlaybackMethod == nil && len(configObjInVideoConfig.PlaybackMethod) > 0 {
+	if len(imp.Video.PlaybackMethod) == 0 {
 		imp.Video.PlaybackMethod = configObjInVideoConfig.PlaybackMethod
 	}
 
@@ -483,11 +483,11 @@ func (m *OpenWrap) applyVideoAdUnitConfig(rCtx models.RequestCtx, imp *openrtb2.
 		imp.Video.Pos = configObjInVideoConfig.Pos
 	}
 
-	if len(configObjInVideoConfig.API) > 0 {
+	if len(imp.Video.API) == 0 {
 		imp.Video.API = configObjInVideoConfig.API
 	}
 
-	if len(configObjInVideoConfig.CompanionType) > 0 {
+	if len(imp.Video.CompanionType) == 0 {
 		imp.Video.CompanionType = configObjInVideoConfig.CompanionType
 	}
 
