@@ -4,12 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/cache"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
@@ -30,35 +28,34 @@ func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequ
 		return extImpPubMatic.AdSlot, "", false, params, err
 	}
 
-	var paramMap map[string]interface{}
+	kgpv := "" //regex match
+	hash := ""
 	var err error
+	var paramMap map[string]interface{}
 
-	// simple key match
+	isRegex := rctx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN] == models.REGEX_KGP
+
+	// simple+regex key match
 	for _, slot := range slots {
-		paramMap, err = getMatchingSlot(rctx, slot, slotMap)
-		if err == nil {
-			extImpPubMatic.AdSlot = slot
+		matchedSlot, matchedPattern := GetMatchingSlot(rctx, cache, slot, slotMap, slotMappingInfo, isRegex, partnerID)
+		if matchedSlot != "" {
+			extImpPubMatic.AdSlot = matchedSlot
+
+			if matchedPattern != "" {
+				kgpv = matchedPattern
+				// imp.TagID = hash
+
+				if slotMappingInfo.HashValueMap != nil {
+					if v, ok := slotMappingInfo.HashValueMap[kgpv]; ok {
+						extImpPubMatic.AdSlot = v
+						imp.TagID = hash // TODO, make imp pointer. But do other bidders accept hash as TagID?
+					}
+				}
+			}
+
 			break
 		}
 	}
-
-	//regex match
-	kgpv := ""
-	hash := ""
-	isRegex := rctx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN] == models.REGEX_KGP
-	if !isRegex {
-		for _, slot := range slots {
-			kgpv = getRegexMatchingSlot(rctx, slot, slotMap, slotMappingInfo)
-			if kgpv != "" && slotMappingInfo.HashValueMap != nil {
-				if v, ok := slotMappingInfo.HashValueMap[kgpv]; ok {
-					extImpPubMatic.AdSlot = v
-					imp.TagID = hash // TODO, make imp pointer. But do other bidders accept hash as TagID?
-				}
-				break
-			}
-		}
-	}
-	_ = slotMappingInfo
 
 	//overwrite
 	if paramMap != nil {
@@ -92,21 +89,6 @@ func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequ
 
 	params, err := json.Marshal(extImpPubMatic)
 	return extImpPubMatic.AdSlot, kgpv, isRegex, params, err
-}
-
-func getMatchingSlot(rctx models.RequestCtx, slot string, slotMap map[string]models.SlotMapping) (map[string]interface{}, error) {
-	slotMappingObj, ok := slotMap[strings.ToLower(slot)]
-	if !ok {
-		return nil, errorcodes.ErrGADSMissingConfig
-	}
-	return slotMappingObj.SlotMappings, nil
-}
-
-func getRegexMatchingSlot(rctx models.RequestCtx, slot string, slotMap map[string]models.SlotMapping, slotMappingInfo models.SlotMappingInfo) string {
-
-	// cacheKey := fmt.Sprintf(database.PubSlotRegex)
-
-	return ""
 }
 
 func getDealTier(impExt models.ImpExtension, bidderCode string) *openrtb_ext.DealTier {

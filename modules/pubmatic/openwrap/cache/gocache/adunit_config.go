@@ -1,6 +1,8 @@
-package cache
+package gocache
 
 import (
+	"strings"
+
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/adunitconfig"
 )
@@ -10,6 +12,12 @@ func (c *cache) populateCacheWithAdunitConfig(pubID int, profileID, displayVersi
 	if err != nil {
 		return
 	}
+
+	caseFoldConfigMap := make(map[string]*adunitconfig.AdConfig, len(adunitConfig.Config))
+	for k, v := range adunitConfig.Config {
+		caseFoldConfigMap[strings.ToLower(k)] = v
+	}
+	adunitConfig.Config = caseFoldConfigMap
 
 	cacheKey := key(PubAdunitConfig, pubID, profileID, displayVersion)
 	c.cache.Set(cacheKey, adunitConfig, getSeconds(c.cfg.CacheDefaultExpiry))

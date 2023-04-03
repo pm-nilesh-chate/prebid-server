@@ -2,6 +2,7 @@ package bidderparams
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
@@ -129,4 +130,71 @@ func getDefaultMappingKGP(keyGenPattern string) string {
 		return strings.ReplaceAll(keyGenPattern, "@_W_x_H_", "")
 	}
 	return keyGenPattern
+}
+
+func GetMatchingSlot(rctx models.RequestCtx, cache cache.Cache, slot string, slotMap map[string]models.SlotMapping, slotMappingInfo models.SlotMappingInfo, isRegexKGP bool, partnerID int) (string, string) {
+	if _, ok := slotMap[strings.ToLower(slot)]; !ok {
+		return slot, ""
+	}
+
+	if isRegexKGP {
+		if matchedSlot, regexPattern := GetRegexMatchingSlot(rctx, cache, slot, slotMap, slotMappingInfo, partnerID); matchedSlot != "" {
+			return matchedSlot, regexPattern
+		}
+	}
+
+	return "", ""
+}
+
+const pubSlotRegex = "psregex_%d_%d_%d_%d_%s" // slot and its matching regex info at publisher, profile, display version and adapter level
+
+// TODO: handle this db injection correctly
+func GetRegexMatchingSlot(rctx models.RequestCtx, cache cache.Cache, slot string, slotMap map[string]models.SlotMapping, slotMappingInfo models.SlotMappingInfo, partnerID int) (string, string) {
+	type regexSlotEntry struct {
+		SlotName     string
+		RegexPattern string
+	}
+
+	// Ex. "psregex_5890_56777_1_8_/43743431/DMDemo1@@728x90"
+	cacheKey := fmt.Sprintf(pubSlotRegex, rctx.PubID, rctx.ProfileID, rctx.DisplayID, partnerID, slot)
+	if v, ok := cache.Get(cacheKey); ok {
+		if rse, ok := v.(regexSlotEntry); ok {
+			return rse.SlotName, rse.RegexPattern
+		}
+	}
+
+	//Flags passed to regexp.Compile
+	regexFlags := "(?i)" // case in-sensitive match
+
+	// if matching regex is not found in cache, run checks for the regex patterns in DB
+	for _, slotname := range slotMappingInfo.OrderedSlotList {
+		slotnameMatched := false
+		dbSlotNameParts := strings.Split(slotname, "@")
+		requestSlotKeyParts := strings.Split(slot, "@")
+		if len(dbSlotNameParts) == len(requestSlotKeyParts) {
+			for i, dbPart := range dbSlotNameParts {
+				re, err := regexp.Compile(regexFlags + dbPart)
+				if err != nil {
+					// If an invalid regex pattern is encountered, check further entries intead of returning immediately
+					break
+				}
+				matchingPart := re.FindString(requestSlotKeyParts[i])
+				if matchingPart == "" && requestSlotKeyParts[i] != "" {
+					// request slot key did not match the Regex pattern
+					// check the next regex pattern from the DB
+					break
+				}
+				if i == len(dbSlotNameParts)-1 {
+					slotnameMatched = true
+				}
+			}
+		}
+
+		if slotnameMatched {
+			cache.Set(cacheKey, regexSlotEntry{SlotName: slot, RegexPattern: slotname})
+			return slot, slotname
+		}
+	}
+
+	return "", ""
 }
