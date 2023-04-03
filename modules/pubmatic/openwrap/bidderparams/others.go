@@ -1,6 +1,8 @@
 package bidderparams
 
 import (
+	"strings"
+
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/adapters"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/cache"
@@ -18,13 +20,15 @@ func PrepareAdapterParamsV25(rctx models.RequestCtx, cache cache.Cache, bidReque
 	slots, slotMap, slotMappingInfo, hw := getSlotMeta(rctx, cache, bidRequest, imp, impExt, partnerID)
 
 	for i, slot := range slots {
-		var slotMappingObj models.SlotMapping
-		matchedSlot, _ := GetMatchingSlot(rctx, cache, slot, slotMap, slotMappingInfo, isRegex, partnerID)
-		if matchedSlot != "" {
-			slotMappingObj = slotMap[matchedSlot]
-			break
+		matchedSlot, matchedPattern := GetMatchingSlot(rctx, cache, slot, slotMap, slotMappingInfo, isRegex, partnerID)
+		if matchedSlot == "" {
+			continue
 		}
 
+		slotMappingObj, ok := slotMap[strings.ToLower(matchedSlot)]
+		if !ok {
+			slotMappingObj, _ = slotMap[strings.ToLower(matchedPattern)]
+		}
 		bidderParams := slotMappingObj.SlotMappings
 		for key, value := range partnerConfig {
 			if !ignoreKeys[key] {

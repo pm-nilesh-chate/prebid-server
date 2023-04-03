@@ -45,6 +45,7 @@ func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequ
 				kgpv = matchedPattern
 				// imp.TagID = hash
 
+				// TODO: handle kgpv case sensitivity in hashvaluemap
 				if slotMappingInfo.HashValueMap != nil {
 					if v, ok := slotMappingInfo.HashValueMap[kgpv]; ok {
 						extImpPubMatic.AdSlot = v
