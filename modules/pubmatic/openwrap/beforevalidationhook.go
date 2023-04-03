@@ -159,6 +159,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 		}
 
 		bidderMeta := make(map[string]models.PartnerData)
+		nonMapped := make(map[string]struct{})
 		for _, partnerConfig := range rCtx.PartnerConfigMap {
 			if partnerConfig[models.SERVER_SIDE_FLAG] != "1" {
 				continue
@@ -199,6 +200,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 
 			if err != nil || len(bidderParams) == 0 {
 				result.Errors = append(result.Errors, fmt.Sprintf("no bidder params found for imp:%s partner: %s", imp.ID, prebidBidderCode))
+				nonMapped[bidderCode] = struct{}{}
 				continue
 			}
 
@@ -266,6 +268,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 
 		impCtx := rCtx.ImpBidCtx[imp.ID]
 		impCtx.Bidders = bidderMeta
+		impCtx.NonMapped = nonMapped
 		impCtx.VideoAdUnitCtx = videoAdUnitCtx
 		impCtx.BannerAdUnitCtx = bannerAdUnitCtx
 		rCtx.ImpBidCtx[imp.ID] = impCtx

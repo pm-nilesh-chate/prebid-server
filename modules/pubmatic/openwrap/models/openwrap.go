@@ -86,8 +86,10 @@ type ImpCtx struct {
 	Video             *openrtb2.Video
 	Type              string // banner, video, native, etc
 	Bidders           map[string]PartnerData
-	NewExt            json.RawMessage
-	BidCtx            map[string]BidCtx
+	NonMapped         map[string]struct{}
+
+	NewExt json.RawMessage
+	BidCtx map[string]BidCtx
 
 	BannerAdUnitCtx AdUnitCtx
 	VideoAdUnitCtx  AdUnitCtx

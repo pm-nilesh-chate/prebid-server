@@ -438,6 +438,23 @@ func (m *OpenWrap) addDefaultBids(rctx models.RequestCtx, bidResponse *openrtb2.
 		}
 	}
 
+	// add nobids for non-mapped bidders
+	for impID, impCtx := range rctx.ImpBidCtx {
+		for bidder := range impCtx.NonMapped {
+			if noSeatBids[impID] == nil {
+				noSeatBids[impID] = make(map[string][]openrtb2.Bid)
+			}
+
+			noSeatBids[impID][bidder] = []openrtb2.Bid{
+				{
+					ID:    impID,
+					ImpID: impID,
+					Ext:   newNoBidExt(rctx, impID),
+				},
+			}
+		}
+	}
+
 	// update nobids in final response
 	for i, seatBid := range bidResponse.SeatBid {
 		for impID, noSeatBid := range noSeatBids {
