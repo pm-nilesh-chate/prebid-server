@@ -29,7 +29,7 @@ func ResolveOWBidder(bidderName string) string {
 	case models.BidderAdGenerationAlias:
 		coreBidderName = string(openrtb_ext.BidderAdgeneration)
 	case models.BidderDistrictmDMXAlias:
-		// coreBidderName = string(openrtb_ext.BidderDistrictmDMX)
+		coreBidderName = string(openrtb_ext.BidderDmx)
 	case models.BidderPubMaticSecondaryAlias:
 		coreBidderName = string(openrtb_ext.BidderPubmatic)
 	case models.BidderDistrictmAlias:
