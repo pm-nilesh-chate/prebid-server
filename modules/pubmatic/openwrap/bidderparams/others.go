@@ -16,7 +16,7 @@ func PrepareAdapterParamsV25(rctx models.RequestCtx, cache cache.Cache, bidReque
 		return "", nil, errorcodes.ErrBidderParamsValidationError
 	}
 
-	slots, slotMap, _, wh := getSlotMeta(rctx, cache, bidRequest, imp, impExt, partnerID)
+	slots, slotMap, _, hw := getSlotMeta(rctx, cache, bidRequest, imp, impExt, partnerID)
 	for i, slot := range slots {
 		slotMappingObj, ok := slotMap[strings.ToLower(slot)]
 		if !ok {
@@ -30,8 +30,8 @@ func PrepareAdapterParamsV25(rctx models.RequestCtx, cache cache.Cache, bidReque
 			}
 		}
 
-		w := wh[i][0]
-		h := wh[i][1]
+		h := hw[i][0]
+		w := hw[i][1]
 		params, err := adapters.PrepareBidParamJSONForPartner(&w, &h, slotMappingObj.SlotMappings, slot, partnerConfig[models.PREBID_PARTNER_NAME], partnerConfig[models.BidderCode], &impExt)
 		if err != nil || params == nil {
 			continue
