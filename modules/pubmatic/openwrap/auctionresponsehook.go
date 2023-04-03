@@ -220,14 +220,16 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 	}
 
 	// remove non-winning bids if sendallbids=1
-	for _, seatBid := range bidResponse.SeatBid {
-		filteredBid := make([]openrtb2.Bid, 0, len(seatBid.Bid))
-		for _, bid := range seatBid.Bid {
-			if b, ok := rctx.WinningBids[bid.ImpID]; ok && b.ID == bid.ID && rctx.SendAllBids {
-				filteredBid = append(filteredBid, bid)
+	if !rctx.SendAllBids {
+		for _, seatBid := range bidResponse.SeatBid {
+			filteredBid := make([]openrtb2.Bid, 0, len(seatBid.Bid))
+			for _, bid := range seatBid.Bid {
+				if b, ok := rctx.WinningBids[bid.ImpID]; ok && b.ID == bid.ID {
+					filteredBid = append(filteredBid, bid)
+				}
 			}
+			seatBid.Bid = filteredBid
 		}
-		seatBid.Bid = filteredBid
 	}
 
 	for i, seatBid := range bidResponse.SeatBid {
