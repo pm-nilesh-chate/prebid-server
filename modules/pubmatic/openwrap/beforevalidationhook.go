@@ -237,8 +237,13 @@ func (m OpenWrap) handleBeforeValidationHook(
 
 		// reuse the existing impExt instead of allocating a new one
 		reward := impExt.Reward
+
+		if reward != nil {
+			impExt.Prebid.IsRewardedInventory = reward
+		}
+
 		impExt.Wrapper = nil
-		impExt.Reward = nil
+		impExt.Reward = nil //TODO move this to imp.ext.prebid.bidder.pubmatic.reward
 		impExt.Bidder = nil
 		newExt, err := json.Marshal(impExt)
 		if err != nil {
