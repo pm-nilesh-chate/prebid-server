@@ -42,19 +42,19 @@ func getSlotMeta(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.
 		}
 	}
 
-	var wh [][2]int64
+	var hw [][2]int64
 	if imp.Banner != nil {
 		if imp.Banner.W != nil && imp.Banner.H != nil {
-			wh = append(wh, [2]int64{*imp.Banner.H, *imp.Banner.W})
+			hw = append(hw, [2]int64{*imp.Banner.H, *imp.Banner.W})
 		}
 
 		for _, format := range imp.Banner.Format {
-			wh = append(wh, [2]int64{format.H, format.W})
+			hw = append(hw, [2]int64{format.H, format.W})
 		}
 	}
 
 	if imp.Video != nil {
-		wh = append(wh, [2]int64{0, 0})
+		hw = append(hw, [2]int64{0, 0})
 	}
 
 	kgp := rctx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN]
@@ -65,7 +65,8 @@ func getSlotMeta(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.
 	}
 
 	var slots []string
-	for _, format := range wh {
+	for _, format := range hw {
+		// TODO fix the param sequence. make it consistent. HxW
 		slot := GenerateSlotName(format[0], format[1], kgp, imp.TagID, div, rctx.Source)
 		if slot != "" {
 			slots = append(slots, slot)
@@ -74,7 +75,7 @@ func getSlotMeta(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.
 	}
 
 	// NYC_TODO wh is returned temporarily
-	return slots, slotMap, slotMappingInfo, wh
+	return slots, slotMap, slotMappingInfo, hw
 }
 
 // Harcode would be the optimal. We could make it configurable like _AU_@_W_x_H_:%s@%dx%d entries in pbs.yaml
