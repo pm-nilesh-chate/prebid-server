@@ -211,7 +211,7 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 					// 2. valid bid
 					// kgpv has regex, do not generate slotName again
 					// kgpsv could be unmapped or mapped slot, generate slotName again based on bid.H and bid.W
-					kgpsv := GenerateSlotName(bid.H, bid.W, kgp, impCtx.TagID, impCtx.Div, rCtx.Source)
+					kgpsv = GenerateSlotName(bid.H, bid.W, kgp, impCtx.TagID, impCtx.Div, rCtx.Source)
 					kgpv = kgpsv
 				}
 			}
