@@ -178,6 +178,10 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 				continue
 			}
 
+			if _, ok := impCtx.NonMapped[seat]; ok {
+				break
+			}
+
 			revShare := 0.0
 			partnerID := seat
 			var isRegex bool
