@@ -579,14 +579,19 @@ func getPageURL(bidRequest *openrtb2.BidRequest) string {
 // If this function fails to determine value of any macro then it continues with next macro setup
 // returns true when at least one macro is added to map
 func getVASTEventMacros(rctx models.RequestCtx) map[string]string {
-	return map[string]string{
+	macros := map[string]string{
 		string(models.MacroProfileID):           fmt.Sprintf("%d", rctx.ProfileID),
 		string(models.MacroProfileVersionID):    fmt.Sprintf("%d", rctx.DisplayID),
 		string(models.MacroUnixTimeStamp):       fmt.Sprintf("%d", rctx.StartTime),
 		string(models.MacroPlatform):            fmt.Sprintf("%d", rctx.DevicePlatform),
-		string(models.MacroSSAI):                rctx.SSAI,
 		string(models.MacroWrapperImpressionID): rctx.LoggerImpressionID,
 	}
+
+	if rctx.SSAI != "" {
+		macros[string(models.MacroSSAI)] = rctx.SSAI
+	}
+
+	return macros
 }
 
 func updateAliasGVLIds(aliasgvlids map[string]uint16, bidderCode string, partnerConfig map[string]string) {
