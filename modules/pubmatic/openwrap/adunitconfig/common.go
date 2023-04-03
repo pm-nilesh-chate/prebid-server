@@ -2,6 +2,7 @@ package adunitconfig
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/bidderparams"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
@@ -11,7 +12,7 @@ import (
 func selectSlot(rCtx models.RequestCtx, h, w int64, tagid, div, source string) (slotAdUnitConfig *adunitconfig.AdConfig, slotName string, isRegex bool, matchedRegex string) {
 	slotName = bidderparams.GenerateSlotName(h, w, rCtx.AdUnitConfig.ConfigPattern, tagid, div, rCtx.Source)
 
-	if slotAdUnitConfig, ok := rCtx.AdUnitConfig.Config[slotName]; ok {
+	if slotAdUnitConfig, ok := rCtx.AdUnitConfig.Config[strings.ToLower(slotName)]; ok {
 		return slotAdUnitConfig, slotName, false, ""
 	} else if rCtx.AdUnitConfig.Regex {
 		if matchedRegex = getRegexMatch(rCtx, slotName); matchedRegex != "" {

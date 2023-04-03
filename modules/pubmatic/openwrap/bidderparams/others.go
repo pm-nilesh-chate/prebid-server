@@ -1,8 +1,6 @@
 package bidderparams
 
 import (
-	"strings"
-
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/adapters"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/cache"
@@ -16,11 +14,15 @@ func PrepareAdapterParamsV25(rctx models.RequestCtx, cache cache.Cache, bidReque
 		return "", nil, errorcodes.ErrBidderParamsValidationError
 	}
 
-	slots, slotMap, _, hw := getSlotMeta(rctx, cache, bidRequest, imp, impExt, partnerID)
+	isRegex := rctx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN] == models.REGEX_KGP
+	slots, slotMap, slotMappingInfo, hw := getSlotMeta(rctx, cache, bidRequest, imp, impExt, partnerID)
+
 	for i, slot := range slots {
-		slotMappingObj, ok := slotMap[strings.ToLower(slot)]
-		if !ok {
-			continue
+		var slotMappingObj models.SlotMapping
+		matchedSlot, _ := GetMatchingSlot(rctx, cache, slot, slotMap, slotMappingInfo, isRegex, partnerID)
+		if matchedSlot != "" {
+			slotMappingObj = slotMap[matchedSlot]
+			break
 		}
 
 		bidderParams := slotMappingObj.SlotMappings
@@ -32,7 +34,7 @@ func PrepareAdapterParamsV25(rctx models.RequestCtx, cache cache.Cache, bidReque
 
 		h := hw[i][0]
 		w := hw[i][1]
-		params, err := adapters.PrepareBidParamJSONForPartner(&w, &h, slotMappingObj.SlotMappings, slot, partnerConfig[models.PREBID_PARTNER_NAME], partnerConfig[models.BidderCode], &impExt)
+		params, err := adapters.PrepareBidParamJSONForPartner(&w, &h, bidderParams, slot, partnerConfig[models.PREBID_PARTNER_NAME], partnerConfig[models.BidderCode], &impExt)
 		if err != nil || params == nil {
 			continue
 		}

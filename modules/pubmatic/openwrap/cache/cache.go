@@ -12,7 +12,7 @@ type Cache interface {
 	GetMappingsFromCacheV25(rctx models.RequestCtx, partnerID int) map[string]models.SlotMapping
 	GetSlotToHashValueMapFromCacheV25(rctx models.RequestCtx, partnerID int) models.SlotMappingInfo
 	GetPublisherVASTTagsFromCache(pubID int) models.PublisherVASTTags
-}
 
-// type internalCache interface {
-// }
+	Set(key string, value interface{})
+	Get(key string) (interface{}, bool)
+}

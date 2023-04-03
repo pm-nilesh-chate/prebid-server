@@ -11,6 +11,7 @@ import (
 	"github.com/prebid/prebid-server/modules/moduledeps"
 	ow_adapters "github.com/prebid/prebid-server/modules/pubmatic/openwrap/adapters"
 	ow_cache "github.com/prebid/prebid-server/modules/pubmatic/openwrap/cache"
+	ow_gocache "github.com/prebid/prebid-server/modules/pubmatic/openwrap/cache/gocache"
 	ow_config "github.com/prebid/prebid-server/modules/pubmatic/openwrap/config"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/database/mysql"
 )
@@ -51,7 +52,7 @@ func initOpenWrap(rawCfg json.RawMessage, _ moduledeps.ModuleDeps) (OpenWrap, er
 
 	return OpenWrap{
 		cfg:   cfg,
-		cache: ow_cache.New(cache, db, cfg.OpenWrap.Cache),
+		cache: ow_gocache.New(cache, db, cfg.OpenWrap.Cache),
 	}, nil
 }
 

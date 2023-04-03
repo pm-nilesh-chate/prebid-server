@@ -1,4 +1,4 @@
-package cache
+package gocache
 
 // NYC_TODO: Return DB level errors for module logging
 func (c *cache) GetPartnerConfigMap(pubid, profileid, displayversion int) (map[int]map[string]string, error) {

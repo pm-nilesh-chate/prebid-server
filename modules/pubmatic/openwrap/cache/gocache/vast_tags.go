@@ -1,4 +1,4 @@
-package cache
+package gocache
 
 import (
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
