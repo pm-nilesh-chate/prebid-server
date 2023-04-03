@@ -219,13 +219,19 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 		return bidResponse, nil
 	}
 
+	// remove non-winning bids if sendallbids=1
+	for _, seatBid := range bidResponse.SeatBid {
+		filteredBid := make([]openrtb2.Bid, 0, len(seatBid.Bid))
+		for _, bid := range seatBid.Bid {
+			if b, ok := rctx.WinningBids[bid.ImpID]; ok && b.ID == bid.ID && rctx.SendAllBids {
+				filteredBid = append(filteredBid, bid)
+			}
+		}
+		seatBid.Bid = filteredBid
+	}
+
 	for i, seatBid := range bidResponse.SeatBid {
 		for j, bid := range seatBid.Bid {
-			if b, ok := rctx.WinningBids[bid.ImpID]; ok && b.ID != bid.ID && !rctx.SendAllBids {
-				bidResponse.SeatBid[i].Bid = append(bidResponse.SeatBid[i].Bid[:j], bidResponse.SeatBid[i].Bid[j+1:]...)
-				continue
-			}
-
 			impCtx, ok := rctx.ImpBidCtx[bid.ImpID]
 			if !ok {
 				continue
@@ -240,11 +246,14 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 		}
 	}
 
-	for i, seatBid := range bidResponse.SeatBid {
-		if len(seatBid.Bid) == 0 {
-			bidResponse.SeatBid = append(bidResponse.SeatBid[:i], bidResponse.SeatBid[i+1:]...)
+	// remove seats with empty bids (will add nobids later)
+	filteredSeatBid := make([]openrtb2.SeatBid, 0, len(bidResponse.SeatBid))
+	for _, seatBid := range bidResponse.SeatBid {
+		if len(seatBid.Bid) > 0 {
+			filteredSeatBid = append(filteredSeatBid, seatBid)
 		}
 	}
+	bidResponse.SeatBid = filteredSeatBid
 
 	if len(bidResponse.SeatBid) != 0 {
 		// keep pubmatic 1st to handle automation failure.
