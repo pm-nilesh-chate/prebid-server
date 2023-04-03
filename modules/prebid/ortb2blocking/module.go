@@ -3,6 +3,7 @@ package ortb2blocking
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/prebid/openrtb/v17/adcom1"
 	"github.com/prebid/prebid-server/hooks/hookstage"
@@ -13,7 +14,30 @@ func Builder(_ json.RawMessage, _ moduledeps.ModuleDeps) (interface{}, error) {
 	return Module{}, nil
 }
 
-type Module struct{}
+type Module struct {
+	// implement a module level cache accross requests here.
+	// Use PBS-Core (hookExecutor) for request level content of a module
+	moduleCache map[string]interface{}
+}
+
+func (m Module) HandleEntrypointHook(
+	ctx context.Context,
+	miCtx hookstage.ModuleInvocationContext,
+	payload hookstage.EntrypointPayload,
+) (hookstage.HookResult[hookstage.EntrypointPayload], error) {
+	result := hookstage.HookResult[hookstage.EntrypointPayload]{}
+
+	how, ok := miCtx.ModuleContext["abc"].(int)
+	if ok {
+		panic(fmt.Sprintf("miCtx.ModuleContext is shared across requests!!! %v %v", how, ok))
+	}
+
+	dummyctx := make(map[string]interface{})
+	dummyctx["abc"] = 123
+	result.ModuleContext = dummyctx
+
+	return result, nil
+}
 
 // HandleBidderRequestHook updates blocking fields on the openrtb2.BidRequest.
 // Fields are updated only if request satisfies conditions provided by the module config.

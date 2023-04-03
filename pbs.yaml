@@ -1,0 +1,18 @@
+hooks:
+  enabled: true
+  modules:
+    prebid:
+      ortb2blocking:
+        enabled: true
+  host_execution_plan:
+    endpoints:
+      /openrtb2/auction:
+        stages:
+          entrypoint:
+            groups:
+              - timeout: 500000
+                hook_sequence:
+                  - module_code: prebid.ortb2blocking
+                    hook_impl_code: pubmatic.ortb2blocking.test_ctx
+gdpr:
+  default_value: "0"
