@@ -219,6 +219,9 @@ func (m OpenWrap) handleBeforeValidationHook(
 					rCtx.Aliases[bidderCode] = adapters.ResolveOWBidder(prebidPartnerName)
 				}
 			}
+			if alias, ok := IsAlias(bidderCode); ok {
+				rCtx.Aliases[bidderCode] = alias
+			}
 
 			if partnerConfig[models.PREBID_PARTNER_NAME] == models.BidderVASTBidder {
 				updateAliasGVLIds(aliasgvlids, bidderCode, partnerConfig)
@@ -240,7 +243,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 		// reuse the existing impExt instead of allocating a new one
 		reward := impExt.Reward
 
-		if reward != nil {
+		if reward != nil && *reward != 0 {
 			impExt.Prebid.IsRewardedInventory = reward
 		}
 
