@@ -195,7 +195,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 			case models.BidderVASTBidder:
 				slot, bidderParams, err = bidderparams.PrepareVASTBidderParams(rCtx, m.cache, *payload.BidRequest, imp, *impExt, partnerID, adpodExt)
 			default:
-				slot, bidderParams, err = bidderparams.PrepareAdapterParamsV25(rCtx, m.cache, *payload.BidRequest, imp, *impExt, partnerID)
+				slot, kgpv, isRegex, bidderParams, err = bidderparams.PrepareAdapterParamsV25(rCtx, m.cache, *payload.BidRequest, imp, *impExt, partnerID)
 			}
 
 			if err != nil || len(bidderParams) == 0 {
@@ -207,7 +207,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 			bidderMeta[bidderCode] = models.PartnerData{
 				PartnerID:        partnerID,
 				PrebidBidderCode: prebidBidderCode,
-				MatchedSlot:      slot,
+				MatchedSlot:      slot, // KGPSV
 				Params:           bidderParams,
 				KGP:              rCtx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN], //acutual slot
 				KGPV:             kgpv,                                                     //regex pattern, use this field for pubmatic default unmapped slot as well using isRegex
@@ -243,7 +243,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 		// reuse the existing impExt instead of allocating a new one
 		reward := impExt.Reward
 
-		if reward != nil && *reward != 0 {
+		if reward != nil {
 			impExt.Prebid.IsRewardedInventory = reward
 		}
 
