@@ -118,7 +118,6 @@ func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 					kgpsv := bidderparams.GenerateSlotName(bid.H, bid.W, kgp, impCtx.TagID, impCtx.Div, rctx.Source)
 					kgpv = kgpsv
 				}
-				_ = kgpv
 				// --------------------------------------------------------------------------------------------------
 
 				tagid = impCtx.TagID
@@ -134,7 +133,7 @@ func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 				BidderCode: seatBid.Seat,
 				BidID:      bid.ID,
 				OrigBidID:  bid.ID,
-				KGPV:       kgpsv,
+				KGPV:       kgpv,
 				NetECPM:    float64(netECPM),
 				GrossECPM:  models.GetGrossEcpm(price),
 			}
