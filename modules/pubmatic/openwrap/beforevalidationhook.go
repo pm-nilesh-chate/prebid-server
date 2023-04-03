@@ -94,14 +94,6 @@ func (m OpenWrap) handleBeforeValidationHook(
 	}
 
 	rCtx.AdUnitConfig = m.cache.GetAdunitConfigFromCache(payload.BidRequest, rCtx.PubID, rCtx.ProfileID, rCtx.DisplayID)
-	// if rCtx.AdUnitConfig != nil && rCtx.AdUnitConfig.Config[models.AdunitConfigRegex] != nil {
-	// 	if v, ok := rCtx.AdUnitConfig.Config[models.AdunitConfigRegex]; ok && v.Regex != nil && *v.Regex == true {
-	// 		errs := populateAndLogRegex(rCtx.AdUnitConfig)
-	// 		for _, err := range errs {
-	// 			result.Errors = append(result.Errors, err.Error())
-	// 		}
-	// 	}
-	// }
 
 	requestExt.Prebid.Debug = rCtx.Debug
 	requestExt.Prebid.SupportDeals = rCtx.PreferDeals // && IsCTVAPIRequest(reqWrapper.RequestAPI),
@@ -228,10 +220,6 @@ func (m OpenWrap) handleBeforeValidationHook(
 			}
 		} // for(rctx.PartnerConfigMap
 
-		if cto := setContentTransparencyObject(rCtx, requestExt, imp.ID, rCtx.AdUnitConfig); cto != nil {
-			requestExt.Prebid.Transparency = cto
-		}
-
 		// update the imp.ext with bidder params for this
 		if impExt.Prebid.Bidder == nil {
 			impExt.Prebid.Bidder = make(map[string]json.RawMessage)
@@ -276,6 +264,10 @@ func (m OpenWrap) handleBeforeValidationHook(
 		impCtx.BannerAdUnitCtx = bannerAdUnitCtx
 		rCtx.ImpBidCtx[imp.ID] = impCtx
 	} // for(imp
+
+	if cto := setContentTransparencyObject(rCtx, requestExt); cto != nil {
+		requestExt.Prebid.Transparency = cto
+	}
 
 	adunitconfig.UpdateFloorsExtObjectFromAdUnitConfig(rCtx, &requestExt)
 	setPriceFloorFetchURL(&requestExt, rCtx.PartnerConfigMap)

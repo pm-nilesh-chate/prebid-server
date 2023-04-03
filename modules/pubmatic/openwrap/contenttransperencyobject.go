@@ -8,52 +8,50 @@ import (
 
 // setContentObjectTransparencyObject from request or AdUnit Object
 // setContentObjectTransparencyObject from request or AdUnit Object
-func setContentTransparencyObject(rctx models.RequestCtx, reqExt models.RequestExt, impID string, adUnitConfigMap *adunitconfig.AdUnitConfig) (prebidTransparency *openrtb_ext.TransparencyExt) {
+func setContentTransparencyObject(rctx models.RequestCtx, reqExt models.RequestExt) (prebidTransparency *openrtb_ext.TransparencyExt) {
 	if reqExt.Prebid.Transparency != nil {
 		return
 	}
 
-	if adUnitConfigMap == nil {
-		return
-	}
+	for _, impCtx := range rctx.ImpBidCtx {
+		var transparency *adunitconfig.Transparency
 
-	impData, ok := rctx.ImpBidCtx[impID]
-	if !ok {
-		return
-	}
+		if impCtx.BannerAdUnitCtx.AppliedSlotAdUnitConfig != nil && impCtx.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Transparency != nil {
+			transparency = impCtx.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Transparency
+		} else if impCtx.VideoAdUnitCtx.AppliedSlotAdUnitConfig != nil && impCtx.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Transparency != nil {
+			transparency = impCtx.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Transparency
+		}
 
-	var contentMappings map[string]openrtb_ext.TransparencyRule
-
-	if v, ok := adUnitConfigMap.Config[impData.TagID]; ok && v.Transparency != nil {
-		contentMappings = v.Transparency.Content.Mappings
-	} else if v, ok := adUnitConfigMap.Config[models.AdunitConfigDefaultKey]; ok && v.Transparency != nil {
-		contentMappings = v.Transparency.Content.Mappings
-	}
-
-	if len(contentMappings) == 0 {
-		return
-	}
-
-	prebidTransparency = &openrtb_ext.TransparencyExt{
-		Content: map[string]openrtb_ext.TransparencyRule{},
-	}
-
-	for _, partnerConfig := range rctx.PartnerConfigMap {
-		_, ok := rctx.AdapterThrottleMap[partnerConfig[models.BidderCode]]
-		if ok || partnerConfig[models.SERVER_SIDE_FLAG] != "1" {
+		if transparency == nil || len(transparency.Content.Mappings) == 0 {
 			continue
 		}
 
-		for _, rule := range getRules(rctx.Source, partnerConfig[models.BidderCode]) {
-			if transparencyRule, ok := contentMappings[rule]; ok {
-				prebidTransparency.Content[partnerConfig[models.BidderCode]] = transparencyRule
-				break
+		content := make(map[string]openrtb_ext.TransparencyRule)
+
+		for _, partnerConfig := range rctx.PartnerConfigMap {
+			bidder := partnerConfig[models.BidderCode]
+
+			_, ok := rctx.AdapterThrottleMap[bidder]
+			if ok || partnerConfig[models.SERVER_SIDE_FLAG] != "1" {
+				continue
+			}
+
+			for _, rule := range getRules(rctx.Source, bidder) {
+				if transparencyRule, ok := transparency.Content.Mappings[rule]; ok {
+					content[bidder] = transparencyRule
+					break
+				}
+			}
+		}
+
+		if len(content) > 0 {
+			return &openrtb_ext.TransparencyExt{
+				Content: content,
 			}
 		}
 	}
 
-	// NYC: This result overwrites previous o/p. Update code to append bidders
-	return prebidTransparency
+	return nil
 }
 
 func getRules(source, bidder string) []string {
