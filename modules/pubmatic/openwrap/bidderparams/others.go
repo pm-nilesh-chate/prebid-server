@@ -17,7 +17,7 @@ func PrepareAdapterParamsV25(rctx models.RequestCtx, cache cache.Cache, bidReque
 	}
 
 	kgpv := ""
-	selectSlot := ""
+	selectedSlot := ""
 	isRegexSlot := false
 
 	isRegexKGP := rctx.PartnerConfigMap[partnerID][models.KEY_GEN_PATTERN] == models.REGEX_KGP
@@ -28,7 +28,14 @@ func PrepareAdapterParamsV25(rctx models.RequestCtx, cache cache.Cache, bidReque
 		if matchedSlot == "" {
 			continue
 		}
-		selectSlot = matchedSlot
+		selectedSlot = matchedSlot
+
+		// NYC TODO: club the pubmatic changes and make the code generic make the code generic
+		// slotName := selectedSlot
+		// if kgpv != "" {
+		// 	slotName = kgpv
+		// }
+		// paramMap, _ = getSlotMappings(slotName, slotMap)
 
 		slotMappingObj, ok := slotMap[strings.ToLower(matchedSlot)]
 		if !ok {
@@ -49,7 +56,7 @@ func PrepareAdapterParamsV25(rctx models.RequestCtx, cache cache.Cache, bidReque
 		if err != nil || params == nil {
 			continue
 		}
-		return selectSlot, kgpv, isRegexSlot, params, nil
+		return selectedSlot, kgpv, isRegexSlot, params, nil
 	}
 
 	return "", "", false, nil, nil

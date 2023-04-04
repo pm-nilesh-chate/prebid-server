@@ -1,6 +1,7 @@
 package bidderparams
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -127,6 +128,16 @@ func getDefaultMappingKGP(keyGenPattern string) string {
 		return strings.ReplaceAll(keyGenPattern, "@_W_x_H_", "")
 	}
 	return keyGenPattern
+}
+
+// getSlotMappings will returns slotMapping from map based on slotKey
+func getSlotMappings(slotKey string, slotMap map[string]models.SlotMapping) (map[string]interface{}, error) {
+	slotMappingObj, present := slotMap[strings.ToLower(slotKey)]
+	if !present {
+		return nil, errors.New("No mapping found for slot:" + slotKey)
+	}
+	fieldMap := slotMappingObj.SlotMappings
+	return fieldMap, nil
 }
 
 func GetMatchingSlot(rctx models.RequestCtx, cache cache.Cache, slot string, slotMap map[string]models.SlotMapping, slotMappingInfo models.SlotMappingInfo, isRegexKGP bool, partnerID int) (string, string) {
