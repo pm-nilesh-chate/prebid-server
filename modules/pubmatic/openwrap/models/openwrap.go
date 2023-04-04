@@ -61,6 +61,7 @@ type RequestCtx struct {
 	SendAllBids bool
 	WinningBids map[string]OwBid
 	DroppedBids map[string][]openrtb2.Bid
+	NoSeatBids  map[string]map[string][]openrtb2.Bid
 }
 
 type OwBid struct {

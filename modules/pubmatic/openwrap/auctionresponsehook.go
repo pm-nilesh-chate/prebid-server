@@ -3,9 +3,7 @@ package openwrap
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/hooks/hookanalytics"
@@ -166,6 +164,8 @@ func (m OpenWrap) handleAuctionResponseHook(
 		result.Warnings = append(result.Warnings, warnings...)
 	}
 
+	rctx.NoSeatBids = m.addDefaultBids(rctx, payload.BidResponse)
+
 	responseExt := make(map[string]interface{})
 	// TODO use concrete structure
 	if len(payload.BidResponse.Ext) != 0 {
@@ -181,6 +181,11 @@ func (m OpenWrap) handleAuctionResponseHook(
 
 	if rctx.SendAllBids {
 		responseExt[models.SendAllBidsFlagKey] = 1
+	}
+
+	if rctx.LogInfoFlag == 1 {
+		responseExt[models.LogInfoLoggerKey] = ""
+		responseExt[models.LogInfoTrackerKey] = ""
 	}
 
 	var err error
@@ -201,7 +206,7 @@ func (m OpenWrap) handleAuctionResponseHook(
 			return ap, err
 		}
 
-		ap.BidResponse, err = m.addDefaultBids(rctx, ap.BidResponse)
+		ap.BidResponse, err = m.applyDefaultBids(rctx, ap.BidResponse)
 
 		ap.BidResponse.Ext = rctx.ResponseExt
 		return ap, err
@@ -232,6 +237,29 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 		}
 	}
 
+	// remove seats with empty bids (will add nobids later)
+	filteredSeatBid := make([]openrtb2.SeatBid, 0, len(bidResponse.SeatBid))
+	for _, seatBid := range bidResponse.SeatBid {
+		if len(seatBid.Bid) > 0 {
+			filteredSeatBid = append(filteredSeatBid, seatBid)
+		}
+	}
+	bidResponse.SeatBid = filteredSeatBid
+
+	// keep pubmatic 1st to handle automation failure.
+	if len(bidResponse.SeatBid) != 0 {
+		if bidResponse.SeatBid[0].Seat != "pubmatic" {
+			for i := 0; i < len(bidResponse.SeatBid); i++ {
+				if bidResponse.SeatBid[i].Seat == "pubmatic" {
+					temp := bidResponse.SeatBid[0]
+					bidResponse.SeatBid[0] = bidResponse.SeatBid[i]
+					bidResponse.SeatBid[i] = temp
+				}
+			}
+		}
+	}
+
+	// update bid ext and other details
 	for i, seatBid := range bidResponse.SeatBid {
 		for j, bid := range seatBid.Bid {
 			impCtx, ok := rctx.ImpBidCtx[bid.ImpID]
@@ -245,28 +273,6 @@ func (m *OpenWrap) updateORTBV25Response(rctx models.RequestCtx, bidResponse *op
 			}
 
 			bidResponse.SeatBid[i].Bid[j].Ext, _ = json.Marshal(bidCtx.BidExt)
-		}
-	}
-
-	// remove seats with empty bids (will add nobids later)
-	filteredSeatBid := make([]openrtb2.SeatBid, 0, len(bidResponse.SeatBid))
-	for _, seatBid := range bidResponse.SeatBid {
-		if len(seatBid.Bid) > 0 {
-			filteredSeatBid = append(filteredSeatBid, seatBid)
-		}
-	}
-	bidResponse.SeatBid = filteredSeatBid
-
-	if len(bidResponse.SeatBid) != 0 {
-		// keep pubmatic 1st to handle automation failure.
-		if bidResponse.SeatBid[0].Seat != "pubmatic" {
-			for i := 0; i < len(bidResponse.SeatBid); i++ {
-				if bidResponse.SeatBid[i].Seat == "pubmatic" {
-					temp := bidResponse.SeatBid[0]
-					bidResponse.SeatBid[0] = bidResponse.SeatBid[i]
-					bidResponse.SeatBid[i] = temp
-				}
-			}
 		}
 	}
 
@@ -298,224 +304,4 @@ func getPlatformName(platform string) string {
 
 func getIntPtr(i int) *int {
 	return &i
-}
-
-func addPWTTargetingForBid(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) (droppedBids map[string][]openrtb2.Bid, warnings []string) {
-	if rctx.Platform != models.PLATFORM_APP {
-		return
-	}
-
-	if !rctx.SendAllBids {
-		droppedBids = make(map[string][]openrtb2.Bid)
-	}
-
-	//setTargeting needs a seperate loop as final winner would be decided after all the bids are processed by auction
-	for _, seatBid := range bidResponse.SeatBid {
-		for _, bid := range seatBid.Bid {
-			impCtx, ok := rctx.ImpBidCtx[bid.ImpID]
-			if !ok {
-				continue
-			}
-
-			isWinningBid := false
-			if b, ok := rctx.WinningBids[bid.ImpID]; ok && b.ID == bid.ID {
-				isWinningBid = true
-			}
-
-			if !(isWinningBid || rctx.SendAllBids) {
-				droppedBids[seatBid.Seat] = append(droppedBids[seatBid.Seat], bid)
-			}
-
-			bidCtx, ok := impCtx.BidCtx[bid.ID]
-			if !ok {
-				continue
-			}
-
-			newTargeting := make(map[string]string)
-			for key, value := range bidCtx.Prebid.Targeting {
-				if allowTargetingKey(key) {
-					updatedKey := key
-					if strings.HasPrefix(key, models.PrebidTargetingKeyPrefix) {
-						updatedKey = strings.Replace(key, models.PrebidTargetingKeyPrefix, models.OWTargetingKeyPrefix, 1)
-					}
-					newTargeting[updatedKey] = value
-				}
-				delete(bidCtx.Prebid.Targeting, key)
-			}
-
-			bidCtx.Prebid.Targeting = newTargeting
-			bidCtx.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_SLOTID)] = bid.ID
-			bidCtx.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_SZ)] = models.GetSize(bid.W, bid.H)
-			bidCtx.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_PARTNERID)] = seatBid.Seat
-			bidCtx.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_ECPM)] = fmt.Sprintf("%.2f", bidCtx.NetECPM)
-			bidCtx.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_PLATFORM)] = getPlatformName(rctx.Platform)
-			bidCtx.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_BIDSTATUS)] = "1"
-			if len(bid.DealID) != 0 {
-				bidCtx.Prebid.Targeting[models.CreatePartnerKey(seatBid.Seat, models.PWT_DEALID)] = bid.DealID
-			}
-
-			if isWinningBid {
-				if rctx.SendAllBids {
-					bidCtx.Winner = 1
-				}
-
-				bidCtx.Prebid.Targeting[models.PWT_SLOTID] = bid.ID
-				bidCtx.Prebid.Targeting[models.PWT_BIDSTATUS] = "1"
-				bidCtx.Prebid.Targeting[models.PWT_SZ] = models.GetSize(bid.W, bid.H)
-				bidCtx.Prebid.Targeting[models.PWT_PARTNERID] = seatBid.Seat
-				bidCtx.Prebid.Targeting[models.PWT_ECPM] = fmt.Sprintf("%.2f", bidCtx.NetECPM)
-				bidCtx.Prebid.Targeting[models.PWT_PLATFORM] = getPlatformName(rctx.Platform)
-				if len(bid.DealID) != 0 {
-					bidCtx.Prebid.Targeting[models.PWT_DEALID] = bid.DealID
-				}
-			} else if !rctx.SendAllBids {
-				warnings = append(warnings, "dropping bid "+bid.ID+" as sendAllBids is disabled")
-			}
-
-			// cache for bid details for logger and tracker
-			if impCtx.BidCtx == nil {
-				impCtx.BidCtx = make(map[string]models.BidCtx)
-			}
-			impCtx.BidCtx[bid.ID] = bidCtx
-			rctx.ImpBidCtx[bid.ImpID] = impCtx
-		}
-	}
-	return
-}
-
-func (m *OpenWrap) addDefaultBids(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) (*openrtb2.BidResponse, error) {
-	// responded bidders per impression
-	seatBids := make(map[string]map[string]struct{}, len(bidResponse.SeatBid))
-	for _, seatBid := range bidResponse.SeatBid {
-		for _, bid := range seatBid.Bid {
-			if seatBids[bid.ImpID] == nil {
-				seatBids[bid.ImpID] = make(map[string]struct{})
-			}
-			seatBids[bid.ImpID][seatBid.Seat] = struct{}{}
-		}
-	}
-
-	// included dropped bids in responded to avoid false nobid entry.
-	for seat, bids := range rctx.DroppedBids {
-		for _, bid := range bids {
-			if seatBids[bid.ImpID] == nil {
-				seatBids[bid.ImpID] = make(map[string]struct{})
-			}
-			seatBids[bid.ImpID][seat] = struct{}{}
-		}
-	}
-
-	// bids per bidders per impression that did not respond
-	noSeatBids := make(map[string]map[string][]openrtb2.Bid, 0)
-	for impID, impCtx := range rctx.ImpBidCtx {
-		for bidder := range impCtx.Bidders {
-			noBid := false
-			if bidders, ok := seatBids[impID]; ok {
-				if _, ok := bidders[bidder]; !ok {
-					noBid = true
-				}
-			} else {
-				noBid = true
-			}
-
-			if noBid {
-				if noSeatBids[impID] == nil {
-					noSeatBids[impID] = make(map[string][]openrtb2.Bid)
-				}
-
-				noSeatBids[impID][bidder] = append(noSeatBids[impID][bidder], openrtb2.Bid{
-					ID:    impID,
-					ImpID: impID,
-					Ext:   newNoBidExt(rctx, impID),
-				})
-			}
-		}
-	}
-
-	// add nobids for throttled adapter to all the impressions (how do we change bidders at impression level?)
-	for bidder := range rctx.AdapterThrottleMap {
-		for impID := range rctx.ImpBidCtx { // ImpBidCtx is used only for list of impID, it does not have data of throttled adapters
-			if noSeatBids[impID] == nil {
-				noSeatBids[impID] = make(map[string][]openrtb2.Bid)
-			}
-
-			noSeatBids[impID][bidder] = []openrtb2.Bid{
-				{
-					ID:    impID,
-					ImpID: impID,
-					Ext:   newNoBidExt(rctx, impID),
-				},
-			}
-		}
-	}
-
-	// add nobids for non-mapped bidders
-	for impID, impCtx := range rctx.ImpBidCtx {
-		for bidder := range impCtx.NonMapped {
-			if noSeatBids[impID] == nil {
-				noSeatBids[impID] = make(map[string][]openrtb2.Bid)
-			}
-
-			noSeatBids[impID][bidder] = []openrtb2.Bid{
-				{
-					ID:    impID,
-					ImpID: impID,
-					Ext:   newNoBidExt(rctx, impID),
-				},
-			}
-		}
-	}
-
-	// update nobids in final response
-	for i, seatBid := range bidResponse.SeatBid {
-		for impID, noSeatBid := range noSeatBids {
-			for seat, bids := range noSeatBid {
-				if seatBid.Seat == seat {
-					bidResponse.SeatBid[i].Bid = append(bidResponse.SeatBid[i].Bid, bids...)
-					delete(noSeatBid, seat)
-					noSeatBids[impID] = noSeatBid
-				}
-			}
-		}
-	}
-
-	// no-seat case
-	for _, noSeatBid := range noSeatBids {
-		for seat, bids := range noSeatBid {
-			bidResponse.SeatBid = append(bidResponse.SeatBid, openrtb2.SeatBid{
-				Bid:  bids,
-				Seat: seat,
-			})
-		}
-	}
-
-	return bidResponse, nil
-}
-
-func newNoBidExt(rctx models.RequestCtx, impID string) json.RawMessage {
-	bidExt := models.BidExt{
-		NetECPM: 0,
-	}
-	if rctx.ClientConfigFlag == 1 {
-		bidExt.Banner = &models.ExtBidBanner{
-			ClientConfig: adunitconfig.GetClientConfigForMediaType(rctx, impID, "banner"),
-		}
-		bidExt.Video = &models.ExtBidVideo{
-			ClientConfig: adunitconfig.GetClientConfigForMediaType(rctx, impID, "video"),
-		}
-	}
-
-	if v, ok := rctx.PartnerConfigMap[models.VersionLevelConfigID]["refreshInterval"]; ok {
-		n, err := strconv.Atoi(v)
-		if err == nil {
-			bidExt.RefreshInterval = n
-		}
-	}
-
-	newBidExt, err := json.Marshal(bidExt)
-	if err != nil {
-		return nil
-	}
-
-	return json.RawMessage(newBidExt)
 }
