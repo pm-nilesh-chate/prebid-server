@@ -110,14 +110,9 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 
 	var consent string
 	if ao.Request.User != nil {
-		extUser := openrtb_ext.UserExt{}
-		err := json.Unmarshal(ao.Request.User.Ext, &extWrapper)
-		if err != nil {
-
-		}
-		if c := extUser.GetConsent(); c != nil {
-			consent = *c
-		}
+		extUser := openrtb_ext.ExtUser{}
+		_ = json.Unmarshal(ao.Request.User.Ext, &extUser)
+		consent = extUser.Consent
 	}
 	wlog.SetConsentString(consent)
 
