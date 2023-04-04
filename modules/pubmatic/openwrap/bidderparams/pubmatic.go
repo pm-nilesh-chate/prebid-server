@@ -70,10 +70,12 @@ func PreparePubMaticParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequ
 
 	//overwrite
 	if paramMap != nil {
-		// use owSlotName to addres case insensitive slotname. EX slot= "/43743431/DMDEMO@300x250" and owSlotName="/43743431/DMDemo@300x250"
-		if v, ok := paramMap[models.KEY_OW_SLOT_NAME]; ok {
-			if owSlotName, ok := v.(string); ok {
-				extImpPubMatic.AdSlot = owSlotName
+		if kgpv == "" { //keep hash as is for regex
+			// use owSlotName to addres case insensitive slotname. EX slot= "/43743431/DMDEMO@300x250" and owSlotName="/43743431/DMDemo@300x250"
+			if v, ok := paramMap[models.KEY_OW_SLOT_NAME]; ok {
+				if owSlotName, ok := v.(string); ok {
+					extImpPubMatic.AdSlot = owSlotName
+				}
 			}
 		}
 
