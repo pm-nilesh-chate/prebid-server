@@ -151,9 +151,8 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 
 	wlog.SetTimeout(int(ao.Request.TMax))
 
+	// impID-partnerRecords: partner records per impression
 	ipr := make(map[string][]PartnerRecord)
-
-	// loggerSeat := make(map[string][]openrtb2.Bid, 0, len(ao.Response.SeatBid)+len(rctx.DroppedBids))
 
 	loggerSeat := make(map[string][]openrtb2.Bid)
 	for _, seatBid := range ao.Response.SeatBid {
@@ -162,6 +161,12 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 	for seat, Bids := range rCtx.DroppedBids {
 		loggerSeat[seat] = append(loggerSeat[seat], Bids...)
 	}
+
+	// pubmatic's KGP details per impression
+	type pubmaticMarketplaceMeta struct {
+		PubmaticKGP, PubmaticKGPV, PubmaticKGPSV string
+	}
+	pmMkt := make(map[string]pubmaticMarketplaceMeta)
 
 	for seat, bids := range loggerSeat {
 		if seat == string(openrtb_ext.BidderOWPrebidCTV) {
@@ -224,20 +229,18 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 				price = bidExt.OriginalBidCPMUSD
 			}
 
-			// marketplace/alternatebiddercodes feature
-			if bidExt.Prebid != nil && bidExt.Prebid.Meta != nil && len(bidExt.Prebid.Meta.AdapterCode) != 0 && seat != bidExt.Prebid.Meta.AdapterCode {
-				partnerID = bidExt.Prebid.Meta.AdapterCode
-
-				if aliasSeat, ok := rCtx.PrebidBidderCode[partnerID]; ok {
-					if bidderMeta, ok := impCtx.Bidders[aliasSeat]; ok {
-						kgpsv = bidderMeta.MatchedSlot
-					}
+			if seat == "pubmatic" {
+				pmMkt[bid.ImpID] = pubmaticMarketplaceMeta{
+					PubmaticKGP:   kgp,
+					PubmaticKGPV:  kgpv,
+					PubmaticKGPSV: kgpsv,
 				}
 			}
 
 			pr := PartnerRecord{
-				PartnerID:        partnerID,
-				BidderCode:       seat,
+				PartnerID:  partnerID, // prebid biddercode
+				BidderCode: seat,      // pubmatic biddercode: pubmatic2
+				// AdapterCode: adapterCode, // prebid adapter that brought the bid
 				KGPV:             kgpv,
 				KGPSV:            kgpsv,
 				BidID:            bid.ID,
@@ -294,13 +297,23 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 				}
 			}
 
-			// ipr[bid.ImpID][seatBid.Seat] = pr
 			ipr[bid.ImpID] = append(ipr[bid.ImpID], pr)
 		}
 	}
 
-	// parent bidder could in one of the above and we need them by prebid's bidderCode and not seat(could be alias)
+	if rCtx.MarketPlaceBidders != nil {
+		for impID, partnerRecords := range ipr {
+			for i := 0; i < len(partnerRecords); i++ {
+				if _, ok := rCtx.MarketPlaceBidders[partnerRecords[i].BidderCode]; ok {
+					partnerRecords[i].KGPV = pmMkt[impID].PubmaticKGPV
+					partnerRecords[i].KGPSV = pmMkt[impID].PubmaticKGPSV
+				}
+			}
+			ipr[impID] = partnerRecords
+		}
+	}
 
+	// parent bidder could in one of the above and we need them by prebid's bidderCode and not seat(could be alias)
 	slots := make([]SlotRecord, 0)
 	for _, imp := range ao.Request.Imp {
 		reward := 0

@@ -7,17 +7,23 @@ import (
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
-func getMarketplaceBidders(reqABC *openrtb_ext.ExtAlternateBidderCodes, partnerConfigMap map[int]map[string]string) *openrtb_ext.ExtAlternateBidderCodes {
+// TODO: Make this generic implementation
+func getMarketplaceBidders(reqABC *openrtb_ext.ExtAlternateBidderCodes, partnerConfigMap map[int]map[string]string) (*openrtb_ext.ExtAlternateBidderCodes, map[string]struct{}) {
 	if reqABC != nil {
-		return reqABC
+		return reqABC, nil
 	}
 
 	// string validations, etc will be done by api-wrapper-tag. Not need to repetitively do the typical string validations
 	marketplaceBiddersDB := partnerConfigMap[models.VersionLevelConfigID][models.MarketplaceBidders]
 	if len(marketplaceBiddersDB) == 0 {
-		return nil
+		return nil, nil
 	}
 	marketplaceBidders := strings.Split(marketplaceBiddersDB, ",")
+
+	bidderMap := make(map[string]struct{})
+	for _, bidder := range marketplaceBidders {
+		bidderMap[bidder] = struct{}{}
+	}
 
 	return &openrtb_ext.ExtAlternateBidderCodes{
 		Enabled: true,
@@ -27,5 +33,5 @@ func getMarketplaceBidders(reqABC *openrtb_ext.ExtAlternateBidderCodes, partnerC
 				AllowedBidderCodes: marketplaceBidders,
 			},
 		},
-	}
+	}, bidderMap
 }

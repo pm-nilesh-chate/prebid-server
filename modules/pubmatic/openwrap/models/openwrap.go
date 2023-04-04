@@ -43,14 +43,18 @@ type RequestCtx struct {
 	//logger
 	URL string
 
+	//trackers per bid
+	Trackers map[string]Tracker
+
 	//prebid-biddercode to seat/alias mapping
 	PrebidBidderCode map[string]string
 
 	// imp-bid ctx to avoid computing same thing for bidder params, logger and tracker
-	ImpBidCtx   map[string]ImpCtx
-	Aliases     map[string]string
-	NewReqExt   json.RawMessage
-	ResponseExt json.RawMessage
+	ImpBidCtx          map[string]ImpCtx
+	Aliases            map[string]string
+	NewReqExt          json.RawMessage
+	ResponseExt        json.RawMessage
+	MarketPlaceBidders map[string]struct{}
 
 	AdapterThrottleMap map[string]struct{}
 
