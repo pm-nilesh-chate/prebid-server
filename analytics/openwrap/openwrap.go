@@ -301,10 +301,12 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 		}
 	}
 
+	// overwrite marketplace bid details with that of partner adatper
 	if rCtx.MarketPlaceBidders != nil {
 		for impID, partnerRecords := range ipr {
 			for i := 0; i < len(partnerRecords); i++ {
 				if _, ok := rCtx.MarketPlaceBidders[partnerRecords[i].BidderCode]; ok {
+					partnerRecords[i].PartnerID = "pubmatic"
 					partnerRecords[i].KGPV = pmMkt[impID].PubmaticKGPV
 					partnerRecords[i].KGPSV = pmMkt[impID].PubmaticKGPSV
 				}

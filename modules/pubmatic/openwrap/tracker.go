@@ -133,10 +133,12 @@ func (m *OpenWrap) createTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 		}
 	}
 
+	// overwrite marketplace bid details with that of partner adatper
 	for bidID, tracker := range trackers {
 		if tracker.PartnerInfo != nil {
 			if _, ok := rctx.MarketPlaceBidders[tracker.PartnerInfo.BidderCode]; ok {
 				if v, ok := pmMkt[tracker.ImpID]; ok {
+					tracker.PartnerInfo.PartnerID = "pubmatic"
 					tracker.PartnerInfo.KGPV = v.PubmaticKGPV
 				}
 			}
