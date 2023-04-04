@@ -415,7 +415,7 @@ func (m *OpenWrap) applyVideoAdUnitConfig(rCtx models.RequestCtx, imp *openrtb2.
 		imp.Video.SkipAfter = configObjInVideoConfig.SkipAfter
 	}
 
-	if len(configObjInVideoConfig.BAttr) == 0 {
+	if len(imp.Video.BAttr) == 0 {
 		imp.Video.BAttr = configObjInVideoConfig.BAttr
 	}
 
