@@ -89,7 +89,7 @@ func UpdateTestConfig(rctx models.RequestCtx) map[int]map[string]string {
 		break
 
 	case models.TestTypeClientVsServerPath:
-		for partnerID, _ := range rctx.PartnerConfigMap {
+		for partnerID := range rctx.PartnerConfigMap {
 			if partnerID == models.VersionLevelConfigID {
 				continue
 			}
