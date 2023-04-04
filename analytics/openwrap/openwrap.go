@@ -123,13 +123,10 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 
 	var gdpr int8
 	if ao.Request.Regs != nil {
-		extReg := openrtb_ext.RegExt{}
-		err := json.Unmarshal(ao.Request.Regs.Ext, &extWrapper)
-		if err != nil {
-
-		}
-		if g := extReg.GetGDPR(); g != nil {
-			gdpr = *g
+		extReg := openrtb_ext.ExtRegs{}
+		_ = json.Unmarshal(ao.Request.Regs.Ext, &extReg)
+		if extReg.GDPR != nil {
+			gdpr = *extReg.GDPR
 		}
 	}
 	wlog.SetGDPR(int(gdpr))
