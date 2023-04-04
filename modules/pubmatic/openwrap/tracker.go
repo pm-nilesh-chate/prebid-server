@@ -11,53 +11,30 @@ import (
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 )
 
-// Tracker tracker url creation parameters
-type Tracker struct {
-	PubID             int
-	PageURL           string
-	Timestamp         int64
-	IID               string
-	ProfileID         string
-	VersionID         string
-	SlotID            string
-	Adunit            string
-	PartnerInfo       *Partner
-	RewardedInventory int
-	SURL              string // contains either req.site.domain or req.app.bundle value
-	Platform          int
-	Advertiser        string
-	// SSAI identifies the name of the SSAI vendor
-	// Applicable only in case of incase of video/json endpoint.
-	SSAI string
-}
+func (m *OpenWrap) createTrackers(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) map[string]models.Tracker {
+	trackers := make(map[string]models.Tracker)
 
-// Partner partner information to be logged in tracker object
-type Partner struct {
-	PartnerID  string
-	BidderCode string
-	KGPV       string
-	GrossECPM  float64
-	NetECPM    float64
-	BidID      string
-	OrigBidID  string
-}
-
-func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) (*openrtb2.BidResponse, error) {
-	tracker := Tracker{
-		PubID:     rctx.PubID,
-		ProfileID: fmt.Sprintf("%d", rctx.ProfileID),
-		VersionID: fmt.Sprintf("%d", rctx.DisplayID),
-		PageURL:   rctx.PageURL,
-		Timestamp: rctx.StartTime,
-		IID:       rctx.LoggerImpressionID,
-		Platform:  int(rctx.DevicePlatform),
-		SSAI:      rctx.SSAI,
+	// pubmatic's KGP details per impression
+	type pubmaticMarketplaceMeta struct {
+		PubmaticKGP, PubmaticKGPV, PubmaticKGPSV string
 	}
+	pmMkt := make(map[string]pubmaticMarketplaceMeta)
 
-	for i, seatBid := range bidResponse.SeatBid {
-		for j, bid := range seatBid.Bid {
+	for _, seatBid := range bidResponse.SeatBid {
+		for _, bid := range seatBid.Bid {
+			tracker := models.Tracker{
+				PubID:     rctx.PubID,
+				ProfileID: fmt.Sprintf("%d", rctx.ProfileID),
+				VersionID: fmt.Sprintf("%d", rctx.DisplayID),
+				PageURL:   rctx.PageURL,
+				Timestamp: rctx.StartTime,
+				IID:       rctx.LoggerImpressionID,
+				Platform:  int(rctx.DevicePlatform),
+				SSAI:      rctx.SSAI,
+				ImpID:     bid.ImpID,
+			}
+
 			tagid := ""
-			secure := 0
 			netECPM := float64(0)
 			matchedSlot := ""
 			price := bid.Price
@@ -121,14 +98,22 @@ func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 				// --------------------------------------------------------------------------------------------------
 
 				tagid = impCtx.TagID
-				secure = impCtx.Secure
+				tracker.Secure = impCtx.Secure
 				isRewardInventory = getRewardedInventoryFlag(rctx.ImpBidCtx[bid.ImpID].IsRewardInventory)
+			}
+
+			if seatBid.Seat == "pubmatic" {
+				pmMkt[bid.ImpID] = pubmaticMarketplaceMeta{
+					PubmaticKGP:   kgp,
+					PubmaticKGPV:  kgpv,
+					PubmaticKGPSV: kgpsv,
+				}
 			}
 
 			tracker.Adunit = tagid
 			tracker.SlotID = fmt.Sprintf("%s_%s", bid.ImpID, tagid)
 			tracker.RewardedInventory = isRewardInventory
-			tracker.PartnerInfo = &Partner{
+			tracker.PartnerInfo = &models.Partner{
 				PartnerID:  partnerID,
 				BidderCode: seatBid.Seat,
 				BidID:      bid.ID,
@@ -144,18 +129,37 @@ func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 				}
 			}
 
-			// construct tracker URL
-			trackerURL := ConstructTrackerURL(tracker, m.cfg.OpenWrap.Tracker.Endpoint, secure, rctx.Platform)
+			trackers[bid.ID] = tracker
+		}
+	}
+
+	for bidID, tracker := range trackers {
+		if tracker.PartnerInfo != nil {
+			if _, ok := rctx.MarketPlaceBidders[tracker.PartnerInfo.BidderCode]; ok {
+				if v, ok := pmMkt[tracker.ImpID]; ok {
+					tracker.PartnerInfo.KGPV = v.PubmaticKGPV
+				}
+			}
+		}
+		trackers[bidID] = tracker
+	}
+
+	return trackers
+}
+
+func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) (*openrtb2.BidResponse, error) {
+	for i, seatBid := range bidResponse.SeatBid {
+		for j, bid := range seatBid.Bid {
+			trackerURL := ConstructTrackerURL(rctx, seatBid.Seat, bid.ID, m.cfg.OpenWrap.Tracker.Endpoint)
 			trackURL, err := url.Parse(trackerURL)
 			if err == nil {
 				trackURL.Scheme = models.HTTPSProtocol
 				bidResponse.SeatBid[i].Bid[j].AdM += strings.Replace(models.TrackerCallWrap, "${escapedUrl}", trackURL.String(), 1)
 			}
-
 		}
 	}
-
 	return bidResponse, nil
+
 }
 
 func getRewardedInventoryFlag(reward *int8) int {
@@ -166,7 +170,9 @@ func getRewardedInventoryFlag(reward *int8) int {
 }
 
 // ConstructTrackerURL constructing tracker url for impression
-func ConstructTrackerURL(tracker Tracker, trackerURLString string, secure int, platform string) string {
+func ConstructTrackerURL(rctx models.RequestCtx, seat, bidID string, trackerURLString string) string {
+	tracker := rctx.Trackers[bidID]
+
 	trackerURL, err := url.Parse(trackerURLString)
 	if err != nil {
 		return ""
@@ -199,8 +205,8 @@ func ConstructTrackerURL(tracker Tracker, trackerURLString string, secure int, p
 
 	//Code for making tracker call http/https based on secure flag for in-app platform
 	//TODO change platform to models.PLATFORM_APP once in-app platform starts populating from wrapper UI
-	if platform == models.PLATFORM_DISPLAY {
-		if secure == 1 {
+	if rctx.Platform == models.PLATFORM_DISPLAY {
+		if tracker.Secure == 1 {
 			trackerURL.Scheme = "https"
 		} else {
 			trackerURL.Scheme = "http"

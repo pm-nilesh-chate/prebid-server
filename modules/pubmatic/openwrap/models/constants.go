@@ -234,7 +234,7 @@ const (
 	ResponseTime       = "responsetimemillis"
 	ResponseExtAdPod   = "adpod"
 	MatchedImpression  = "matchedimpression"
-	LogInfo            = "loginfo"
+	LogInfoKey         = "loginfo"
 	LogInfoLoggerKey   = "logger"
 	LogInfoTrackerKey  = "tracker"
 	SendAllBidsFlagKey = "sendallbids"
