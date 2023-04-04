@@ -337,7 +337,7 @@ func (m *OpenWrap) applyProfileChanges(rctx models.RequestCtx, bidRequest *openr
 	adunitconfig.ReplaceDeviceTypeFromAdUnitConfig(rctx, bidRequest.Device)
 	bidRequest.Device.IP = rctx.IP
 	bidRequest.Device.Language = getValidLanguage(bidRequest.Device.Language)
-	if bidRequest.User != nil {
+	if bidRequest.User == nil {
 		bidRequest.User = &openrtb2.User{}
 	}
 	if bidRequest.User.CustomData == "" && rctx.KADUSERCookie != nil {

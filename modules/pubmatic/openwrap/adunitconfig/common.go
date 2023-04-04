@@ -15,7 +15,7 @@ func selectSlot(rCtx models.RequestCtx, h, w int64, tagid, div, source string) (
 	if slotAdUnitConfig, ok := rCtx.AdUnitConfig.Config[strings.ToLower(slotName)]; ok {
 		return slotAdUnitConfig, slotName, false, ""
 	} else if rCtx.AdUnitConfig.Regex {
-		if matchedRegex = getRegexMatch(rCtx, slotName); matchedRegex != "" {
+		if matchedRegex = getRegexMatch(rCtx, strings.ToLower(slotName)); matchedRegex != "" {
 			return rCtx.AdUnitConfig.Config[matchedRegex], slotName, true, matchedRegex
 		}
 	}
