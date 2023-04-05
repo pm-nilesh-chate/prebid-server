@@ -3,12 +3,10 @@ package openwrap
 import (
 	"encoding/json"
 	"strings"
-	"time"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/analytics"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
-	uuid "github.com/satori/go.uuid"
 )
 
 // WloggerRecord structure for wrapper analytics logger object
@@ -25,10 +23,10 @@ type record struct {
 	IID               string           `json:"iid,omitempty"`
 	ProfileID         string           `json:"pid,omitempty"`
 	VersionID         string           `json:"pdvid,omitempty"`
-	IP                string           `json:"-,omitempty"`
-	UserAgent         string           `json:"-,omitempty"`
-	UID               string           `json:"-,omitempty"`
-	GDPR              int              `json:"gdpr,omitempty"`
+	IP                string           `json:"-"`
+	UserAgent         string           `json:"-"`
+	UID               string           `json:"-"`
+	GDPR              int8             `json:"gdpr,omitempty"`
 	ConsentString     string           `json:"cns,omitempty"`
 	PubmaticConsent   int              `json:"pmc,omitempty"`
 	UserID            string           `json:"uid,omitempty"`
@@ -146,16 +144,6 @@ type MetaData struct {
 	SecondaryCategoryIDs []string        `json:"secondaryCatIds,omitempty"`
 }
 
-// NewRecord returns a new wlogger record
-func NewRecord() *WloggerRecord {
-	wlog := new(WloggerRecord)
-	wlog.SetIID(uuid.NewV4().String())
-	wlog.SetTimestamp(int64(time.Now().Unix()))
-	wlog.SetServerLogger(1)
-	wlog.initNonBidRejections()
-	return wlog
-}
-
 func (wlog *WloggerRecord) initNonBidRejections() {
 	wlog.NonBidRejections = make(map[string]analytics.RejectedBid)
 }
@@ -164,91 +152,6 @@ func (wlog *WloggerRecord) initNonBidRejections() {
 func (wlog *WloggerRecord) String() string {
 	byts, _ := json.Marshal(wlog)
 	return string(byts)
-}
-
-// SetTimeout sets timeout in WloggerRecord
-func (wlog *WloggerRecord) SetTimeout(timeout int) {
-	wlog.Timeout = timeout
-}
-
-// SetUID sets uid in WloggerRecord
-func (wlog *WloggerRecord) SetUID(uid string) {
-	wlog.UID = uid
-}
-
-// SetProfileID sets timeout in WloggerRecord
-func (wlog *WloggerRecord) SetProfileID(profileID string) {
-	wlog.ProfileID = profileID
-}
-
-// SetVersionID sets versionId in WloggerRecord
-func (wlog *WloggerRecord) SetVersionID(versionID string) {
-	wlog.VersionID = versionID
-}
-
-// SetPubID sets pubid in WloggerRecord
-func (wlog *WloggerRecord) SetPubID(pubID int) {
-	wlog.PubID = pubID
-}
-
-// SetGDPR sets GDPR in WloggerRecord
-func (wlog *WloggerRecord) SetGDPR(gdpr int) {
-	wlog.GDPR = gdpr
-}
-
-// SetConsentString sets ConsentString in WloggerRecord
-func (wlog *WloggerRecord) SetConsentString(cns string) {
-	wlog.ConsentString = cns
-}
-
-// SetUserAgent sets user-agent in WloggerRecord
-func (wlog *WloggerRecord) SetUserAgent(ua string) {
-	wlog.UserAgent = ua
-}
-
-// SetIP sets IP in WloggerRecord
-func (wlog *WloggerRecord) SetIP(ip string) {
-	wlog.IP = ip
-}
-
-// SetPageURL sets PageURL in WloggerRecord
-func (wlog *WloggerRecord) SetPageURL(pageURL string) {
-	wlog.PageURL = pageURL
-}
-
-// SetOrigin sets Origin in WloggerRecord
-func (wlog *WloggerRecord) SetOrigin(origin string) {
-	wlog.Origin = origin
-}
-
-// SetIID sets iid in WloggerRecord
-func (wlog *WloggerRecord) SetIID(IID string) {
-	wlog.IID = IID
-}
-
-// SetTimestamp sets Timestamp in WloggerRecord
-func (wlog *WloggerRecord) SetTimestamp(timestamp int64) {
-	wlog.Timestamp = timestamp
-}
-
-// SetSlots sets slots in WloggerRecord
-func (wlog *WloggerRecord) SetSlots(slots []SlotRecord) {
-	wlog.Slots = slots
-}
-
-// SetServerLogger sets server logger enabled/disabled in WloggerRecord
-func (wlog *WloggerRecord) SetServerLogger(ss int) {
-	wlog.ServerLogger = ss
-}
-
-// SetCachePutMiss sets Cache Put miss flag in WloggerRecord
-func (wlog *WloggerRecord) SetCachePutMiss(cachePutMiss int) {
-	wlog.CachePutMiss = cachePutMiss
-}
-
-// SetTestConfigApplied sets tgid in WloggerRecord
-func (wlog *WloggerRecord) SetTestConfigApplied(testFlag int) {
-	wlog.TestConfigApplied = testFlag
 }
 
 // logDeviceObject will be used to log device specific parameters like platform and ifa_type

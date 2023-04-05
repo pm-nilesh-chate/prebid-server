@@ -117,11 +117,6 @@ func isMobile(deviceType int, userAgentString string) bool {
 		return true
 	}
 	return false
-
-	if mobileDeviceUARegex.Match([]byte(strings.ToLower(userAgentString))) {
-		return true
-	}
-	return false
 }
 
 func isIos(os string, userAgentString string) bool {

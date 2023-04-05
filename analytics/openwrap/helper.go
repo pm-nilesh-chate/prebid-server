@@ -9,107 +9,9 @@ import (
 	"strconv"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
-	"github.com/prebid/prebid-server/analytics"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
-
-func CreateCommonLogger(ao *analytics.AuctionObject) *WloggerRecord {
-	wl := NewRecord()
-	// uaFromHTTPReq := ao.Request.Header.Get("User-Agent")
-	wl.CreateLoggerRecordFromRequest("uaFromHTTPReq", ao)
-	wl.SetTimeout(int(ao.Request.TMax))
-	// if uidCookie, _ := controller.HTTPRequest.Cookie(models.KADUSERCOOKIE); uidCookie != nil {
-	// 	controller.LoggerRecord.SetUID(uidCookie.Value)
-	// }
-	// if testConfigApplied {
-	// 	controller.LoggerRecord.SetTestConfigApplied(1)
-	// }
-	return wl
-}
-
-// CreateLoggerRecordFromRequest creates logger and tracker records from bidRequest data
-func (wlog *WloggerRecord) CreateLoggerRecordFromRequest(uaFromHTTPReq string, ao *analytics.AuctionObject) {
-	extWrapper := models.RequestExtWrapper{}
-	err := json.Unmarshal(ao.Request.Ext, &extWrapper)
-	if err != nil {
-		return
-	}
-
-	var publisherID int
-	var pageURL, origin string
-	if ao.Request.App != nil {
-		if ao.Request.App.Publisher != nil {
-			publisherID, _ = strconv.Atoi(ao.Request.App.Publisher.ID)
-		}
-		pageURL = ao.Request.App.StoreURL
-		origin = ao.Request.App.Bundle
-	} else if ao.Request.Site != nil {
-		if ao.Request.Site.Publisher != nil {
-			publisherID, _ = strconv.Atoi(ao.Request.Site.Publisher.ID)
-		}
-		pageURL = ao.Request.Site.Page
-		if len(ao.Request.Site.Domain) != 0 {
-			origin = ao.Request.Site.Domain
-		} else {
-			pageURL, err := url.Parse(ao.Request.Site.Page)
-			if err == nil && pageURL != nil {
-				origin = pageURL.Host
-			}
-		}
-	}
-	wlog.SetPubID(publisherID)
-	wlog.SetOrigin(origin)
-	wlog.SetPageURL(pageURL)
-
-	wlog.SetProfileID(strconv.Itoa(extWrapper.ProfileId))
-	wlog.SetVersionID(strconv.Itoa(extWrapper.VersionId))
-
-	var consent string
-	if ao.Request.User != nil {
-		extUser := openrtb_ext.UserExt{}
-		err := json.Unmarshal(ao.Request.User.Ext, &extWrapper)
-		if err != nil {
-			return
-		}
-		consent = *extUser.GetConsent()
-	}
-	wlog.SetConsentString(consent)
-
-	var gdpr int8
-	if ao.Request.Regs != nil {
-		extReg := openrtb_ext.RegExt{}
-		err := json.Unmarshal(ao.Request.Regs.Ext, &extWrapper)
-		if err != nil {
-			return
-		}
-		gdpr = *extReg.GetGDPR()
-	}
-	wlog.SetGDPR(int(gdpr))
-
-	if ao.Request.Device != nil {
-		wlog.SetIP(ao.Request.Device.IP)
-		wlog.SetUserAgent(ao.Request.Device.UA)
-	}
-
-	//log device object
-	// wlog.logDeviceObject(uaFromHTTPReq, ao.Request, platform)
-
-	//log content object
-	// if nil != ao.Request.Site {
-	// 	wlog.logContentObject(ao.Request.Site.Content)
-	// } else if nil != ao.Request.App {
-	// 	wlog.logContentObject(ao.Request.App.Content)
-	// }
-
-	// //log adpod percentage object
-	// if nil != ao.Request.Ext {
-	// 	ext, ok := ao.Request.Ext.(*openrtb.ExtRequest)
-	// 	if ok {
-	// 		wlog.logAdPodPercentage(ext.AdPod)
-	// 	}
-	// }
-}
 
 // Send method
 func Send(client http.Client, loggerURL string, wl *WloggerRecord, gdprEnabled int) error {
@@ -152,33 +54,6 @@ func PrepareLoggerURL(wlog *WloggerRecord, loggerURL string, gdprEnabled int) st
 	return finalLoggerURL
 }
 
-// GetString converts interface to string if it is compatible
-func GetString(val interface{}) string {
-	var result string
-	if val != nil {
-		result, _ = val.(string)
-	}
-	return result
-}
-
-// GetInt converts interface to int if it is compatible
-func GetInt(val interface{}) int {
-	var result int
-	if val != nil {
-		switch val.(type) {
-		case int:
-			result = val.(int)
-		case float64:
-			val := val.(float64)
-			result = int(val)
-		case float32:
-			val := val.(float32)
-			result = int(val)
-		}
-	}
-	return result
-}
-
 func (wlog *WloggerRecord) logContentObject(content *openrtb2.Content) {
 	if nil == content {
 		return
@@ -193,40 +68,6 @@ func (wlog *WloggerRecord) logContentObject(content *openrtb2.Content) {
 		Cat:     content.Cat,
 	}
 }
-
-// func (wlog *WloggerRecord) logAdPodPercentage(adpod *openrtb2.ExtRequestAdPod) {
-// 	if nil == adpod {
-// 		return
-// 	}
-
-// 	percentage := &AdPodPercentage{}
-// 	found := false
-
-// 	if nil != adpod.CrossPodAdvertiserExclusionPercent {
-// 		percentage.CrossPodAdvertiserExclusionPercent = adpod.CrossPodAdvertiserExclusionPercent
-// 		found = true
-// 	}
-
-// 	if nil != adpod.CrossPodIABCategoryExclusionPercent {
-// 		percentage.CrossPodIABCategoryExclusionPercent = adpod.CrossPodIABCategoryExclusionPercent
-// 		found = true
-// 	}
-
-// 	if nil != adpod.IABCategoryExclusionWindow {
-// 		percentage.IABCategoryExclusionWindow = adpod.IABCategoryExclusionWindow
-// 		found = true
-// 	}
-
-// 	if nil != adpod.AdvertiserExclusionWindow {
-// 		percentage.AdvertiserExclusionWindow = adpod.AdvertiserExclusionWindow
-// 		found = true
-// 	}
-
-// 	if found {
-// 		wlog.AdPodPercentage = percentage
-// 	}
-// }
-
 func getSizeForPlatform(width, height int64, platform string) string {
 	s := models.GetSize(width, height)
 	if platform == models.PLATFORM_VIDEO {
