@@ -238,7 +238,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 		impExt.Wrapper = nil
 		impExt.Reward = nil //TODO move this to imp.ext.prebid.bidder.pubmatic.reward
 		impExt.Bidder = nil
-		newExt, err := json.Marshal(impExt)
+		newImpExt, err := json.Marshal(impExt)
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("failed to update bidder params for impression %s", imp.ID))
 		}
@@ -250,10 +250,11 @@ func (m OpenWrap) handleBeforeValidationHook(
 				Div:               div,
 				IsRewardInventory: reward,
 				Type:              slotType,
+				Banner:            imp.Banner != nil,
 				Video:             imp.Video,
 				Bidders:           make(map[string]models.PartnerData),
 				BidCtx:            make(map[string]models.BidCtx),
-				NewExt:            json.RawMessage(newExt),
+				NewExt:            json.RawMessage(newImpExt),
 			}
 		}
 
@@ -334,8 +335,8 @@ func (m *OpenWrap) applyProfileChanges(rctx models.RequestCtx, bidRequest *openr
 	}
 
 	adunitconfig.ReplaceAppObjectFromAdUnitConfig(rctx, bidRequest.App)
-
 	adunitconfig.ReplaceDeviceTypeFromAdUnitConfig(rctx, bidRequest.Device)
+
 	bidRequest.Device.IP = rctx.IP
 	bidRequest.Device.Language = getValidLanguage(bidRequest.Device.Language)
 	validateDevice(bidRequest.Device)

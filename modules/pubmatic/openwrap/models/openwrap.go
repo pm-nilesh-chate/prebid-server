@@ -88,6 +88,7 @@ type ImpCtx struct {
 	Div               string
 	Secure            int
 	IsRewardInventory *int8
+	Banner            bool
 	Video             *openrtb2.Video
 	Type              string // banner, video, native, etc
 	Bidders           map[string]PartnerData

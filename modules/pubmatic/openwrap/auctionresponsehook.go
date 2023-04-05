@@ -117,7 +117,7 @@ func (m OpenWrap) handleAuctionResponseHook(
 					if rctx.ClientConfigFlag == 1 {
 						bidExt.Video.ClientConfig = adunitconfig.GetClientConfigForMediaType(rctx, bid.ImpID, "video")
 					}
-				} else if rctx.ImpBidCtx[bid.ImpID].Type == "banner" && bidExt.CreativeType == "banner" && rctx.ClientConfigFlag == 1 {
+				} else if impCtx.Banner && bidExt.CreativeType == "banner" && rctx.ClientConfigFlag == 1 {
 					cc := adunitconfig.GetClientConfigForMediaType(rctx, bid.ImpID, "banner")
 					if len(cc) != 0 {
 						if bidExt.Banner == nil {
@@ -197,6 +197,9 @@ func (m OpenWrap) handleAuctionResponseHook(
 	if err != nil {
 		result.Errors = append(result.Errors, "failed to marshal response.ext err: "+err.Error())
 	}
+
+	rCtxBytes, _ := json.Marshal(rctx)
+	result.DebugMessages = append(result.DebugMessages, string(rCtxBytes))
 
 	result.ChangeSet.AddMutation(func(ap hookstage.AuctionResponsePayload) (hookstage.AuctionResponsePayload, error) {
 		rctx := moduleCtx.ModuleContext["rctx"].(models.RequestCtx)
