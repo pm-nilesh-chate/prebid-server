@@ -100,11 +100,16 @@ func newNoBidExt(rctx models.RequestCtx, impID string) json.RawMessage {
 		NetECPM: 0,
 	}
 	if rctx.ClientConfigFlag == 1 {
-		bidExt.Banner = &models.ExtBidBanner{
-			ClientConfig: adunitconfig.GetClientConfigForMediaType(rctx, impID, "banner"),
+		if cc := adunitconfig.GetClientConfigForMediaType(rctx, impID, "banner"); cc != nil {
+			bidExt.Banner = &models.ExtBidBanner{
+				ClientConfig: cc,
+			}
 		}
-		bidExt.Video = &models.ExtBidVideo{
-			ClientConfig: adunitconfig.GetClientConfigForMediaType(rctx, impID, "video"),
+
+		if cc := adunitconfig.GetClientConfigForMediaType(rctx, impID, "video"); cc != nil {
+			bidExt.Video = &models.ExtBidVideo{
+				ClientConfig: cc,
+			}
 		}
 	}
 
