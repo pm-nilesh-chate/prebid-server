@@ -281,13 +281,15 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 	slots := make([]SlotRecord, 0)
 	for _, imp := range ao.Request.Imp {
 		reward := 0
+		var incomingSlots []string
 		if v, ok := rCtx.ImpBidCtx[imp.ID]; ok && v.IsRewardInventory != nil {
 			reward = int(*v.IsRewardInventory)
+			incomingSlots = getSizeByPlatform(v.IncomingSlots, rCtx.Platform)
 		}
 
 		slots = append(slots, SlotRecord{
 			SlotName:          getSlotName(imp.ID, imp.TagID),
-			SlotSize:          getSizesFromImp(imp, rCtx.Platform),
+			SlotSize:          incomingSlots,
 			Adunit:            imp.TagID,
 			PartnerData:       ipr[imp.ID],
 			RewardedInventory: int(reward),

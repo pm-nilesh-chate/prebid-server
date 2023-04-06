@@ -132,6 +132,8 @@ func (m OpenWrap) handleBeforeValidationHook(
 			div = impExt.Wrapper.Div
 		}
 
+		incomingSlots := getIncomingSlots(imp)
+
 		var videoAdUnitCtx, bannerAdUnitCtx models.AdUnitCtx
 		if rCtx.AdUnitConfig != nil {
 			videoAdUnitCtx = adunitconfig.UpdateVideoObjectWithAdunitConfig(rCtx, imp, div, payload.BidRequest.Device.ConnectionType)
@@ -252,6 +254,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 				Type:              slotType,
 				Banner:            imp.Banner != nil,
 				Video:             imp.Video,
+				IncomingSlots:     incomingSlots,
 				Bidders:           make(map[string]models.PartnerData),
 				BidCtx:            make(map[string]models.BidCtx),
 				NewExt:            json.RawMessage(newImpExt),
