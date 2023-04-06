@@ -90,7 +90,7 @@ type ImpCtx struct {
 	IsRewardInventory *int8
 	Banner            bool
 	Video             *openrtb2.Video
-	IncomingSlots     [][2]int64
+	IncomingSlots     []string
 	Type              string // banner, video, native, etc
 	Bidders           map[string]PartnerData
 	NonMapped         map[string]struct{}
