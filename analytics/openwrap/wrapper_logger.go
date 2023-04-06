@@ -174,13 +174,17 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 			} else if !isRegex {
 				if kgpv != "" { // unmapped pubmatic's slot
 					kgpsv = kgpv
-				} else {
+				} else if bid.H != 0 && bid.W != 0 { // Check when bid.H and bid.W will be zero with Price !=0. Ex: MobileInApp-MultiFormat-OnlyBannerMapping_Criteo_Partner_Validaton
 					// 2. valid bid
 					// kgpv has regex, do not generate slotName again
 					// kgpsv could be unmapped or mapped slot, generate slotName again based on bid.H and bid.W
 					kgpsv = GenerateSlotName(bid.H, bid.W, kgp, impCtx.TagID, impCtx.Div, rCtx.Source)
 					kgpv = kgpsv
 				}
+			}
+
+			if kgpv == "" {
+				kgpv = kgpsv
 			}
 
 			bidExt := models.BidExt{}
