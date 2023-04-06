@@ -136,9 +136,9 @@ func getSizeByPlatform(incomingSlots [][2]int64, platform string) []string {
 	sizes := make(map[string]struct{})
 	for _, slot := range incomingSlots {
 		if platform == models.PLATFORM_VIDEO {
-			sizes[fmt.Sprintf("%dx%dv", slot[0], slot[1])] = struct{}{}
+			sizes[fmt.Sprintf("%dx%dv", slot[1], slot[0])] = struct{}{}
 		}
-		sizes[fmt.Sprintf("%dx%d", slot[0], slot[1])] = struct{}{}
+		sizes[fmt.Sprintf("%dx%d", slot[1], slot[0])] = struct{}{}
 	}
 
 	var s []string
