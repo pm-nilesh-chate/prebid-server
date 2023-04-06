@@ -15,7 +15,7 @@ func getIncomingSlots(imp openrtb2.Imp) [][2]int64 {
 	}
 
 	if imp.Video != nil {
-		hw = append(hw, [2]int64{0, 0})
+		hw = append(hw, [2]int64{imp.Video.H, imp.Video.W})
 	}
 
 	return hw

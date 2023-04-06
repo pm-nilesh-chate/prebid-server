@@ -133,9 +133,7 @@ func getSizesFromImp(imp openrtb2.Imp, platform string) []string {
 }
 
 func getSizeByPlatform(incomingSlots [][2]int64, platform string) []string {
-	sizes := map[string]struct{}{
-		"0x0": {},
-	}
+	sizes := map[string]struct{}{}
 
 	for _, slot := range incomingSlots {
 		if platform == models.PLATFORM_VIDEO {
