@@ -1,22 +1,30 @@
 package openwrap
 
-import "github.com/prebid/openrtb/v17/openrtb2"
+import (
+	"fmt"
 
-func getIncomingSlots(imp openrtb2.Imp) [][2]int64 {
-	var hw [][2]int64
+	"github.com/prebid/openrtb/v17/openrtb2"
+)
+
+func getIncomingSlots(imp openrtb2.Imp) []string {
+	sizes := map[string]struct{}{}
 	if imp.Banner != nil {
 		if imp.Banner.W != nil && imp.Banner.H != nil {
-			hw = append(hw, [2]int64{*imp.Banner.H, *imp.Banner.W})
+			sizes[fmt.Sprintf("%dx%d", *imp.Banner.W, *imp.Banner.H)] = struct{}{}
 		}
 
 		for _, format := range imp.Banner.Format {
-			hw = append(hw, [2]int64{format.H, format.W})
+			sizes[fmt.Sprintf("%dx%d", format.W, format.H)] = struct{}{}
 		}
 	}
 
 	if imp.Video != nil {
-		hw = append(hw, [2]int64{imp.Video.H, imp.Video.W})
+		sizes[fmt.Sprintf("%dx%dv", imp.Video.W, imp.Video.H)] = struct{}{}
 	}
 
-	return hw
+	var s []string
+	for k := range sizes {
+		s = append(s, k)
+	}
+	return s
 }
