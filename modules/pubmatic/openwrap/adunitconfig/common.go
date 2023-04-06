@@ -35,6 +35,7 @@ func GetClientConfigForMediaType(rctx models.RequestCtx, impID string, mediaType
 	}
 
 	if mediaType == models.AdunitConfigSlotBannerKey {
+		// imp.Banner and mediaType == banner
 		if impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig != nil &&
 			impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner != nil &&
 			impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner.Config != nil {
@@ -44,7 +45,8 @@ func GetClientConfigForMediaType(rctx models.RequestCtx, impID string, mediaType
 			}
 			return impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner.Config.ClientConfig
 		}
-	} else if mediaType == models.AdunitConfigSlotVideoKey {
+
+		// imp.Video and mediaType == banner (nobid case)
 		if impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig != nil &&
 			impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Video != nil &&
 			impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Video.Config != nil {
@@ -53,6 +55,28 @@ func GetClientConfigForMediaType(rctx models.RequestCtx, impID string, mediaType
 				return nil
 			}
 			return impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Video.Config.ClientConfig
+		}
+	} else if mediaType == models.AdunitConfigSlotVideoKey {
+		// imp.Video and mediaType == video
+		if impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig != nil &&
+			impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Video != nil &&
+			impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Video.Config != nil {
+			if impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Video.Enabled != nil &&
+				*impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Video.Enabled == false {
+				return nil
+			}
+			return impData.VideoAdUnitCtx.AppliedSlotAdUnitConfig.Video.Config.ClientConfig
+		}
+
+		// imp.Banner and mediaType == video (nobid case)
+		if impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig != nil &&
+			impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner != nil &&
+			impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner.Config != nil {
+			if impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner.Enabled != nil &&
+				*impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner.Enabled == false {
+				return nil
+			}
+			return impData.BannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner.Config.ClientConfig
 		}
 	}
 
