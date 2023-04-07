@@ -12,7 +12,7 @@ func validateDevice(device *openrtb2.Device) {
 	//unmarshal device ext
 	var deviceExt models.ExtDevice
 	err := json.Unmarshal(device.Ext, &deviceExt)
-	if err != nil {
+	if err != nil || deviceExt.ExtDevice == nil {
 		return
 	}
 
