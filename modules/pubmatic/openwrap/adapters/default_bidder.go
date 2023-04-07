@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	ow_config "github.com/prebid/prebid-server/modules/pubmatic/openwrap/config"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
 
 	"strconv"
@@ -14,7 +15,7 @@ import (
 )
 
 // Map containing []ParameterMapping for all partners (partner name)
-var adapterParams map[string]map[string]*ParameterMapping
+var adapterParams map[string]map[string]*ow_config.ParameterMapping
 
 func prepareBidParamJSONDefault(params BidderParameters) (json.RawMessage, error) {
 	bidderParamMapping, present := adapterParams[params.AdapterName]

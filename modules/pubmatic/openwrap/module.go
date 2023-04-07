@@ -55,7 +55,11 @@ func (m OpenWrap) HandleBeforeValidationHook(
 	defer func() {
 		if r := recover(); r != nil {
 			request, err := json.Marshal(payload)
-			glog.Error("request:" + string(request) + ". err: " + err.Error() + ". stacktrace:" + string(debug.Stack()))
+			if err != nil {
+				glog.Error("request:" + string(request) + ". err: " + err.Error() + ". stacktrace:" + string(debug.Stack()))
+				return
+			}
+			glog.Error("request:" + string(request) + ". stacktrace:" + string(debug.Stack()))
 		}
 	}()
 
@@ -70,9 +74,11 @@ func (m OpenWrap) HandleAuctionResponseHook(
 	defer func() {
 		if r := recover(); r != nil {
 			response, err := json.Marshal(payload)
-			glog.Error("response:" + string(response) + ". err: " + err.Error() + ". stacktrace:" + string(debug.Stack()))
-
-			glog.Error(string(debug.Stack()))
+			if err != nil {
+				glog.Error("response:" + string(response) + ". err: " + err.Error() + ". stacktrace:" + string(debug.Stack()))
+				return
+			}
+			glog.Error("response:" + string(response) + ". stacktrace:" + string(debug.Stack()))
 		}
 	}()
 
