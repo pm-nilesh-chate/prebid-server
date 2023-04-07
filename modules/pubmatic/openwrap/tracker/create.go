@@ -1,18 +1,18 @@
-package openwrap
+package tracker
 
 import (
+	"bytes"
 	"fmt"
 	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/bidderparams"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 )
 
-func (m *OpenWrap) createTrackers(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) map[string]models.Tracker {
-	trackers := make(map[string]models.Tracker)
+func CreateTrackers(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse, trackerEndpoint, errorTrackerEndpoint string) map[string]models.OWTracker {
+	trackers := make(map[string]models.OWTracker)
 
 	// pubmatic's KGP details per impression
 	type pubmaticMarketplaceMeta struct {
@@ -40,6 +40,8 @@ func (m *OpenWrap) createTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 			price := bid.Price
 			isRewardInventory := 0
 			partnerID := seatBid.Seat
+			bidType := "banner"
+			var dspId int
 
 			var isRegex bool
 			var kgp, kgpv, kgpsv string
@@ -68,6 +70,8 @@ func (m *OpenWrap) createTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 							}
 						}
 					}
+					bidType = bidCtx.CreativeType
+					dspId = bidCtx.DspId
 				}
 
 				_ = matchedSlot
@@ -141,17 +145,34 @@ func (m *OpenWrap) createTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 				}
 			}
 
-			trackers[bid.ID] = tracker
+			var finalTrackerURL string
+			trackerURL := ConstructTrackerURL(rctx, seatBid.Seat, bid.ID, trackerEndpoint)
+			trackURL, err := url.Parse(trackerURL)
+			if err == nil {
+				trackURL.Scheme = models.HTTPSProtocol
+				finalTrackerURL = trackURL.String()
+			}
+
+			trackers[bid.ID] = models.OWTracker{
+				Tracker:       tracker,
+				TrackerURL:    finalTrackerURL,
+				Price:         price,
+				PriceModel:    models.VideoPricingModelCPM,
+				PriceCurrency: bidResponse.Cur,
+				ErrorURL:      ConstructVideoErrorURL(rctx, errorTrackerEndpoint, bid, tracker),
+				BidType:       bidType,
+				DspId:         dspId,
+			}
 		}
 	}
 
 	// overwrite marketplace bid details with that of partner adatper
 	for bidID, tracker := range trackers {
-		if tracker.PartnerInfo != nil {
-			if _, ok := rctx.MarketPlaceBidders[tracker.PartnerInfo.BidderCode]; ok {
-				if v, ok := pmMkt[tracker.ImpID]; ok {
-					tracker.PartnerInfo.PartnerID = "pubmatic"
-					tracker.PartnerInfo.KGPV = v.PubmaticKGPV
+		if tracker.Tracker.PartnerInfo != nil {
+			if _, ok := rctx.MarketPlaceBidders[tracker.Tracker.PartnerInfo.BidderCode]; ok {
+				if v, ok := pmMkt[tracker.Tracker.ImpID]; ok {
+					tracker.Tracker.PartnerInfo.PartnerID = "pubmatic"
+					tracker.Tracker.PartnerInfo.KGPV = v.PubmaticKGPV
 				}
 			}
 		}
@@ -159,21 +180,6 @@ func (m *OpenWrap) createTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 	}
 
 	return trackers
-}
-
-func (m *OpenWrap) injectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) (*openrtb2.BidResponse, error) {
-	for i, seatBid := range bidResponse.SeatBid {
-		for j, bid := range seatBid.Bid {
-			trackerURL := ConstructTrackerURL(rctx, seatBid.Seat, bid.ID, m.cfg.OpenWrap.Tracker.Endpoint)
-			trackURL, err := url.Parse(trackerURL)
-			if err == nil {
-				trackURL.Scheme = models.HTTPSProtocol
-				bidResponse.SeatBid[i].Bid[j].AdM += strings.Replace(models.TrackerCallWrap, "${escapedUrl}", trackURL.String(), 1)
-			}
-		}
-	}
-	return bidResponse, nil
-
 }
 
 func getRewardedInventoryFlag(reward *int8) int {
@@ -185,7 +191,7 @@ func getRewardedInventoryFlag(reward *int8) int {
 
 // ConstructTrackerURL constructing tracker url for impression
 func ConstructTrackerURL(rctx models.RequestCtx, seat, bidID string, trackerURLString string) string {
-	tracker := rctx.Trackers[bidID]
+	tracker := rctx.Trackers[bidID].Tracker
 
 	trackerURL, err := url.Parse(trackerURLString)
 	if err != nil {
@@ -229,4 +235,60 @@ func ConstructTrackerURL(rctx models.RequestCtx, seat, bidID string, trackerURLS
 	}
 	trackerQueryStr := trackerURL.String() + models.TRKQMARK + queryString
 	return trackerQueryStr
+}
+
+// ConstructVideoErrorURL constructing video error url for video impressions
+func ConstructVideoErrorURL(rctx models.RequestCtx, errorURLString string, bid openrtb2.Bid, tracker models.Tracker) string {
+	if len(errorURLString) == 0 {
+		return ""
+	}
+
+	errorURL, err := url.Parse(errorURLString)
+	if err != nil {
+		return ""
+	}
+
+	errorURL.Scheme = models.HTTPSProtocol
+	tracker.SURL = rctx.OriginCookie
+
+	//operId Note: It should be first parameter in url otherwise it will get failed at analytics side.
+	if len(errorURL.RawQuery) > 0 {
+		errorURL.RawQuery = models.ERROperIDParam + models.TRKAmpersand + errorURL.RawQuery
+	} else {
+		errorURL.RawQuery = models.ERROperIDParam
+	}
+
+	v := url.Values{}
+	v.Set(models.ERRPubID, strconv.Itoa(tracker.PubID))                  //pubId
+	v.Set(models.ERRProfileID, tracker.ProfileID)                        //profileId
+	v.Set(models.ERRVersionID, tracker.VersionID)                        //versionId
+	v.Set(models.ERRTimestamp, strconv.FormatInt(tracker.Timestamp, 10)) //ts
+	v.Set(models.ERRPartnerID, tracker.PartnerInfo.PartnerID)            //pid
+	v.Set(models.ERRBidderCode, tracker.PartnerInfo.BidderCode)          //bc
+	v.Set(models.ERRAdunit, tracker.Adunit)                              //au
+	v.Set(models.ERRSUrl, tracker.SURL)                                  // sURL
+	v.Set(models.ERRPlatform, strconv.Itoa(tracker.Platform))            // pfi
+	v.Set(models.ERRAdvertiser, tracker.Advertiser)                      // adv
+
+	if tracker.SSAI != "" {
+		v.Set(models.ERRSSAI, tracker.SSAI) // ssai for video/json endpoint
+	}
+
+	if bid.CrID == "" {
+		v.Set(models.ERRCreativeID, "-1")
+	} else {
+		v.Set(models.ERRCreativeID, bid.CrID) //creativeId
+	}
+
+	var out bytes.Buffer
+	out.WriteString(errorURL.String())
+	out.WriteString(models.TRKAmpersand)
+	out.WriteString(v.Encode())
+	out.WriteString(models.TRKAmpersand)
+	out.WriteString(models.ERRErrorCodeParam) //ier
+
+	//queryString +=
+	errorURLQueryStr := out.String()
+
+	return errorURLQueryStr
 }

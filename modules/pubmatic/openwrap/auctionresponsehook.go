@@ -10,6 +10,7 @@ import (
 	"github.com/prebid/prebid-server/hooks/hookstage"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/adunitconfig"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
+	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/tracker"
 )
 
 func (m OpenWrap) handleAuctionResponseHook(
@@ -166,7 +167,7 @@ func (m OpenWrap) handleAuctionResponseHook(
 
 	rctx.NoSeatBids = m.addDefaultBids(rctx, payload.BidResponse)
 
-	rctx.Trackers = m.createTrackers(rctx, payload.BidResponse)
+	rctx.Trackers = tracker.CreateTrackers(rctx, payload.BidResponse, m.cfg.OpenWrap.Tracker.Endpoint, m.cfg.OpenWrap.Tracker.VideoErrorTrackerEndpoint)
 
 	responseExt := make(map[string]interface{})
 	// TODO use concrete structure
@@ -208,7 +209,8 @@ func (m OpenWrap) handleAuctionResponseHook(
 		if err != nil {
 			return ap, err
 		}
-		ap.BidResponse, err = m.injectTrackers(rctx, ap.BidResponse)
+
+		ap.BidResponse, err = tracker.InjectTrackers(rctx, ap.BidResponse)
 		if err != nil {
 			return ap, err
 		}

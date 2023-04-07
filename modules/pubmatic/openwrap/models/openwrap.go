@@ -31,6 +31,7 @@ type RequestCtx struct {
 	Cookies       string
 	UidCookie     *http.Cookie
 	KADUSERCookie *http.Cookie
+	OriginCookie  string
 
 	Debug bool
 	Trace bool
@@ -44,7 +45,7 @@ type RequestCtx struct {
 	URL string
 
 	//trackers per bid
-	Trackers map[string]Tracker
+	Trackers map[string]OWTracker
 
 	//prebid-biddercode to seat/alias mapping
 	PrebidBidderCode map[string]string

@@ -1,5 +1,17 @@
 package models
 
+// OWTracker vast video parameters to be injected
+type OWTracker struct {
+	Tracker       Tracker
+	TrackerURL    string
+	ErrorURL      string
+	Price         float64
+	PriceModel    string
+	PriceCurrency string
+	BidType       string `json:"-"` // video, banner, native
+	DspId         int    `json:"-"` // dsp id
+}
+
 // Tracker tracker url creation parameters
 type Tracker struct {
 	PubID             int
