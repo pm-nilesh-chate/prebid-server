@@ -16,7 +16,7 @@ func UpdateBannerObjectWithAdunitConfig(rCtx models.RequestCtx, imp openrtb2.Imp
 		}
 	}()
 
-	if imp.Banner == nil || rCtx.AdUnitConfig == nil || len(rCtx.AdUnitConfig.Config) == 0 {
+	if rCtx.AdUnitConfig == nil || len(rCtx.AdUnitConfig.Config) == 0 {
 		return
 	}
 
@@ -30,11 +30,13 @@ func UpdateBannerObjectWithAdunitConfig(rCtx models.RequestCtx, imp openrtb2.Imp
 	}
 
 	var height, width int64
-	if imp.Banner.H != nil {
-		height = *imp.Banner.H
-	}
-	if imp.Banner.H != nil {
-		width = *imp.Banner.W
+	if imp.Banner != nil {
+		if imp.Banner.H != nil {
+			height = *imp.Banner.H
+		}
+		if imp.Banner.W != nil {
+			width = *imp.Banner.W
+		}
 	}
 
 	adUnitCtx.SelectedSlotAdUnitConfig, adUnitCtx.MatchedSlot, adUnitCtx.IsRegex, adUnitCtx.MatchedRegex = selectSlot(rCtx, height, width, imp.TagID, div, rCtx.Source)

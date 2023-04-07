@@ -21,7 +21,7 @@ func UpdateVideoObjectWithAdunitConfig(rCtx models.RequestCtx, imp openrtb2.Imp,
 		return
 	}
 
-	if imp.Video == nil || rCtx.AdUnitConfig == nil || len(rCtx.AdUnitConfig.Config) == 0 {
+	if rCtx.AdUnitConfig == nil || len(rCtx.AdUnitConfig.Config) == 0 {
 		return
 	}
 
@@ -36,8 +36,11 @@ func UpdateVideoObjectWithAdunitConfig(rCtx models.RequestCtx, imp openrtb2.Imp,
 		}
 	}
 
-	height := int64(imp.Video.H)
-	width := int64(imp.Video.W)
+	var height, width int64
+	if imp.Video != nil {
+		height = imp.Video.H
+		width = imp.Video.W
+	}
 
 	adUnitCtx.SelectedSlotAdUnitConfig, adUnitCtx.MatchedSlot, adUnitCtx.IsRegex, adUnitCtx.MatchedRegex = selectSlot(rCtx, height, width, imp.TagID, div, rCtx.Source)
 	if adUnitCtx.SelectedSlotAdUnitConfig != nil && adUnitCtx.SelectedSlotAdUnitConfig.Video != nil {
