@@ -104,6 +104,8 @@ type SSHB struct {
 		Pixelview struct {
 			OMScript string //js script path for conditional tracker call fire
 		}
+
+		BidderParamMapping map[string]map[string]*ParameterMapping `json:"bidder_param_mapping"`
 	}
 
 	Cache struct {
@@ -165,4 +167,13 @@ func (cfg *SSHB) Validate() (err error) {
 	}
 
 	return nil
+}
+
+// ParameterMapping holds mapping information for bidder parameter
+type ParameterMapping struct {
+	BidderParamName string      `json:"bidderParameterName,omitempty"`
+	KeyName         string      `json:"keyName,omitempty"`
+	Datatype        string      `json:"type,omitempty"`
+	Required        bool        `json:"required,omitempty"`
+	DefaultValue    interface{} `json:"defaultValue,omitempty"`
 }

@@ -82,14 +82,14 @@ func (m OpenWrap) handleBeforeValidationHook(
 	rCtx.AdapterThrottleMap, err = GetAdapterThrottleMap(rCtx.PartnerConfigMap)
 	if err != nil {
 		result.NbrCode = errorcodes.ErrAllPartnerThrottled.Code()
-		result.DebugMessages = append(result.Errors, err.Error())
+		result.DebugMessages = append(result.DebugMessages, err.Error())
 		return result, err
 	}
 
 	priceGranularity, err := computePriceGranularity(rCtx)
 	if err != nil {
 		result.NbrCode = errorcodes.ErrAllPartnerThrottled.Code()
-		result.DebugMessages = append(result.Errors, err.Error())
+		result.DebugMessages = append(result.DebugMessages, err.Error())
 		return result, err
 	}
 
@@ -113,6 +113,12 @@ func (m OpenWrap) handleBeforeValidationHook(
 	for i := 0; i < len(payload.BidRequest.Imp); i++ {
 		var adpodExt *models.AdPod
 		imp := payload.BidRequest.Imp[i]
+
+		if imp.TagID == "" {
+			result.NbrCode = errorcodes.ErrMissingTagID.Code()
+			result.DebugMessages = append(result.DebugMessages, errorcodes.ErrMissingTagID.Error())
+			return result, err
+		}
 
 		if len(requestExt.Prebid.Macros) == 0 && imp.Video != nil {
 			// provide custom macros for video event trackers

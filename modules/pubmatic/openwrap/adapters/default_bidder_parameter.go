@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	ow_config "github.com/prebid/prebid-server/modules/pubmatic/openwrap/config"
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
@@ -34,28 +35,18 @@ type ArrayItemsType struct {
 	Type string `json:"type"`
 }
 
-// ParameterMapping holds mapping information for bidder parameter
-type ParameterMapping struct {
-	BidderParamName string      `json:"bidderParameterName"`
-	KeyName         string      `json:"keyName"`
-	Datatype        string      `json:"type"`
-	Required        bool        `json:"required"`
-	DefaultValue    interface{} `json:"defaultValue"`
-}
-
-func (pm *ParameterMapping) String() string {
-	return fmt.Sprintf("[bidderParameterName:%s, keyName:%s, type:%s, required:%v, defaultValue:%v]",
-		pm.BidderParamName, pm.KeyName, pm.Datatype, pm.Required, pm.DefaultValue)
-}
-
-func parseBidderParams() error {
+func parseBidderParams(cfg ow_config.SSHB) error {
 	schemas, err := parseBidderSchemaDefinitions()
 	if err != nil {
 		return err
 	}
-	owParameterMappings := parseOpenWrapParameterMappings()
 
-	adapterParams = make(map[string]map[string]*ParameterMapping)
+	owParameterMappings := cfg.OpenWrap.BidderParamMapping
+	if owParameterMappings == nil {
+		return errors.New("BidderParamMapping is not defined in config")
+	}
+
+	adapterParams = make(map[string]map[string]*ow_config.ParameterMapping)
 
 	for bidderName, jsonSchema := range schemas {
 
@@ -64,9 +55,9 @@ func parseBidderParams() error {
 			continue
 		}
 
-		parameters := make(map[string]*ParameterMapping)
+		parameters := make(map[string]*ow_config.ParameterMapping)
 		for propertyName, propertyDef := range jsonSchema.Properties {
-			bidderParam := ParameterMapping{}
+			bidderParam := ow_config.ParameterMapping{}
 			bidderParam.BidderParamName = propertyName
 			bidderParam.KeyName = propertyName
 			bidderParam.Datatype = getType(propertyDef)
@@ -181,24 +172,4 @@ func getBidderParamsDirectory() string {
 	}
 
 	return ""
-}
-
-func parseOpenWrapParameterMappings() map[string]map[string]*ParameterMapping {
-	owParameterMappings := make(map[string]map[string]*ParameterMapping)
-
-	schemaDirectory := getBidderParamsDirectory()
-	if schemaDirectory == "" {
-		return owParameterMappings
-	}
-
-	fileBytes, err := os.ReadFile("parameterMappings.json")
-	if err != nil {
-		return owParameterMappings
-	}
-
-	err = json.Unmarshal(fileBytes, &owParameterMappings)
-	if err != nil {
-		return owParameterMappings
-	}
-	return owParameterMappings
 }
