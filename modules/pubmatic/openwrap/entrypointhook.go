@@ -91,6 +91,14 @@ func (m OpenWrap) handleEntrypointHook(
 		result.Errors = append(result.Errors, "failed to parse cookie: KADUSERCOOKIE err: "+err.Error())
 	}
 
+	originCookie, err := payload.Request.Cookie("origin")
+	if err != nil && err != http.ErrNoCookie {
+		result.Errors = append(result.Errors, "failed to parse cookie: origin err: "+err.Error())
+	}
+	if originCookie != nil {
+		rCtx.OriginCookie = originCookie.Value
+	}
+
 	if rCtx.LoggerImpressionID == "" {
 		rCtx.LoggerImpressionID = uuid.NewV4().String()
 	}
