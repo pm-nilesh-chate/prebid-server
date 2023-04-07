@@ -129,7 +129,7 @@ func CreateTrackers(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse, t
 			tracker.Adunit = tagid
 			tracker.SlotID = fmt.Sprintf("%s_%s", bid.ImpID, tagid)
 			tracker.RewardedInventory = isRewardInventory
-			tracker.PartnerInfo = &models.Partner{
+			tracker.PartnerInfo = models.Partner{
 				PartnerID:  partnerID,
 				BidderCode: seatBid.Seat,
 				BidID:      bid.ID,
@@ -146,7 +146,7 @@ func CreateTrackers(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse, t
 			}
 
 			var finalTrackerURL string
-			trackerURL := ConstructTrackerURL(rctx, seatBid.Seat, bid.ID, trackerEndpoint)
+			trackerURL := ConstructTrackerURL(rctx, seatBid.Seat, bid.ID, trackerEndpoint, tracker)
 			trackURL, err := url.Parse(trackerURL)
 			if err == nil {
 				trackURL.Scheme = models.HTTPSProtocol
@@ -168,12 +168,10 @@ func CreateTrackers(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse, t
 
 	// overwrite marketplace bid details with that of partner adatper
 	for bidID, tracker := range trackers {
-		if tracker.Tracker.PartnerInfo != nil {
-			if _, ok := rctx.MarketPlaceBidders[tracker.Tracker.PartnerInfo.BidderCode]; ok {
-				if v, ok := pmMkt[tracker.Tracker.ImpID]; ok {
-					tracker.Tracker.PartnerInfo.PartnerID = "pubmatic"
-					tracker.Tracker.PartnerInfo.KGPV = v.PubmaticKGPV
-				}
+		if _, ok := rctx.MarketPlaceBidders[tracker.Tracker.PartnerInfo.BidderCode]; ok {
+			if v, ok := pmMkt[tracker.Tracker.ImpID]; ok {
+				tracker.Tracker.PartnerInfo.PartnerID = "pubmatic"
+				tracker.Tracker.PartnerInfo.KGPV = v.PubmaticKGPV
 			}
 		}
 		trackers[bidID] = tracker
@@ -190,9 +188,7 @@ func getRewardedInventoryFlag(reward *int8) int {
 }
 
 // ConstructTrackerURL constructing tracker url for impression
-func ConstructTrackerURL(rctx models.RequestCtx, seat, bidID string, trackerURLString string) string {
-	tracker := rctx.Trackers[bidID].Tracker
-
+func ConstructTrackerURL(rctx models.RequestCtx, seat, bidID string, trackerURLString string, tracker models.Tracker) string {
 	trackerURL, err := url.Parse(trackerURLString)
 	if err != nil {
 		return ""
