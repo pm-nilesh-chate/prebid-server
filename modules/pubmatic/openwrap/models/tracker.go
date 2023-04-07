@@ -22,7 +22,7 @@ type Tracker struct {
 	VersionID         string
 	SlotID            string
 	Adunit            string
-	PartnerInfo       *Partner
+	PartnerInfo       Partner
 	RewardedInventory int
 	SURL              string // contains either req.site.domain or req.app.bundle value
 	Platform          int
