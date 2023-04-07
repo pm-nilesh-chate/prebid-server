@@ -87,12 +87,24 @@ func (m *OpenWrap) createTrackers(rctx models.RequestCtx, bidResponse *openrtb2.
 				// 1. nobid
 				if bid.Price == 0 && bid.H == 0 && bid.W == 0 {
 					//NOTE: kgpsv = bidderMeta.MatchedSlot above. Use the same
-					kgpv = kgpsv
+					if !isRegex && kgpv != "" { // unmapped pubmatic's slot
+						kgpsv = kgpv
+					} else if !isRegex {
+						kgpv = kgpsv
+					}
 				} else if !isRegex {
-					// 2. valid bid
-					// kgpv has regex, do not generate slotName again
-					// kgpsv could be unmapped or mapped slot, generate slotName again based on bid.H and bid.W
-					kgpsv := bidderparams.GenerateSlotName(bid.H, bid.W, kgp, impCtx.TagID, impCtx.Div, rctx.Source)
+					if kgpv != "" { // unmapped pubmatic's slot
+						kgpsv = kgpv
+					} else if bid.H != 0 && bid.W != 0 { // Check when bid.H and bid.W will be zero with Price !=0. Ex: MobileInApp-MultiFormat-OnlyBannerMapping_Criteo_Partner_Validaton
+						// 2. valid bid
+						// kgpv has regex, do not generate slotName again
+						// kgpsv could be unmapped or mapped slot, generate slotName again based on bid.H and bid.W
+						kgpsv := bidderparams.GenerateSlotName(bid.H, bid.W, kgp, impCtx.TagID, impCtx.Div, rctx.Source)
+						kgpv = kgpsv
+					}
+				}
+
+				if kgpv == "" {
 					kgpv = kgpsv
 				}
 				// --------------------------------------------------------------------------------------------------
