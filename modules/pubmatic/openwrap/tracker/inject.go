@@ -22,10 +22,11 @@ func InjectTrackers(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) (
 			case models.Banner:
 				bidResponse.SeatBid[i].Bid[j].AdM = injectBannerTracker(rctx, tracker, bidResponse.SeatBid[i].Bid[j], seatBid.Seat)
 			case models.Video:
-				trackers := make([]models.OWTracker, 0, len(rctx.Trackers))
-				for _, tracker := range rctx.Trackers {
-					trackers = append(trackers, tracker)
-				}
+				// trackers := make([]models.OWTracker, 0, len(rctx.Trackers))
+				// for _, tracker := range rctx.Trackers {
+				// 	trackers = append(trackers, tracker)
+				// }
+				trackers := []models.OWTracker{tracker}
 				var err error
 				bidResponse.SeatBid[i].Bid[j].AdM, err = injectVideoCreativeTrackers(bid, trackers)
 				if err != nil {
