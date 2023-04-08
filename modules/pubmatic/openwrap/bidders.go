@@ -7,7 +7,7 @@ import (
 
 var alias = map[string]string{
 	models.BidderAdGenerationAlias:      string(openrtb_ext.BidderAdgeneration),
-	models.BidderDistrictmDMXAlias:      "districtm",
+	models.BidderDistrictmDMXAlias:      string(openrtb_ext.BidderDmx),
 	models.BidderPubMaticSecondaryAlias: string(openrtb_ext.BidderPubmatic),
 	models.BidderDistrictmAlias:         string(openrtb_ext.BidderAppnexus),
 	models.BidderAndBeyondAlias:         string(openrtb_ext.BidderAdkernel),
