@@ -1,6 +1,7 @@
 package openwrap
 
 import (
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -164,4 +165,26 @@ func GetInt(val interface{}) int {
 		}
 	}
 	return result
+}
+
+func getSourceAndOrigin(bidRequest *openrtb2.BidRequest) (string, string) {
+	var source, origin string
+	if bidRequest.Site != nil {
+		if len(bidRequest.Site.Domain) != 0 {
+			source = bidRequest.Site.Domain
+			origin = source
+		} else if len(bidRequest.Site.Page) != 0 {
+			source = getDomainFromUrl(bidRequest.Site.Page)
+			origin = source
+			pageURL, err := url.Parse(source)
+			if err == nil && pageURL != nil {
+				origin = pageURL.Host
+			}
+
+		}
+	} else if bidRequest.App != nil {
+		source = bidRequest.App.Bundle
+		origin = source
+	}
+	return source, origin
 }

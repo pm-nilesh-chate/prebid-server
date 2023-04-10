@@ -321,8 +321,10 @@ func sendAuctionResponse(
 		isDebug, err := jsonparser.GetBoolean(request.Ext, "prebid", "debug")
 		if err == nil && isDebug {
 			url := "\"" + openwrap.GetLogAuctionObjectAsURL(&ao) + "\""
-			ao.Response.Ext, _ = jsonparser.Set(ao.Response.Ext, []byte(url), "owlogger")
+			response.Ext, _ = jsonparser.Set(ao.Response.Ext, []byte(url), "owlogger")
 		}
+
+		response.Ext = getLogInfo(request.Ext, response.Ext, &ao)
 
 		ext, warns, err := hookexecution.EnrichExtBidResponse(response.Ext, stageOutcomes, request, account)
 		if err != nil {
