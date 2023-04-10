@@ -9,7 +9,7 @@ import (
 
 	"github.com/prebid/prebid-server/hooks/hookstage"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
+	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/nbr"
 )
 
 func (m OpenWrap) handleRawAuctionHook(
@@ -39,8 +39,8 @@ func (m OpenWrap) handleRawAuctionHook(
 	pubID, err := strconv.Atoi(accountID)
 	if err != nil {
 		result.Reject = true
-		result.NbrCode = errorcodes.ErrInvalidPublisherID.Code()
-		result.Errors = append(result.Errors, errorcodes.ErrInvalidPublisherID.Error())
+		result.NbrCode = nbr.InvalidPublisherID
+		result.Errors = append(result.Errors, "ErrInvalidPublisherID")
 		return result, fmt.Errorf("invalid publisher id : %v", err)
 	}
 	rCtx.PubID = pubID

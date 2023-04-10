@@ -2,6 +2,7 @@ package bidderparams
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,10 +11,9 @@ import (
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/adapters"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/cache"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
 )
 
-func PrepareVASTBidderParams(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int, adpodExt *models.AdPod) (string, json.RawMessage, errorcodes.IError) {
+func PrepareVASTBidderParams(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int, adpodExt *models.AdPod) (string, json.RawMessage, error) {
 	if imp.Video == nil {
 		return "", nil, nil
 	}
@@ -58,12 +58,12 @@ func getVASTBidderSlotKeys(imp *openrtb2.Imp,
 	slotKey string,
 	slotMap map[string]models.SlotMapping,
 	pubVASTTags models.PublisherVASTTags,
-	adpodExt *models.AdPod) ([]string, errorcodes.IError) {
+	adpodExt *models.AdPod) ([]string, error) {
 
 	//TODO: Optimize this function
 	var (
 		result, defaultMapping []string
-		validationErr          errorcodes.IError
+		validationErr          error
 		isValidationError      bool
 	)
 
@@ -116,7 +116,7 @@ func getVASTBidderSlotKeys(imp *openrtb2.Imp,
 	}
 
 	if len(result) == 0 && len(defaultMapping) == 0 && isValidationError {
-		validationErr = errorcodes.ErrInvalidVastTag
+		validationErr = errors.New("ErrInvalidVastTag")
 	}
 
 	if len(result) == 0 {

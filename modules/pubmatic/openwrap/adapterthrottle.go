@@ -1,15 +1,15 @@
 package openwrap
 
 import (
+	"errors"
 	"math/rand"
 	"strconv"
 
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
 )
 
 // GetAdapterThrottleMap creates map of adapter and bool value which tells whether the adapter should be throtled or not
-func GetAdapterThrottleMap(partnerConfigMap map[int]map[string]string) (map[string]struct{}, errorcodes.IError) {
+func GetAdapterThrottleMap(partnerConfigMap map[int]map[string]string) (map[string]struct{}, error) {
 	adapterThrottleMap := make(map[string]struct{})
 	allPartnersThrottledFlag := true
 	for _, partnerConfig := range partnerConfigMap {
@@ -23,7 +23,7 @@ func GetAdapterThrottleMap(partnerConfigMap map[int]map[string]string) (map[stri
 		}
 	}
 	if allPartnersThrottledFlag {
-		return adapterThrottleMap, errorcodes.ErrAllPartnerThrottled
+		return adapterThrottleMap, errors.New("ErrAllPartnerThrottled")
 	}
 	return adapterThrottleMap, nil
 }
