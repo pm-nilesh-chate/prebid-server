@@ -14,7 +14,7 @@ import (
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/adunitconfig"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/bidderparams"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
+	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/nbr"
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
@@ -42,8 +42,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 
 	requestExt, err := models.GetRequestExt(payload.BidRequest.Ext)
 	if err != nil {
-		result.NbrCode = errorcodes.ErrInvalidRequestExtension.Code()
-		result.Errors = append(result.Errors, errorcodes.ErrInvalidRequestExtension.Error())
+		result.NbrCode = nbr.InvalidRequest
 		return result, err
 	}
 
@@ -51,8 +50,8 @@ func (m OpenWrap) handleBeforeValidationHook(
 
 	partnerConfigMap, err := m.getProfileData(rCtx, *payload.BidRequest)
 	if err != nil || len(partnerConfigMap) == 0 {
-		result.NbrCode = errorcodes.ErrInvalidConfiguration.Code()
-		result.DebugMessages = append(result.Errors, errorcodes.ErrInvalidConfiguration.Error())
+		// TODO: seperate DB fetch errors as internal errors
+		result.NbrCode = nbr.InvalidProfileConfiguration
 		return result, errors.New("failed to get profile data")
 	}
 
@@ -71,14 +70,14 @@ func (m OpenWrap) handleBeforeValidationHook(
 
 	rCtx.AdapterThrottleMap, err = GetAdapterThrottleMap(rCtx.PartnerConfigMap)
 	if err != nil {
-		result.NbrCode = errorcodes.ErrAllPartnerThrottled.Code()
+		result.NbrCode = nbr.AllPartnerThrottled
 		result.DebugMessages = append(result.DebugMessages, err.Error())
 		return result, err
 	}
 
 	priceGranularity, err := computePriceGranularity(rCtx)
 	if err != nil {
-		result.NbrCode = errorcodes.ErrAllPartnerThrottled.Code()
+		result.NbrCode = nbr.InvalidPriceGranularityConfig
 		result.DebugMessages = append(result.DebugMessages, err.Error())
 		return result, err
 	}
@@ -105,8 +104,8 @@ func (m OpenWrap) handleBeforeValidationHook(
 		imp := payload.BidRequest.Imp[i]
 
 		if imp.TagID == "" {
-			result.NbrCode = errorcodes.ErrMissingTagID.Code()
-			result.DebugMessages = append(result.DebugMessages, errorcodes.ErrMissingTagID.Error())
+			result.NbrCode = nbr.InvalidImpressionTagID
+			result.DebugMessages = append(result.DebugMessages, "ErrMissingTagID")
 			return result, err
 		}
 
@@ -119,6 +118,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 		if len(imp.Ext) != 0 {
 			err := json.Unmarshal(imp.Ext, impExt)
 			if err != nil {
+				result.NbrCode = nbr.InternalError
 				return result, err
 			}
 		}

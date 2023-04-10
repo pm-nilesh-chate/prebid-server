@@ -1,19 +1,19 @@
 package bidderparams
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/adapters"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/cache"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
 )
 
-func PrepareAdapterParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int) (string, string, bool, []byte, errorcodes.IError) {
+func PrepareAdapterParamsV25(rctx models.RequestCtx, cache cache.Cache, bidRequest openrtb2.BidRequest, imp openrtb2.Imp, impExt models.ImpExtension, partnerID int) (string, string, bool, []byte, error) {
 	partnerConfig, ok := rctx.PartnerConfigMap[partnerID]
 	if !ok {
-		return "", "", false, nil, errorcodes.ErrBidderParamsValidationError
+		return "", "", false, nil, errors.New("ErrBidderParamsValidationError")
 	}
 
 	kgpv := ""

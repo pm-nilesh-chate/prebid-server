@@ -8,7 +8,7 @@ import (
 	"github.com/prebid/prebid-server/hooks/hookexecution"
 	"github.com/prebid/prebid-server/hooks/hookstage"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
+	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/nbr"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -52,8 +52,8 @@ func (m OpenWrap) handleEntrypointHook(
 	}
 
 	if err != nil || requestExtWrapper.ProfileId == 0 {
-		result.NbrCode = errorcodes.ErrMissingProfileID.Code()
-		result.Errors = append(result.Errors, errorcodes.ErrMissingProfileID.Error())
+		result.NbrCode = nbr.InvalidProfileID
+		result.Errors = append(result.Errors, "ErrMissingProfileID")
 		return result, err
 	}
 

@@ -3,8 +3,6 @@ package models
 import (
 	"encoding/json"
 
-	"github.com/prebid/openrtb/v17/openrtb2"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/errorcodes"
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
@@ -110,11 +108,4 @@ type RequestExtWrapper struct {
 type BidderWrapper struct {
 	Flag        bool
 	VASTagFlags map[string]bool
-}
-
-// TODO move this file to opertb package
-type ImpWrapper struct {
-	Imp         *openrtb2.Imp
-	Bidder      map[string]*BidderWrapper
-	BidderError errorcodes.IError
 }
