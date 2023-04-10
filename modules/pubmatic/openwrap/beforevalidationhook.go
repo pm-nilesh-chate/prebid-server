@@ -49,7 +49,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 
 	rCtx.IsTestRequest = payload.BidRequest.Test == 2
 
-	partnerConfigMap, err := m.getProfileData(rCtx)
+	partnerConfigMap, err := m.getProfileData(rCtx, *payload.BidRequest)
 	if err != nil || len(partnerConfigMap) == 0 {
 		result.NbrCode = errorcodes.ErrInvalidConfiguration.Code()
 		result.DebugMessages = append(result.Errors, errorcodes.ErrInvalidConfiguration.Error())
@@ -306,6 +306,10 @@ func (m OpenWrap) handleBeforeValidationHook(
 
 // applyProfileChanges copies and updates BidRequest with required values from http header and partnetConfigMap
 func (m *OpenWrap) applyProfileChanges(rctx models.RequestCtx, bidRequest *openrtb2.BidRequest) (*openrtb2.BidRequest, error) {
+	if rctx.IsTestRequest {
+		bidRequest.Test = 1
+	}
+
 	if cur, ok := rctx.PartnerConfigMap[models.VersionLevelConfigID][models.AdServerCurrency]; ok {
 		bidRequest.Cur = []string{cur}
 	}
@@ -317,7 +321,6 @@ func (m *OpenWrap) applyProfileChanges(rctx models.RequestCtx, bidRequest *openr
 	if bidRequest.Source == nil {
 		bidRequest.Source = &openrtb2.Source{}
 	}
-
 	bidRequest.Source.TID = bidRequest.ID
 
 	for i := 0; i < len(bidRequest.Imp); i++ {
