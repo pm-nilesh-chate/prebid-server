@@ -27,6 +27,8 @@ type RequestCtx struct {
 	ABTestConfig, ABTestConfigApplied int
 	IsCTVRequest                      bool
 
+	TrackerEndpoint, VideoErrorTrackerEndpoint string
+
 	UA            string
 	Cookies       string
 	UidCookie     *http.Cookie
@@ -61,7 +63,7 @@ type RequestCtx struct {
 
 	AdUnitConfig *adunitconfig.AdUnitConfig
 
-	Source string
+	Source, Origin string
 
 	SendAllBids bool
 	WinningBids map[string]OwBid

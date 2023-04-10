@@ -167,7 +167,7 @@ func (m OpenWrap) handleAuctionResponseHook(
 
 	rctx.NoSeatBids = m.addDefaultBids(rctx, payload.BidResponse)
 
-	rctx.Trackers = tracker.CreateTrackers(rctx, payload.BidResponse, m.cfg.OpenWrap.Tracker.Endpoint, m.cfg.OpenWrap.Tracker.VideoErrorTrackerEndpoint)
+	rctx.Trackers = tracker.CreateTrackers(rctx, payload.BidResponse)
 
 	responseExt := make(map[string]interface{})
 	// TODO use concrete structure
@@ -188,8 +188,8 @@ func (m OpenWrap) handleAuctionResponseHook(
 
 	if rctx.LogInfoFlag == 1 {
 		responseExt[models.LogInfoKey] = models.LogInfo{
-			Logger:  "",
-			Tracker: "",
+			// Logger:  openwrap.GetLogAuctionObjectAsURL(ao, true),
+			Tracker: tracker.GetTrackerInfo(rctx),
 		}
 	}
 

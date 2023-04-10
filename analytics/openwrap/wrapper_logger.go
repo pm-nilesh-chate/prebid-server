@@ -3,49 +3,25 @@ package openwrap
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"runtime/debug"
 	"strconv"
 
 	"github.com/golang/glog"
 	"github.com/prebid/openrtb/v17/openrtb2"
 	"github.com/prebid/prebid-server/analytics"
+	"github.com/prebid/prebid-server/hooks/hookexecution"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
-func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
+func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject, logInfo ...bool) string {
 	defer func() {
 		if r := recover(); r != nil {
 			glog.Error(string(debug.Stack()))
 		}
 	}()
 
-	// TODO filter by name
-	// (*stageOutcomes[8].Groups[0].InvocationResults[0].AnalyticsTags.Activities[0].Results[0].Values["request-ctx"].(data))
-	rCtx := func() *models.RequestCtx {
-		for _, stageOutcome := range ao.HookExecutionOutcome {
-			for _, groups := range stageOutcome.Groups {
-				for _, invocationResult := range groups.InvocationResults {
-					for _, activity := range invocationResult.AnalyticsTags.Activities {
-						for _, result := range activity.Results {
-							if result.Values != nil {
-								if irctx, ok := result.Values["request-ctx"]; ok {
-									rctx, ok := irctx.(*models.RequestCtx)
-									if !ok {
-										return nil
-									}
-									return rctx
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		return nil
-	}()
-
+	rCtx := getRequestCtx(ao.HookExecutionOutcome)
 	if rCtx == nil {
 		return ""
 	}
@@ -55,7 +31,7 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 			PubID:             rCtx.PubID,
 			ProfileID:         fmt.Sprintf("%d", rCtx.ProfileID),
 			VersionID:         fmt.Sprintf("%d", rCtx.DisplayID),
-			Origin:            rCtx.Source,
+			Origin:            rCtx.Origin,
 			PageURL:           rCtx.PageURL,
 			IID:               rCtx.LoggerImpressionID,
 			Timestamp:         rCtx.StartTime,
@@ -69,19 +45,6 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 	err := json.Unmarshal(ao.Request.Ext, &extWrapper)
 	if err != nil {
 		return ""
-	}
-
-	if ao.Request.App != nil {
-		wlog.Origin = ao.Request.App.Bundle
-	} else if ao.Request.Site != nil {
-		if len(ao.Request.Site.Domain) != 0 {
-			wlog.Origin = ao.Request.Site.Domain
-		} else {
-			pageURL, err := url.Parse(ao.Request.Site.Page)
-			if err == nil && pageURL != nil {
-				wlog.Origin = pageURL.Host
-			}
-		}
 	}
 
 	if ao.Request.User != nil {
@@ -113,6 +76,66 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 		wlog.logContentObject(ao.Request.App.Content)
 	}
 
+	var ipr map[string][]PartnerRecord
+
+	if len(logInfo) == 0 {
+		ipr = getPartnerRecordsByImp(ao, rCtx)
+	} else if logInfo[0] {
+		ipr = getDefaultPartnerRecordsByImp(rCtx)
+	}
+
+	// parent bidder could in one of the above and we need them by prebid's bidderCode and not seat(could be alias)
+	slots := make([]SlotRecord, 0)
+	for _, imp := range ao.Request.Imp {
+		reward := 0
+		var incomingSlots []string
+		if impCtx, ok := rCtx.ImpBidCtx[imp.ID]; ok {
+			if impCtx.IsRewardInventory != nil {
+				reward = int(*impCtx.IsRewardInventory)
+			}
+			incomingSlots = impCtx.IncomingSlots
+		}
+
+		slots = append(slots, SlotRecord{
+			SlotName:          getSlotName(imp.ID, imp.TagID),
+			SlotSize:          incomingSlots,
+			Adunit:            imp.TagID,
+			PartnerData:       ipr[imp.ID],
+			RewardedInventory: int(reward),
+			// AdPodSlot:         getAdPodSlot(imp, responseMap.AdPodBidsExt),
+		})
+	}
+
+	wlog.Slots = slots
+
+	return PrepareLoggerURL(&wlog, rCtx.URL, GetGdprEnabledFlag(rCtx.PartnerConfigMap))
+}
+
+// TODO filter by name. (*stageOutcomes[8].Groups[0].InvocationResults[0].AnalyticsTags.Activities[0].Results[0].Values["request-ctx"].(data))
+func getRequestCtx(hookExecutionOutcome []hookexecution.StageOutcome) *models.RequestCtx {
+	for _, stageOutcome := range hookExecutionOutcome {
+		for _, groups := range stageOutcome.Groups {
+			for _, invocationResult := range groups.InvocationResults {
+				for _, activity := range invocationResult.AnalyticsTags.Activities {
+					for _, result := range activity.Results {
+						if result.Values != nil {
+							if irctx, ok := result.Values["request-ctx"]; ok {
+								rctx, ok := irctx.(*models.RequestCtx)
+								if !ok {
+									return nil
+								}
+								return rctx
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func getPartnerRecordsByImp(ao *analytics.AuctionObject, rCtx *models.RequestCtx) map[string][]PartnerRecord {
 	// impID-partnerRecords: partner records per impression
 	ipr := make(map[string][]PartnerRecord)
 
@@ -281,29 +304,13 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject) string {
 		}
 	}
 
-	// parent bidder could in one of the above and we need them by prebid's bidderCode and not seat(could be alias)
-	slots := make([]SlotRecord, 0)
-	for _, imp := range ao.Request.Imp {
-		reward := 0
-		var incomingSlots []string
-		if impCtx, ok := rCtx.ImpBidCtx[imp.ID]; ok {
-			if impCtx.IsRewardInventory != nil {
-				reward = int(*impCtx.IsRewardInventory)
-			}
-			incomingSlots = impCtx.IncomingSlots
-		}
+	return ipr
+}
 
-		slots = append(slots, SlotRecord{
-			SlotName:          getSlotName(imp.ID, imp.TagID),
-			SlotSize:          incomingSlots,
-			Adunit:            imp.TagID,
-			PartnerData:       ipr[imp.ID],
-			RewardedInventory: int(reward),
-			// AdPodSlot:         getAdPodSlot(imp, responseMap.AdPodBidsExt),
-		})
+func getDefaultPartnerRecordsByImp(rCtx *models.RequestCtx) map[string][]PartnerRecord {
+	ipr := make(map[string][]PartnerRecord)
+	for impID := range rCtx.ImpBidCtx {
+		ipr[impID] = []PartnerRecord{{}}
 	}
-
-	wlog.Slots = slots
-
-	return PrepareLoggerURL(&wlog, rCtx.URL, GetGdprEnabledFlag(rCtx.PartnerConfigMap))
+	return ipr
 }

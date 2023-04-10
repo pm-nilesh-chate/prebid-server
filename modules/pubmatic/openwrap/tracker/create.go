@@ -11,7 +11,7 @@ import (
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 )
 
-func CreateTrackers(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse, trackerEndpoint, errorTrackerEndpoint string) map[string]models.OWTracker {
+func CreateTrackers(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse) map[string]models.OWTracker {
 	trackers := make(map[string]models.OWTracker)
 
 	// pubmatic's KGP details per impression
@@ -146,7 +146,7 @@ func CreateTrackers(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse, t
 			}
 
 			var finalTrackerURL string
-			trackerURL := ConstructTrackerURL(rctx, seatBid.Seat, bid.ID, trackerEndpoint, tracker)
+			trackerURL := ConstructTrackerURL(rctx, tracker)
 			trackURL, err := url.Parse(trackerURL)
 			if err == nil {
 				trackURL.Scheme = models.HTTPSProtocol
@@ -159,7 +159,7 @@ func CreateTrackers(rctx models.RequestCtx, bidResponse *openrtb2.BidResponse, t
 				Price:         price,
 				PriceModel:    models.VideoPricingModelCPM,
 				PriceCurrency: bidResponse.Cur,
-				ErrorURL:      ConstructVideoErrorURL(rctx, errorTrackerEndpoint, bid, tracker),
+				ErrorURL:      ConstructVideoErrorURL(rctx, rctx.VideoErrorTrackerEndpoint, bid, tracker),
 				BidType:       bidType,
 				DspId:         dspId,
 			}
@@ -188,8 +188,8 @@ func getRewardedInventoryFlag(reward *int8) int {
 }
 
 // ConstructTrackerURL constructing tracker url for impression
-func ConstructTrackerURL(rctx models.RequestCtx, seat, bidID string, trackerURLString string, tracker models.Tracker) string {
-	trackerURL, err := url.Parse(trackerURLString)
+func ConstructTrackerURL(rctx models.RequestCtx, tracker models.Tracker) string {
+	trackerURL, err := url.Parse(rctx.TrackerEndpoint)
 	if err != nil {
 		return ""
 	}

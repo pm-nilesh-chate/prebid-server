@@ -45,6 +45,7 @@ require (
 
 require (
 	github.com/go-sql-driver/mysql v1.7.0
+	github.com/pkg/errors v0.9.1
 	github.com/satori/go.uuid v1.2.0
 )
 
@@ -61,7 +62,6 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.1 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
@@ -73,7 +73,6 @@ require (
 	github.com/subosito/gotenv v1.3.0 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
-	github.com/yudai/pp v2.0.1+incompatible // indirect
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
 	golang.org/x/sys v0.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20220519153652-3a47de7e79bd // indirect

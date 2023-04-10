@@ -57,26 +57,16 @@ func (m OpenWrap) handleBeforeValidationHook(
 	}
 
 	rCtx.PartnerConfigMap = partnerConfigMap // keep a copy at module level as well
+	rCtx.Platform, _ = rCtx.GetVersionLevelKey(models.PLATFORM_KEY)
+	rCtx.PageURL = getPageURL(payload.BidRequest)
+	rCtx.DevicePlatform = GetDevicePlatform(rCtx.UA, payload.BidRequest, rCtx.Platform)
+	rCtx.SendAllBids = isSendAllBids(rCtx)
+	rCtx.Source, rCtx.Origin = getSourceAndOrigin(payload.BidRequest)
 
 	if newPartnerConfigMap, ok := ABTestProcessing(rCtx); ok {
 		rCtx.ABTestConfigApplied = 1
 		rCtx.PartnerConfigMap = newPartnerConfigMap
 		result.Warnings = append(result.Warnings, "update the rCtx.PartnerConfigMap with ABTest data")
-	}
-
-	rCtx.Platform, _ = rCtx.GetVersionLevelKey(models.PLATFORM_KEY)
-	rCtx.PageURL = getPageURL(payload.BidRequest)
-	rCtx.DevicePlatform = GetDevicePlatform(rCtx.UA, payload.BidRequest, rCtx.Platform)
-	rCtx.SendAllBids = isSendAllBids(rCtx)
-
-	if payload.BidRequest.Site != nil {
-		if len(payload.BidRequest.Site.Domain) != 0 {
-			rCtx.Source = payload.BidRequest.Site.Domain
-		} else if len(payload.BidRequest.Site.Page) != 0 {
-			rCtx.Source = getDomainFromUrl(payload.BidRequest.Site.Page)
-		}
-	} else if payload.BidRequest.App != nil {
-		rCtx.Source = payload.BidRequest.App.Bundle
 	}
 
 	rCtx.AdapterThrottleMap, err = GetAdapterThrottleMap(rCtx.PartnerConfigMap)
