@@ -21,7 +21,7 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject, logInfo ...bool) stri
 		}
 	}()
 
-	rCtx := getRequestCtx(ao.HookExecutionOutcome)
+	rCtx := GetRequestCtx(ao.HookExecutionOutcome)
 	if rCtx == nil {
 		return ""
 	}
@@ -112,7 +112,7 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject, logInfo ...bool) stri
 }
 
 // TODO filter by name. (*stageOutcomes[8].Groups[0].InvocationResults[0].AnalyticsTags.Activities[0].Results[0].Values["request-ctx"].(data))
-func getRequestCtx(hookExecutionOutcome []hookexecution.StageOutcome) *models.RequestCtx {
+func GetRequestCtx(hookExecutionOutcome []hookexecution.StageOutcome) *models.RequestCtx {
 	for _, stageOutcome := range hookExecutionOutcome {
 		for _, groups := range stageOutcome.Groups {
 			for _, invocationResult := range groups.InvocationResults {
@@ -310,7 +310,11 @@ func getPartnerRecordsByImp(ao *analytics.AuctionObject, rCtx *models.RequestCtx
 func getDefaultPartnerRecordsByImp(rCtx *models.RequestCtx) map[string][]PartnerRecord {
 	ipr := make(map[string][]PartnerRecord)
 	for impID := range rCtx.ImpBidCtx {
-		ipr[impID] = []PartnerRecord{{}}
+		ipr[impID] = []PartnerRecord{{
+			ServerSide:       1,
+			DefaultBidStatus: 1,
+			PartnerSize:      "0x0",
+		}}
 	}
 	return ipr
 }
