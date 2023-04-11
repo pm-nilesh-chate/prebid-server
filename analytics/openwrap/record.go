@@ -2,6 +2,7 @@ package openwrap
 
 import (
 	"encoding/json"
+	"math"
 	"strings"
 
 	"github.com/prebid/openrtb/v17/openrtb2"
@@ -127,6 +128,10 @@ type PartnerRecord struct {
 	OriginalCur string  `json:"ocry"`
 
 	MetaData *MetaData `json:"md,omitempty"`
+
+	FloorValue     float64 `json:"fv,omitempty"`
+	FloorRule      string  `json:"fr,omitempty"`
+	FloorRuleValue float64 `json:"frv,omitempty"`
 }
 
 type MetaData struct {
@@ -184,36 +189,8 @@ func (wlog *WloggerRecord) logDeviceObject(rctx models.RequestCtx, uaFromHTTPReq
 	wlog.Device = dvc
 }
 
-// ParseRequestCookies parse request cookies
-// func ParseRequestCookies(HTTPRequest *http.Request, partnerConfigMap map[int]map[string]string) map[string]int {
-// 	cookieFlagMap := make(map[string]int)
-// 	pc := usersync.ParseCookieFromRequest(HTTPRequest, &config.HostCookie{})
-// 	for _, partnerConfig := range partnerConfigMap {
-// 		if partnerConfig[models.SERVER_SIDE_FLAG] != "1" {
-// 			continue
-// 		}
-
-// 		syncerMap := router.SyncerMap()
-// 		partnerName := partnerConfig[models.PREBID_PARTNER_NAME]
-
-// 		syncerCode := adapters.ResolveOWBidder(partnerName)
-
-// 		matchedImpression := 0
-
-// 		syncer := syncerMap[syncerCode]
-// 		if syncer == nil {
-// 		} else {
-// 			uid, _, _ := pc.GetUID(syncer.Key())
-
-// 			// Added flag in map for Cookie is present
-// 			// we are not considering if the cookie is active
-// 			if uid != "" {
-// 				matchedImpression = 1
-// 			}
-// 		}
-
-// 		cookieFlagMap[partnerConfig[models.BidderCode]] = matchedImpression
-// 	}
-
-// 	return cookieFlagMap
-// }
+// Round value to 2 digit
+func roundToTwoDigit(value float64) float64 {
+	output := math.Pow(10, float64(2))
+	return float64(math.Round(value*output)) / output
+}
