@@ -4,6 +4,7 @@ import (
 	"flag"
 	"math/rand"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/prebid/prebid-server/router"
 	"github.com/prebid/prebid-server/server"
 	"github.com/prebid/prebid-server/util/task"
+	"github.com/pyroscope-io/client/pyroscope"
 
 	"github.com/golang/glog"
 	"github.com/spf13/viper"
@@ -25,6 +27,40 @@ func init() {
 
 func main() {
 	flag.Parse() // required for glog flags and testing package flags
+
+	pyroscope.Start(pyroscope.Config{
+		ApplicationName: "nilesh.owpbsmodule.golang.app",
+
+		// replace this with the address of pyroscope server
+		ServerAddress: "https://ingest.pyroscope.cloud",
+
+		// you can disable logging by setting this to nil
+		// Logger: pyroscope.StandardLogger,
+		Logger: nil,
+
+		// optionally, if authentication is enabled, specify the API key:
+		// AuthToken:    os.Getenv("PYROSCOPE_AUTH_TOKEN"),
+		AuthToken: "psx-5NHb177FyMgtyzWqyDOkDjo-_kl0A7z7rTxr7LW9TZ_izUcqTPiMG_0",
+
+		// you can provide static tags via a map:
+		Tags: map[string]string{"hostname": os.Getenv("HOSTNAME")},
+
+		ProfileTypes: []pyroscope.ProfileType{
+			// these profile types are enabled by default:
+			pyroscope.ProfileCPU,
+			pyroscope.ProfileAllocObjects,
+			pyroscope.ProfileAllocSpace,
+			pyroscope.ProfileInuseObjects,
+			pyroscope.ProfileInuseSpace,
+
+			// these profile types are optional:
+			pyroscope.ProfileGoroutines,
+			pyroscope.ProfileMutexCount,
+			pyroscope.ProfileMutexDuration,
+			pyroscope.ProfileBlockCount,
+			pyroscope.ProfileBlockDuration,
+		},
+	})
 
 	bidderInfoPath, err := filepath.Abs(infoDirectory)
 	if err != nil {
