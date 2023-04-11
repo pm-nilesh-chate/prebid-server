@@ -268,16 +268,24 @@ func getPartnerRecordsByImp(ao *analytics.AuctionObject, rCtx *models.RequestCtx
 				pr.DealChannel = models.DEFAULT_DEALCHANNEL
 			}
 
-			if bidExt.Prebid != nil && bidExt.Prebid.DealTierSatisfied && bidExt.Prebid.DealPriority > 0 {
-				pr.DealPriority = bidExt.Prebid.DealPriority
-			}
+			if bidExt.Prebid != nil {
+				if bidExt.Prebid.DealTierSatisfied && bidExt.Prebid.DealPriority > 0 {
+					pr.DealPriority = bidExt.Prebid.DealPriority
+				}
 
-			if bidExt.Prebid != nil && bidExt.Prebid.Video != nil && bidExt.Prebid.Video.Duration > 0 {
-				pr.AdDuration = &bidExt.Prebid.Video.Duration
-			}
-			//prepare Meta Object
-			if bidExt.Prebid != nil && bidExt.Prebid.Meta != nil {
-				pr.setMetaDataObject(bidExt.Prebid.Meta)
+				if bidExt.Prebid.Video != nil && bidExt.Prebid.Video.Duration > 0 {
+					pr.AdDuration = &bidExt.Prebid.Video.Duration
+				}
+
+				if bidExt.Prebid.Meta != nil {
+					pr.setMetaDataObject(bidExt.Prebid.Meta)
+				}
+
+				if bidExt.Prebid.Floors != nil {
+					pr.FloorRule = bidExt.Prebid.Floors.FloorRule
+					pr.FloorRuleValue = roundToTwoDigit(bidExt.Prebid.Floors.FloorRuleValue)
+					pr.FloorValue = roundToTwoDigit(bidExt.Prebid.Floors.FloorValue)
+				}
 			}
 
 			if len(bid.ADomain) != 0 {
