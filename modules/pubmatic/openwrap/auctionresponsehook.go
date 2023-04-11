@@ -21,6 +21,10 @@ func (m OpenWrap) handleAuctionResponseHook(
 	result := hookstage.HookResult[hookstage.AuctionResponsePayload]{}
 	result.ChangeSet = hookstage.ChangeSet[hookstage.AuctionResponsePayload]{}
 
+	if payload.BidResponse.NBR != nil {
+		return result, nil
+	}
+
 	// absence of rctx at this hook means the first hook failed!. Do nothing
 	if len(moduleCtx.ModuleContext) == 0 {
 		result.DebugMessages = append(result.DebugMessages, "error: module-ctx not found in handleBeforeValidationHook()")

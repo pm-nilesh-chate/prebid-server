@@ -98,6 +98,9 @@ func (m OpenWrap) handleBeforeValidationHook(
 		requestExt.Prebid.BidderParams, _ = updateRequestExtBidderParamsPubmatic(requestExt.Prebid.BidderParams, rCtx.Cookies, rCtx.LoggerImpressionID, string(openrtb_ext.BidderPubmatic))
 	}
 
+	disabledSlots := 0
+	serviceSideBidderPresent := false
+
 	aliasgvlids := make(map[string]uint16)
 	for i := 0; i < len(payload.BidRequest.Imp); i++ {
 		var adpodExt *models.AdPod
@@ -136,10 +139,8 @@ func (m OpenWrap) handleBeforeValidationHook(
 			bannerAdUnitCtx = adunitconfig.UpdateBannerObjectWithAdunitConfig(rCtx, imp, div)
 		}
 
-		if imp.Banner == nil && imp.Video == nil && imp.Native == nil {
-			payload.BidRequest.Imp = append(payload.BidRequest.Imp[:i], payload.BidRequest.Imp[i+1:]...)
-			result.Errors = append(result.Errors, fmt.Sprintf("no Valid Banner/Video/Native present for imp: %+v", imp.ID))
-			i--
+		if !isSlotEnabled(videoAdUnitCtx, bannerAdUnitCtx) {
+			disabledSlots++
 			continue
 		}
 
@@ -216,6 +217,8 @@ func (m OpenWrap) handleBeforeValidationHook(
 			if partnerConfig[models.PREBID_PARTNER_NAME] == models.BidderVASTBidder {
 				updateAliasGVLIds(aliasgvlids, bidderCode, partnerConfig)
 			}
+
+			serviceSideBidderPresent = true
 		} // for(rctx.PartnerConfigMap
 
 		// update the imp.ext with bidder params for this
@@ -264,6 +267,16 @@ func (m OpenWrap) handleBeforeValidationHook(
 		impCtx.BannerAdUnitCtx = bannerAdUnitCtx
 		rCtx.ImpBidCtx[imp.ID] = impCtx
 	} // for(imp
+
+	if disabledSlots == len(payload.BidRequest.Imp) {
+		result.NbrCode = nbr.AllSlotsDisabled
+		return result, nil
+	}
+
+	if !serviceSideBidderPresent {
+		result.NbrCode = nbr.ServerSidePartnerNotConfigured
+		return result, nil
+	}
 
 	if cto := setContentTransparencyObject(rCtx, requestExt); cto != nil {
 		requestExt.Prebid.Transparency = cto
@@ -690,4 +703,20 @@ func getValidLanguage(language string) string {
 		}
 	}
 	return language
+}
+
+func isSlotEnabled(videoAdUnitCtx, bannerAdUnitCtx models.AdUnitCtx) bool {
+	videoEnabled := true
+	if videoAdUnitCtx.AppliedSlotAdUnitConfig != nil && videoAdUnitCtx.AppliedSlotAdUnitConfig.Video != nil &&
+		videoAdUnitCtx.AppliedSlotAdUnitConfig.Video.Enabled != nil && !*videoAdUnitCtx.AppliedSlotAdUnitConfig.Video.Enabled {
+		videoEnabled = false
+	}
+
+	bannerEnabled := true
+	if bannerAdUnitCtx.AppliedSlotAdUnitConfig != nil && bannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner != nil &&
+		bannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner.Enabled != nil && !*bannerAdUnitCtx.AppliedSlotAdUnitConfig.Banner.Enabled {
+		bannerEnabled = false
+	}
+
+	return videoEnabled || bannerEnabled
 }
