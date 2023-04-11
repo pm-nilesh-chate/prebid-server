@@ -17,4 +17,6 @@ const (
 	AllPartnerThrottled
 	InvalidPriceGranularityConfig
 	InvalidImpressionTagID
+	ServerSidePartnerNotConfigured
+	AllSlotsDisabled
 )
