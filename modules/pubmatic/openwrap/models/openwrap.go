@@ -72,7 +72,7 @@ type RequestCtx struct {
 }
 
 type OwBid struct {
-	*openrtb2.Bid
+	ID                   string
 	NetEcpm              float64
 	BidDealTierSatisfied bool
 }

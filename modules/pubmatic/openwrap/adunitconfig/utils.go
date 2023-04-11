@@ -73,7 +73,7 @@ func getFinalSlotAdUnitConfig(slotConfig, defaultConfig *adunitconfig.AdConfig) 
 
 	// both available, merge both with priority to slot
 
-	if (slotConfig.BidFloor == nil || *slotConfig.BidFloor == 0.0) && slotConfig.BidFloor != nil {
+	if (slotConfig.BidFloor == nil || *slotConfig.BidFloor == 0.0) && defaultConfig.BidFloor != nil {
 		slotConfig.BidFloor = defaultConfig.BidFloor
 
 		slotConfig.BidFloorCur = func() *string { s := "USD"; return &s }()

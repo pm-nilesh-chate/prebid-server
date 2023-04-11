@@ -139,13 +139,13 @@ func (m OpenWrap) handleAuctionResponseHook(
 			}
 
 			owbid := models.OwBid{
-				Bid:                  &bid,
+				ID:                   bid.ID,
 				NetEcpm:              bidExt.NetECPM,
 				BidDealTierSatisfied: bidDealTierSatisfied,
 			}
 			wbid, ok := winningBids[bid.ImpID]
 			if !ok || isNewWinningBid(owbid, wbid, rctx.PreferDeals) {
-				winningBids[owbid.ImpID] = owbid
+				winningBids[bid.ImpID] = owbid
 			}
 
 			// cache for bid details for logger and tracker
