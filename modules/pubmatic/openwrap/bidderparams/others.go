@@ -43,7 +43,12 @@ func PrepareAdapterParamsV25(rctx models.RequestCtx, cache cache.Cache, bidReque
 			isRegexSlot = true
 			kgpv = matchedPattern
 		}
-		bidderParams := slotMappingObj.SlotMappings
+
+		bidderParams := make(map[string]interface{}, len(slotMappingObj.SlotMappings))
+		for k, v := range slotMappingObj.SlotMappings {
+			bidderParams[k] = v
+		}
+
 		for key, value := range partnerConfig {
 			if !ignoreKeys[key] {
 				bidderParams[key] = value
