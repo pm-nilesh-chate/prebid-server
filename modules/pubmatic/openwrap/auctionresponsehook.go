@@ -181,6 +181,14 @@ func (m OpenWrap) handleAuctionResponseHook(
 		}
 	}
 
+	if responsetimemillis, _ := responseExt["responsetimemillis"]; ok {
+		if responsetimemillisMap, ok := responsetimemillis.(map[string]interface{}); ok {
+			for k, v := range responsetimemillisMap {
+				rctx.BidderResponseTimeMillis[k] = int(v.(float64))
+			}
+		}
+	}
+
 	// TODO: PBS-Core should pass the hostcookie for module to usersync.ParseCookieFromRequest()
 	if matchedImpression := getMatchedImpression(rctx); matchedImpression != nil {
 		responseExt[models.MatchedImpression] = matchedImpression

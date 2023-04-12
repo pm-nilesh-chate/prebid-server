@@ -14,7 +14,7 @@ import (
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
-func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject, logInfo ...bool) string {
+func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject, logInfo bool) string {
 	defer func() {
 		if r := recover(); r != nil {
 			glog.Error(string(debug.Stack()))
@@ -78,10 +78,10 @@ func GetLogAuctionObjectAsURL(ao *analytics.AuctionObject, logInfo ...bool) stri
 
 	var ipr map[string][]PartnerRecord
 
-	if len(logInfo) == 0 {
-		ipr = getPartnerRecordsByImp(ao, rCtx)
-	} else if logInfo[0] {
+	if logInfo {
 		ipr = getDefaultPartnerRecordsByImp(rCtx)
+	} else {
+		ipr = getPartnerRecordsByImp(ao, rCtx)
 	}
 
 	// parent bidder could in one of the above and we need them by prebid's bidderCode and not seat(could be alias)
@@ -230,6 +230,7 @@ func getPartnerRecordsByImp(ao *analytics.AuctionObject, rCtx *models.RequestCtx
 				PartnerID:  partnerID, // prebid biddercode
 				BidderCode: seat,      // pubmatic biddercode: pubmatic2
 				// AdapterCode: adapterCode, // prebid adapter that brought the bid
+				Latency1:         rCtx.BidderResponseTimeMillis[seat],
 				KGPV:             kgpv,
 				KGPSV:            kgpsv,
 				BidID:            bid.ID,
