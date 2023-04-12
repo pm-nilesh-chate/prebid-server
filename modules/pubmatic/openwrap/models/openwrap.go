@@ -69,6 +69,8 @@ type RequestCtx struct {
 	WinningBids map[string]OwBid
 	DroppedBids map[string][]openrtb2.Bid
 	NoSeatBids  map[string]map[string][]openrtb2.Bid
+
+	BidderResponseTimeMillis map[string]int
 }
 
 type OwBid struct {

@@ -81,6 +81,7 @@ func (m OpenWrap) handleEntrypointHook(
 		PrebidBidderCode:          make(map[string]string),
 		TrackerEndpoint:           m.cfg.OpenWrap.Tracker.Endpoint,
 		VideoErrorTrackerEndpoint: m.cfg.OpenWrap.Tracker.VideoErrorTrackerEndpoint,
+		BidderResponseTimeMillis:  make(map[string]int),
 	}
 
 	rCtx.UidCookie, err = payload.Request.Cookie(models.UidCookieName)

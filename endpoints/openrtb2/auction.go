@@ -297,7 +297,7 @@ func sendAuctionResponse(
 
 		isDebug, err := jsonparser.GetBoolean(request.Ext, "prebid", "debug")
 		if err == nil && isDebug {
-			url := "\"" + openwrap.GetLogAuctionObjectAsURL(&ao) + "\""
+			url := "\"" + openwrap.GetLogAuctionObjectAsURL(&ao, false) + "\""
 			response.Ext, _ = jsonparser.Set(ao.Response.Ext, []byte(url), "owlogger")
 		}
 
