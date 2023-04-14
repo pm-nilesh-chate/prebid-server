@@ -17,7 +17,6 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/golang/glog"
 	"github.com/julienschmidt/httprouter"
-	"github.com/pm-nilesh-chate/prebid-server/analytics/openwrap"
 	gpplib "github.com/prebid/go-gpp"
 	"github.com/prebid/go-gpp/constants"
 	"github.com/prebid/openrtb/v19/adcom1"
@@ -295,21 +294,12 @@ func rejectAuctionRequest(
 	response := &openrtb2.BidResponse{NBR: openrtb3.NoBidReason(rejectErr.NBR).Ptr()}
 	if request != nil {
 		response.ID = request.ID
-
 	}
 
 	// TODO merge this with success case
 	stageOutcomes := hookExecutor.GetOutcomes()
 	ao.HookExecutionOutcome = stageOutcomes
-
-	response.Ext = updateSeatNoBid(response.Ext, &ao) // temporary until seatnobid's vanilla PR is merged
-
-	isDebug, err := jsonparser.GetBoolean(request.Ext, "prebid", "debug")
-	if err == nil && isDebug {
-		url := "\"" + openwrap.GetLogAuctionObjectAsURL(&ao, false) + "\""
-		response.Ext, _ = jsonparser.Set(ao.Response.Ext, []byte(url), "owlogger")
-	}
-	response.Ext = getLogInfo(request.Ext, response.Ext, &ao)
+	UpdateResponseExtOW(response.Ext, ao)
 
 	ao.Response = response
 	ao.Errors = append(ao.Errors, rejectErr)
@@ -331,15 +321,7 @@ func sendAuctionResponse(
 	if response != nil {
 		stageOutcomes := hookExecutor.GetOutcomes()
 		ao.HookExecutionOutcome = stageOutcomes
-
-		response.Ext = updateSeatNoBid(response.Ext, &ao) // temporary until seatnobid's vanilla PR is merged
-
-		isDebug, err := jsonparser.GetBoolean(request.Ext, "prebid", "debug")
-		if err == nil && isDebug {
-			url := "\"" + openwrap.GetLogAuctionObjectAsURL(&ao, false) + "\""
-			response.Ext, _ = jsonparser.Set(ao.Response.Ext, []byte(url), "owlogger")
-		}
-		response.Ext = getLogInfo(request.Ext, response.Ext, &ao)
+		defer UpdateResponseExtOW(response.Ext, ao)
 
 		ext, warns, err := hookexecution.EnrichExtBidResponse(response.Ext, stageOutcomes, request, account)
 		if err != nil {
