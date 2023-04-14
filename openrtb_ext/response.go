@@ -3,6 +3,7 @@ package openrtb_ext
 import (
 	"encoding/json"
 
+	"github.com/prebid/openrtb/v19/openrtb2"
 	"github.com/prebid/openrtb/v19/openrtb3"
 )
 
@@ -49,6 +50,26 @@ type ExtResponsePrebid struct {
 	Fledge           *Fledge           `json:"fledge,omitempty"`
 	Targeting        map[string]string `json:"targeting,omitempty"`
 	Floors           *PriceFloorRules  `json:"floors,omitempty"`
+	SeatNonBid       []SeatNonBid      `json:"seatnonbid,omitempty"`
+}
+
+// Bid is Wrapper around original/proxy bid object
+type Bid struct {
+	openrtb2.Bid
+	ID    string `json:"id,omitempty"`    // added omitempty
+	ImpID string `json:"impid,omitempty"` // added omitempty
+
+	OriginalBidCPM float64 `json:"originalbidcpm,omitempty"`
+	OriginalBidCur string  `json:"originalbidcur,omitempty"`
+}
+
+// ExtResponseNonBidPrebid represents bidresponse.ext.prebid.seatnonbid[].nonbid[].ext
+type ExtResponseNonBidPrebid struct {
+	Bid Bid `json:"bid"`
+}
+
+type NonBidExt struct {
+	Prebid ExtResponseNonBidPrebid `json:"prebid"`
 }
 
 // FledgeResponse defines the contract for bidresponse.ext.fledge
@@ -118,7 +139,7 @@ type SeatNonBid struct {
 type NonBid struct {
 	ImpId      string                    `json:"impid,omitempty"`
 	StatusCode openrtb3.NonBidStatusCode `json:"statuscode,omitempty"`
-	Ext        *ExtNonBid                `json:"ext,omitempty"`
+	Ext        NonBidExt                 `json:"ext,omitempty"`
 }
 
 // ExtNonBid defines the contract for bidresponse.ext.debug.seatnonbid.nonbid.ext
