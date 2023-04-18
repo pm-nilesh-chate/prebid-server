@@ -50,7 +50,7 @@ type ctvEndpointDeps struct {
 	videoSeats                []*openrtb2.SeatBid //stores pure video impression bids
 	impIndices                map[string]int
 	isAdPodRequest            bool
-	impsExt                   map[string]map[string]map[string]interface{}
+	impsExtPrebidBidder       map[string]map[string]map[string]interface{}
 	impPartnerBlockedTagIDMap map[string]map[string][]string
 
 	labels metrics.Labels
@@ -123,6 +123,9 @@ func (deps *ctvEndpointDeps) CTVAuctionEndpoint(w http.ResponseWriter, r *http.R
 			RejectedBids: []analytics.RejectedBid{},
 		},
 	}
+
+	vastUnwrapperEnable := GetContextValueForField(r.Context(), VastUnwrapperEnableKey)
+	util.JLogf("VastUnwrapperEnable", vastUnwrapperEnable)
 
 	// Prebid Server interprets request.tmax to be the maximum amount of time that a caller is willing
 	// to wait for bids. However, tmax may be defined in the Stored Request data.
@@ -222,7 +225,7 @@ func (deps *ctvEndpointDeps) CTVAuctionEndpoint(w http.ResponseWriter, r *http.R
 	}
 
 	response, err = deps.holdAuction(ctx, auctionRequest)
-
+	exchange.UpdateRejectedBidExt(auctionRequest.LoggableObject)
 	ao.Request = request
 	ao.Response = response
 	if err != nil || nil == response {
@@ -257,7 +260,6 @@ func (deps *ctvEndpointDeps) CTVAuctionEndpoint(w http.ResponseWriter, r *http.R
 		deps.setBidExtParams()
 
 		deps.recordRejectedAdPodBids(deps.labels.PubID)
-		//filterRejectedBids(response, auctionRequest.LoggableObject) // to be used in future
 		adPodBidResponse.Ext = deps.getBidResponseExt(response)
 		response = adPodBidResponse
 
@@ -435,19 +437,26 @@ func (deps *ctvEndpointDeps) validateBidRequest() (err []error) {
 
 // readImpExtensionsAndTags will read the impression extensions
 func (deps *ctvEndpointDeps) readImpExtensionsAndTags() (errs []error) {
-	deps.impsExt = make(map[string]map[string]map[string]interface{})
+	deps.impsExtPrebidBidder = make(map[string]map[string]map[string]interface{})
 	deps.impPartnerBlockedTagIDMap = make(map[string]map[string][]string) //Initially this will have all tags, eligible tags will be filtered in filterImpsVastTagsByDuration
 
 	for _, imp := range deps.request.Imp {
-		var impExt map[string]map[string]interface{}
-		if err := json.Unmarshal(imp.Ext, &impExt); err != nil {
+		bidderExtBytes, _, _, err := jsonparser.Get(imp.Ext, "prebid", "bidder")
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		impsExtPrebidBidder := make(map[string]map[string]interface{})
+
+		err = json.Unmarshal(bidderExtBytes, &impsExtPrebidBidder)
+		if err != nil {
 			errs = append(errs, err)
 			continue
 		}
 
 		deps.impPartnerBlockedTagIDMap[imp.ID] = make(map[string][]string)
 
-		for partnerName, partnerExt := range impExt {
+		for partnerName, partnerExt := range impsExtPrebidBidder {
 			impVastTags, ok := partnerExt["tags"].([]interface{})
 			if !ok {
 				continue
@@ -463,7 +472,7 @@ func (deps *ctvEndpointDeps) readImpExtensionsAndTags() (errs []error) {
 			}
 		}
 
-		deps.impsExt[imp.ID] = impExt
+		deps.impsExtPrebidBidder[imp.ID] = impsExtPrebidBidder
 	}
 
 	return errs
@@ -498,13 +507,13 @@ func (deps *ctvEndpointDeps) filterImpsVastTagsByDuration(bidReq *openrtb2.BidRe
 
 		originalImpID := imp.ID[:index]
 
-		impExtMap := deps.impsExt[originalImpID]
-		newImpExtMap := make(map[string]map[string]interface{})
-		for k, v := range impExtMap {
-			newImpExtMap[k] = v
+		impExtBidder := deps.impsExtPrebidBidder[originalImpID]
+		impExtBidderCopy := make(map[string]map[string]interface{})
+		for partnerName, partnerExt := range impExtBidder {
+			impExtBidderCopy[partnerName] = partnerExt
 		}
 
-		for partnerName, partnerExt := range newImpExtMap {
+		for partnerName, partnerExt := range impExtBidderCopy {
 			if partnerExt["tags"] != nil {
 				impVastTags, ok := partnerExt["tags"].([]interface{})
 				if !ok {
@@ -530,20 +539,27 @@ func (deps *ctvEndpointDeps) filterImpsVastTagsByDuration(bidReq *openrtb2.BidRe
 				}
 
 				if len(compatibleVasts) < 1 {
-					delete(newImpExtMap, partnerName)
+					delete(impExtBidderCopy, partnerName)
 				} else {
-					newImpExtMap[partnerName] = map[string]interface{}{
+					impExtBidderCopy[partnerName] = map[string]interface{}{
 						"tags": compatibleVasts,
 					}
 				}
-
-				bExt, err := json.Marshal(newImpExtMap)
-				if err != nil {
-					continue
-				}
-				imp.Ext = bExt
 			}
 		}
+
+		bidderExtBytes, err := json.Marshal(impExtBidderCopy)
+		if err != nil {
+			continue
+		}
+
+		// if imp.ext exists then set prebid.bidder inside it
+		impExt, err := jsonparser.Set(imp.Ext, bidderExtBytes, "prebid", "bidder")
+		if err != nil {
+			continue
+		}
+
+		imp.Ext = impExt
 		bidReq.Imp[impCount] = imp
 	}
 
@@ -1125,35 +1141,6 @@ func ConvertAPRCToNBRC(bidStatus int64) *openrtb3.NonBidStatusCode {
 		return nil
 	}
 	return &nbrCode
-}
-
-// filterRejectedBids removes rejected bids from BidResponse and add it into the RejectedBids array along with reason-code.
-func filterRejectedBids(resp *openrtb2.BidResponse, loggableObject *analytics.LoggableAuctionObject) {
-
-	for index, seatbid := range resp.SeatBid {
-		winningBid := make([]openrtb2.Bid, 0)
-		for bidIndex, bid := range seatbid.Bid {
-			aprc, err := jsonparser.GetInt(bid.Ext, "adpod", "aprc")
-			if err != nil {
-				glog.Warningf("JSONParser GetInt Error: %s", err.Error())
-				continue
-			}
-			if aprc != int64(constant.StatusWinningBid) {
-				reason := ConvertAPRCToNBRC(aprc)
-				if reason == nil {
-					continue
-				}
-				loggableObject.RejectedBids = append(loggableObject.RejectedBids, analytics.RejectedBid{
-					RejectionReason: *reason,
-					Bid:             &seatbid.Bid[bidIndex],
-					Seat:            seatbid.Seat,
-				})
-				continue
-			}
-			winningBid = append(winningBid, bid)
-		}
-		resp.SeatBid[index].Bid = winningBid // winningBid can be empty
-	}
 }
 
 // recordRejectedAdPodBids records the bids lost in ad-pod auction using metricsEngine
