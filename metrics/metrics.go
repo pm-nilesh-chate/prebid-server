@@ -523,4 +523,5 @@ type MetricsEngine interface {
 
 	//RecordBids records the bidder deal bids labeled by pubid, profile, bidder and deal
 	RecordBids(pubid, profileid, bidder, deal string)
+	RecordHttpCounter()
 }

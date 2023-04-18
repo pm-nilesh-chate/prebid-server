@@ -33,3 +33,5 @@ func (me *Metrics) RecordRejectedBids(pubid, biddder, code string) {
 // RecordBids as a noop
 func (me *Metrics) RecordBids(pubid, profileid, biddder, deal string) {
 }
+func (me *Metrics) RecordHttpCounter() {
+}

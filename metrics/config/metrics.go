@@ -461,6 +461,8 @@ func (me *MultiMetricsEngine) RecordBids(pubid, profileid, biddder, deal string)
 		thisME.RecordBids(pubid, profileid, biddder, deal)
 	}
 }
+func (me *MultiMetricsEngine) RecordHttpCounter() {
+}
 
 // NilMetricsEngine implements the MetricsEngine interface where no metrics are actually captured. This is
 // used if no metric backend is configured and also for tests.
@@ -676,4 +678,7 @@ func (me *NilMetricsEngine) RecordRejectedBids(pubid, bidder, code string) {
 
 // RecordBids as a noop
 func (me *NilMetricsEngine) RecordBids(pubid, profileid, biddder, deal string) {
+}
+
+func (m *NilMetricsEngine) RecordHttpCounter() {
 }
