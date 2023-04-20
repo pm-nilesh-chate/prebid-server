@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/prebid/openrtb/v17/openrtb3"
 	"github.com/prebid/prebid-server/analytics"
 	analyticsConf "github.com/prebid/prebid-server/analytics/config"
 	"github.com/prebid/prebid-server/config"
@@ -184,7 +185,8 @@ func TestCallRecordRejectedBids(t *testing.T) {
 	}()
 
 	type args struct {
-		pubid, bidder, code string
+		pubid, bidder string
+		code          openrtb3.NonBidStatusCode
 	}
 
 	type want struct {
@@ -208,7 +210,7 @@ func TestCallRecordRejectedBids(t *testing.T) {
 			args: args{
 				pubid:  "11",
 				bidder: "Pubmatic",
-				code:   "102",
+				code:   102,
 			},
 			want: want{
 				expectToGetRecord: true,
@@ -226,6 +228,6 @@ func TestCallRecordRejectedBids(t *testing.T) {
 			g_metrics = metricsMock
 		}
 		// CallRecordRejectedBids will panic if g_metrics is non-nil and if there is no call to RecordRejectedBids
-		CallRecordRejectedBids(test.args.pubid, test.args.bidder, test.args.code)
+		CallRecordNonBids(test.args.pubid, test.args.bidder, test.args.code)
 	}
 }
