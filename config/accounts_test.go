@@ -836,12 +836,28 @@ func TestAccountPriceFloorsValidate(t *testing.T) {
 			description: "valid configuration",
 			pf: &AccountPriceFloors{
 				EnforceFloorsRate: 100,
+				Fetch: AccountFloorFetch{
+					Enabled:     true,
+					Timeout:     11,
+					MaxFileSize: 1,
+					MaxRules:    1,
+					MaxAge:      700,
+					Period:      400,
+				},
 			},
 		},
 		{
 			description: "Invalid configuration: EnforceFloorRate:110",
 			pf: &AccountPriceFloors{
 				EnforceFloorsRate: 110,
+				Fetch: AccountFloorFetch{
+					Enabled:     true,
+					Timeout:     11,
+					MaxFileSize: 1,
+					MaxRules:    1,
+					MaxAge:      700,
+					Period:      400,
+				},
 			},
 			want: []error{errors.New("account_defaults.price_floors.enforce_floors_rate should be between 0 and 100")},
 		},
@@ -849,8 +865,106 @@ func TestAccountPriceFloorsValidate(t *testing.T) {
 			description: "Invalid configuration: EnforceFloorRate:-10",
 			pf: &AccountPriceFloors{
 				EnforceFloorsRate: -10,
+				Fetch: AccountFloorFetch{
+					Enabled:     true,
+					Timeout:     11,
+					MaxFileSize: 1,
+					MaxRules:    1,
+					MaxAge:      700,
+					Period:      400,
+				},
 			},
 			want: []error{errors.New("account_defaults.price_floors.enforce_floors_rate should be between 0 and 100")},
+		},
+		{
+			description: "Max Age is less than Period",
+			pf: &AccountPriceFloors{
+				EnforceFloorsRate: 100,
+				Fetch: AccountFloorFetch{
+					Enabled:     true,
+					Timeout:     500,
+					MaxFileSize: 1,
+					MaxRules:    1,
+					MaxAge:      700,
+					Period:      800,
+				},
+			},
+			want: []error{errors.New("account_defaults.price_floors.fetch.period_sec should be less than account_defaults.price_floors.fetch.max_age_sec")},
+		},
+		{
+			description: "Period is less than 300",
+			pf: &AccountPriceFloors{
+				EnforceFloorsRate: 100,
+				Fetch: AccountFloorFetch{
+					Enabled:     true,
+					Timeout:     500,
+					MaxFileSize: 1,
+					MaxRules:    1,
+					MaxAge:      700,
+					Period:      200,
+				},
+			},
+			want: []error{errors.New("account_defaults.price_floors.fetch.period_sec should not be less than 300 seconds")},
+		},
+		{
+			description: "Invalid Max age",
+			pf: &AccountPriceFloors{
+				EnforceFloorsRate: 100,
+				Fetch: AccountFloorFetch{
+					Enabled:     true,
+					Timeout:     500,
+					MaxFileSize: 1,
+					MaxRules:    1,
+					MaxAge:      500,
+					Period:      400,
+				},
+			},
+			want: []error{errors.New("account_defaults.price_floors.fetch.max_age_sec should not be less than 600 seconds and greater than maximum integer value")},
+		},
+		{
+			description: "Invalid Timeout",
+			pf: &AccountPriceFloors{
+				EnforceFloorsRate: 100,
+				Fetch: AccountFloorFetch{
+					Enabled:     true,
+					Timeout:     1,
+					MaxFileSize: 1,
+					MaxRules:    1,
+					MaxAge:      700,
+					Period:      400,
+				},
+			},
+			want: []error{errors.New("account_defaults.price_floors.fetch.timeout_ms should be between 10 to 10,000 mili seconds")},
+		},
+		{
+			description: "Invalid Max rules",
+			pf: &AccountPriceFloors{
+				EnforceFloorsRate: 100,
+				Fetch: AccountFloorFetch{
+					Enabled:     true,
+					Timeout:     11,
+					MaxFileSize: 1,
+					MaxRules:    -1,
+					MaxAge:      700,
+					Period:      400,
+				},
+			},
+			want: []error{errors.New("account_defaults.price_floors.fetch.max_rules should not be less than 0 seconds and greater than maximum integer value")},
+		},
+		{
+			description: "Invalid Max file size",
+			pf: &AccountPriceFloors{
+				EnforceFloorsRate: 100,
+				Fetch: AccountFloorFetch{
+					Enabled:     true,
+					Timeout:     11,
+					MaxFileSize: -1,
+					MaxRules:    1,
+					MaxAge:      700,
+					Period:      400,
+				},
+			},
+			want: []error{errors.New("account_defaults.price_floors.fetch.max_file_size_kb should not be less than 0 seconds and greater than maximum integer value")},
 		},
 	}
 	for _, tt := range tests {
