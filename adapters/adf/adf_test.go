@@ -18,3 +18,5 @@ func TestJsonSamples(t *testing.T) {
 
 	adapterstest.RunJSONBidderTest(t, "adftest", bidder)
 }
+
+func abc() {}
