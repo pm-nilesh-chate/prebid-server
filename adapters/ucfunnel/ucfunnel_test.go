@@ -159,3 +159,5 @@ func TestMakeBids(t *testing.T) {
 		}
 	}
 }
+
+func abc() {}
