@@ -139,6 +139,9 @@ func New(cfg *config.Configuration, rateConvertor *currency.RateConverter) (r *R
 			MaxIdleConnsPerHost: cfg.Client.MaxIdleConnsPerHost,
 			IdleConnTimeout:     time.Duration(cfg.Client.IdleConnTimeout) * time.Second,
 			TLSClientConfig:     &tls.Config{RootCAs: certPool},
+
+			TLSHandshakeTimeout:   time.Duration(cfg.Client.TLSHandshakeTimeout) * time.Second,
+			ResponseHeaderTimeout: time.Duration(cfg.Client.ResponseHeaderTimeout) * time.Second,
 		},
 	}
 
@@ -283,6 +286,26 @@ func New(cfg *config.Configuration, rateConvertor *currency.RateConverter) (r *R
 	r.GET("/optout", userSyncDeps.OptOut)
 
 	r.registerOpenWrapEndpoints(openrtbEndpoint, ampEndpoint)
+
+	g_syncers = syncersByBidder
+	g_metrics = r.MetricsEngine
+	g_cfg = cfg
+	g_storedReqFetcher = &fetcher
+	g_accounts = &accounts
+	g_videoFetcher = &videoFetcher
+	g_storedRespFetcher = &storedRespFetcher
+	g_analytics = &pbsAnalytics
+	g_paramsValidator = &paramsValidator
+	g_activeBidders = activeBidders
+	g_disabledBidders = disabledBidders
+	g_defReqJSON = defReqJSON
+	g_cacheClient = &cacheClient
+	g_ex = &theExchange
+	g_gdprPermsBuilder = gdprPermsBuilder
+	g_tcf2CfgBuilder = tcf2CfgBuilder
+	g_planBuilder = &planBuilder
+	g_currencyConversions = rateConvertor.Rates()
+
 	return r, nil
 }
 
