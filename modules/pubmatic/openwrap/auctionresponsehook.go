@@ -162,8 +162,7 @@ func (m OpenWrap) handleAuctionResponseHook(
 				impCtx.BidCtx = make(map[string]models.BidCtx)
 			}
 			impCtx.BidCtx[bid.ID] = models.BidCtx{
-				BidExt:   *bidExt,
-				FloorUSD: bid.BidFloors,
+				BidExt: *bidExt,
 			}
 			rctx.ImpBidCtx[bid.ImpID] = impCtx
 		}

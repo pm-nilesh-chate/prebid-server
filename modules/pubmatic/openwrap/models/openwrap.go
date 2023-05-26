@@ -117,7 +117,6 @@ type PartnerData struct {
 
 type BidCtx struct {
 	BidExt
-	FloorUSD float64
 }
 
 type AdUnitCtx struct {
