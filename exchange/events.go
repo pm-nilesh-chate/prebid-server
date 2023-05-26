@@ -12,7 +12,6 @@ import (
 	"github.com/prebid/prebid-server/config"
 	"github.com/prebid/prebid-server/endpoints/events"
 	"github.com/prebid/prebid-server/openrtb_ext"
-	jsonpatch "gopkg.in/evanphx/json-patch.v4"
 )
 
 // eventTracking has configuration fields needed for adding event tracking to an auction response
