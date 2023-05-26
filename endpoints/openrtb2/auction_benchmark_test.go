@@ -17,7 +17,6 @@ import (
 	"github.com/prebid/prebid-server/config"
 	"github.com/prebid/prebid-server/currency"
 	"github.com/prebid/prebid-server/exchange"
-	"github.com/prebid/prebid-server/experiment/adscert"
 	"github.com/prebid/prebid-server/hooks"
 	metricsConfig "github.com/prebid/prebid-server/metrics/config"
 	"github.com/prebid/prebid-server/openrtb_ext"

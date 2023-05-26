@@ -151,9 +151,8 @@ func (deps *ctvEndpointDeps) CTVAuctionEndpoint(w http.ResponseWriter, r *http.R
 		deps.analytics.LogAuctionObject(&ao)
 	}()
 
-	hookExecuter := hookexecution.EmptyHookExecutor{}
 	//Parse ORTB Request and do Standard Validation
-	reqWrapper, _, _, _, _, _, errL = deps.parseRequest(r, &deps.labels, hookExecuter)
+	reqWrapper, _, _, _, _, _, errL = deps.parseRequest(r, &deps.labels, &hookexecution.EmptyHookExecutor{})
 	if errortypes.ContainsFatalError(errL) && writeError(errL, w, &deps.labels) {
 		return
 	}
@@ -225,7 +224,7 @@ func (deps *ctvEndpointDeps) CTVAuctionEndpoint(w http.ResponseWriter, r *http.R
 		LegacyLabels:      deps.labels,
 		PubID:             deps.labels.PubID,
 		LoggableObject:    &ao.LoggableAuctionObject,
-		HookExecutor:      hookExecuter,
+		HookExecutor:      &hookexecution.EmptyHookExecutor{},
 		TCF2Config:        tcf2Config,
 	}
 
