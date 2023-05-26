@@ -3,6 +3,7 @@ package floors
 import (
 	"encoding/json"
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/prebid/openrtb/v19/openrtb2"
@@ -364,7 +365,7 @@ func TestEnrichWithPriceFloors(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			ErrList := EnrichWithPriceFloors(tc.bidRequestWrapper, tc.account, getCurrencyRates(rates))
+			ErrList := EnrichWithPriceFloors(tc.bidRequestWrapper, tc.account, getCurrencyRates(rates), &PriceFloorFetcher{})
 			if tc.bidRequestWrapper != nil {
 				assert.Equal(t, tc.bidRequestWrapper.Imp[0].BidFloor, tc.expFloorVal, tc.name)
 				assert.Equal(t, tc.bidRequestWrapper.Imp[0].BidFloorCur, tc.expFloorCur, tc.name)
@@ -387,9 +388,208 @@ func TestEnrichWithPriceFloors(t *testing.T) {
 	}
 }
 
+func TestResolveFloorMin(t *testing.T) {
+	rates := map[string]map[string]float64{
+		"USD": {
+			"INR": 70,
+			"EUR": 0.9,
+			"JPY": 5.09,
+		},
+	}
+
+	tt := []struct {
+		name        string
+		reqFloors   openrtb_ext.PriceFloorRules
+		fetchFloors openrtb_ext.PriceFloorRules
+		conversions currency.Conversions
+		expPrice    Price
+	}{
+		{
+			name: "FloorsMin present in request Floors only",
+			reqFloors: openrtb_ext.PriceFloorRules{
+				FloorMin:    10,
+				FloorMinCur: "JPY",
+			},
+			fetchFloors: openrtb_ext.PriceFloorRules{},
+			expPrice:    Price{FloorMin: 10, FloorMinCur: "JPY"},
+		},
+		{
+			name: "FloorsMin present in request Floors and data currency present",
+			reqFloors: openrtb_ext.PriceFloorRules{
+				FloorMin:    10,
+				FloorMinCur: "JPY",
+				Data: &openrtb_ext.PriceFloorData{
+					Currency: "JPY",
+				},
+			},
+			fetchFloors: openrtb_ext.PriceFloorRules{},
+			expPrice:    Price{FloorMin: 10, FloorMinCur: "JPY"},
+		},
+		{
+			name: "FloorsMin present in request Floors and fetched floors",
+			reqFloors: openrtb_ext.PriceFloorRules{
+				FloorMin:    10,
+				FloorMinCur: "USD",
+			},
+			fetchFloors: openrtb_ext.PriceFloorRules{
+				FloorMin:    15,
+				FloorMinCur: "USD",
+			},
+			expPrice: Price{FloorMin: 10, FloorMinCur: "USD"},
+		},
+		{
+			name:      "FloorsMin present fetched floors only",
+			reqFloors: openrtb_ext.PriceFloorRules{},
+			fetchFloors: openrtb_ext.PriceFloorRules{
+				FloorMin:    15,
+				FloorMinCur: "EUR",
+			},
+			expPrice: Price{FloorMin: 15, FloorMinCur: "EUR"},
+		},
+		{
+			name: "FloorMinCur present in reqFloors And FloorsMin, FloorMinCur present fetched floors (Same Currency)",
+			reqFloors: openrtb_ext.PriceFloorRules{
+				FloorMinCur: "EUR",
+			},
+			fetchFloors: openrtb_ext.PriceFloorRules{
+				FloorMin:    15,
+				FloorMinCur: "EUR",
+			},
+			expPrice: Price{FloorMin: 15, FloorMinCur: "EUR"},
+		},
+		{
+			name: "FloorMinCur present in reqFloors And FloorsMin, FloorMinCur present fetched floors (Different Currency)",
+			reqFloors: openrtb_ext.PriceFloorRules{
+				FloorMinCur: "USD",
+			},
+			fetchFloors: openrtb_ext.PriceFloorRules{
+				FloorMin:    15,
+				FloorMinCur: "EUR",
+			},
+			expPrice: Price{FloorMin: 16.6667, FloorMinCur: "USD"},
+		},
+		{
+			name: "FloorMin present in reqFloors And FloorMinCur present fetched floors",
+			reqFloors: openrtb_ext.PriceFloorRules{
+				FloorMin: 11,
+			},
+			fetchFloors: openrtb_ext.PriceFloorRules{
+				FloorMinCur: "EUR",
+			},
+			expPrice: Price{FloorMin: 11, FloorMinCur: "EUR"},
+		},
+		{
+			name: "FloorMinCur present in reqFloors And FloorMin present fetched floors",
+			reqFloors: openrtb_ext.PriceFloorRules{
+				FloorMinCur: "INR",
+			},
+			fetchFloors: openrtb_ext.PriceFloorRules{
+				FloorMin: 12,
+			},
+			expPrice: Price{FloorMin: 12, FloorMinCur: "INR"},
+		},
+		{
+			name: "FloorMinCur present in reqFloors And FloorMin present fetched floors",
+			reqFloors: openrtb_ext.PriceFloorRules{
+				FloorMinCur: "INR",
+			},
+			fetchFloors: openrtb_ext.PriceFloorRules{
+				FloorMin: 1,
+				Data:     &openrtb_ext.PriceFloorData{Currency: "USD"},
+			},
+			expPrice: Price{FloorMin: 70, FloorMinCur: "INR"},
+		},
+		{
+			name: "FloorMinCur present in fetched Floors And FloorMin present reqFloors",
+			reqFloors: openrtb_ext.PriceFloorRules{
+				FloorMin: 2,
+			},
+			fetchFloors: openrtb_ext.PriceFloorRules{
+				Data: &openrtb_ext.PriceFloorData{Currency: "USD"},
+			},
+			expPrice: Price{FloorMin: 2, FloorMinCur: "USD"},
+		},
+		{
+			name:      "FloorMinCur and FloorMin present in fetched floors",
+			reqFloors: openrtb_ext.PriceFloorRules{},
+			fetchFloors: openrtb_ext.PriceFloorRules{
+				FloorMin: 12,
+				Data:     &openrtb_ext.PriceFloorData{Currency: "USD"},
+			},
+			expPrice: Price{FloorMin: 12, FloorMinCur: "USD"},
+		},
+		{
+			name: "FloorsMin, FloorCur present in request Floors",
+			reqFloors: openrtb_ext.PriceFloorRules{
+				FloorMin: 11,
+				Data: &openrtb_ext.PriceFloorData{
+					Currency: "EUR",
+				},
+			},
+			fetchFloors: openrtb_ext.PriceFloorRules{},
+			expPrice:    Price{FloorMin: 11, FloorMinCur: "EUR"},
+		},
+		{
+			name:        "Empty reqFloors And Empty fetched floors",
+			reqFloors:   openrtb_ext.PriceFloorRules{},
+			fetchFloors: openrtb_ext.PriceFloorRules{},
+			expPrice:    Price{FloorMin: 0.0, FloorMinCur: ""},
+		},
+	}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			price := resolveFloorMin(&tc.reqFloors, tc.fetchFloors, getCurrencyRates(rates))
+			if !reflect.DeepEqual(price.FloorMin, tc.expPrice.FloorMin) {
+				t.Errorf("Floor Value error: \nreturn:\t%v\nwant:\t%v", price.FloorMin, tc.expPrice.FloorMin)
+			}
+			if !reflect.DeepEqual(price.FloorMinCur, tc.expPrice.FloorMinCur) {
+				t.Errorf("Floor Currency error: \nreturn:\t%v\nwant:\t%v", price.FloorMinCur, tc.expPrice.FloorMinCur)
+			}
+
+		})
+	}
+}
+
 func getTrue() *bool {
 	trueFlag := true
 	return &trueFlag
+}
+
+type MockFetch struct {
+	FakeFetch func(configs config.AccountPriceFloors) (*openrtb_ext.PriceFloorRules, string)
+}
+
+func (m *MockFetch) Fetch(configs config.AccountPriceFloors) (*openrtb_ext.PriceFloorRules, string) {
+
+	if !configs.UseDynamicData {
+		return nil, openrtb_ext.FetchNone
+	}
+	priceFloors := openrtb_ext.PriceFloorRules{
+		Enabled:            getTrue(),
+		PriceFloorLocation: openrtb_ext.RequestLocation,
+		Enforcement: &openrtb_ext.PriceFloorEnforcement{
+			EnforcePBS:  getTrue(),
+			EnforceRate: 100,
+			FloorDeals:  getTrue(),
+		},
+		Data: &openrtb_ext.PriceFloorData{
+			Currency: "USD",
+			ModelGroups: []openrtb_ext.PriceFloorModelGroup{
+				{
+					ModelVersion: "model from fetched",
+					Currency:     "USD",
+					Values: map[string]float64{
+						"banner|300x600|www.website5.com": 15,
+						"*|*|*":                           25,
+					},
+					Schema: openrtb_ext.PriceFloorSchema{
+						Fields: []string{"mediaType", "size", "domain"},
+					},
+				},
+			},
+		},
+	}
+	return &priceFloors, openrtb_ext.FetchSuccess
 }
 
 func TestResolveFloors(t *testing.T) {
@@ -440,7 +640,7 @@ func TestResolveFloors(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			resolvedFloors, _ := resolveFloors(tc.account, tc.bidRequestWrapper, getCurrencyRates(rates))
+			resolvedFloors, _ := resolveFloors(tc.account, tc.bidRequestWrapper, getCurrencyRates(rates), &MockFetch{})
 			assert.Equal(t, resolvedFloors, tc.expFloors, tc.name)
 		})
 	}
