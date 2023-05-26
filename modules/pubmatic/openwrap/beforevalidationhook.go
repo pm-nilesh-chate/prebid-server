@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/prebid/openrtb/v17/openrtb2"
+	"github.com/prebid/openrtb/v19/openrtb2"
 	"github.com/prebid/prebid-server/hooks/hookstage"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/adapters"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/adunitconfig"
@@ -16,6 +16,7 @@ import (
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/nbr"
 	"github.com/prebid/prebid-server/openrtb_ext"
+	"github.com/prebid/prebid-server/util/boolutil"
 )
 
 func (m OpenWrap) handleBeforeValidationHook(
@@ -105,9 +106,9 @@ func (m OpenWrap) handleBeforeValidationHook(
 	// requestExt.Prebid.SupportDeals = rCtx.SupportDeals && rCtx.IsCTVRequest // TODO: verify usecase of Prefered deals vs Support details
 	requestExt.Prebid.AlternateBidderCodes, rCtx.MarketPlaceBidders = getMarketplaceBidders(requestExt.Prebid.AlternateBidderCodes, partnerConfigMap)
 	requestExt.Prebid.Targeting = &openrtb_ext.ExtRequestTargeting{
-		PriceGranularity:  priceGranularity,
-		IncludeBidderKeys: true,
-		IncludeWinners:    true,
+		PriceGranularity:  &priceGranularity,
+		IncludeBidderKeys: boolutil.BoolPtr(true),
+		IncludeWinners:    boolutil.BoolPtr(true),
 	}
 
 	disabledSlots := 0

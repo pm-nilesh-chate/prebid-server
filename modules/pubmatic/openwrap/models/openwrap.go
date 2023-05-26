@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/prebid/openrtb/v17/openrtb2"
+	"github.com/prebid/openrtb/v19/openrtb2"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models/adunitconfig"
 )
 
@@ -117,6 +117,7 @@ type PartnerData struct {
 
 type BidCtx struct {
 	BidExt
+	FloorUSD float64
 }
 
 type AdUnitCtx struct {

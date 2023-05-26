@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"github.com/prebid/openrtb/v17/openrtb2"
+	"github.com/prebid/openrtb/v19/openrtb2"
 	"github.com/prebid/prebid-server/hooks/hookanalytics"
 	"github.com/prebid/prebid-server/hooks/hookstage"
 	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/adunitconfig"
@@ -162,7 +162,8 @@ func (m OpenWrap) handleAuctionResponseHook(
 				impCtx.BidCtx = make(map[string]models.BidCtx)
 			}
 			impCtx.BidCtx[bid.ID] = models.BidCtx{
-				BidExt: *bidExt,
+				BidExt:   *bidExt,
+				FloorUSD: bid.BidFloors,
 			}
 			rctx.ImpBidCtx[bid.ImpID] = impCtx
 		}

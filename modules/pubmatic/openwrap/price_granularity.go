@@ -26,7 +26,7 @@ func computePriceGranularity(rctx models.RequestCtx) (openrtb_ext.PriceGranulari
 	}
 
 	// OTT-769: (Backword compatibilty) compute based on legacy string (auto, med)
-	pgObject := openrtb_ext.PriceGranularityFromString(priceGranularity)
+	pgObject, _ := openrtb_ext.NewPriceGranularityFromLegacyID(priceGranularity)
 
 	return pgObject, nil
 }
@@ -48,6 +48,6 @@ func newCustomPriceGranuality(customPGValue string) (openrtb_ext.PriceGranularit
 		return pg, err
 	}
 	// Overwrite always to 2
-	pg.Precision = 2
+	pg.Precision = getIntPtr(2)
 	return pg, nil
 }
