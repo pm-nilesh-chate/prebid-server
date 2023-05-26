@@ -94,11 +94,9 @@ func updateBidRequestWithFloors(extFloorRules *openrtb_ext.PriceFloorRules, requ
 				imp.BidFloor = bidFloor
 				imp.BidFloorCur = floorCur
 
-				if isRuleMatched {
-					err = updateImpExtWithFloorDetails(imp, matchedRule, floorVal, imp.BidFloor)
-					if err != nil {
-						floorErrList = append(floorErrList, err)
-					}
+				err = updateImpExtWithFloorDetails(imp, matchedRule, floorVal, imp.BidFloor)
+				if err != nil {
+					floorErrList = append(floorErrList, err)
 				}
 			} else {
 				floorErrList = append(floorErrList, err)
@@ -188,6 +186,10 @@ func createFloorsFrom(floors *openrtb_ext.PriceFloorRules, account config.Accoun
 				finalFloors.Data.ModelGroups = []openrtb_ext.PriceFloorModelGroup{validModelGroups[0].Copy()}
 			}
 		}
+	}
+
+	if floorLocation == openrtb_ext.RequestLocation && finalFloors.Data == nil {
+		finalFloors.PriceFloorLocation = openrtb_ext.NoDataLocation
 	}
 
 	return finalFloors, floorModelErrList

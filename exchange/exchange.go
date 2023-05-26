@@ -507,6 +507,13 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 		bidResponseExt.Warnings[openrtb_ext.BidderReservedGeneral] = append(bidResponseExt.Warnings[openrtb_ext.BidderReservedGeneral], generalWarning)
 	}
 
+	if enabled, rules := floorsEnabled(r.Account, r.BidRequestWrapper); enabled && rules != nil {
+		if bidResponseExt.Prebid == nil {
+			bidResponseExt.Prebid = &openrtb_ext.ExtResponsePrebid{}
+		}
+		bidResponseExt.Prebid.Floors = rules
+	}
+
 	e.bidValidationEnforcement.SetBannerCreativeMaxSize(r.Account.Validations)
 
 	// Build the response

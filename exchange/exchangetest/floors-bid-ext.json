@@ -1,6 +1,6 @@
 {
     "description": "Verifies bid.ext.prebid for floors",
-    "floor_enabled": true,
+    "floors_enabled": true,
     "incomingRequest": {
       "ortbRequest": {
         "id": "some-request-id",
