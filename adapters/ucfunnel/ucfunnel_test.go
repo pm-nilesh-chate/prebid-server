@@ -75,8 +75,6 @@ func TestMakeRequests(t *testing.T) {
 	}
 }
 
-func abc() {}
-
 func TestMakeBids(t *testing.T) {
 	imp := openrtb2.Imp{
 		ID:     "1234",
