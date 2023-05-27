@@ -11,7 +11,6 @@ import (
 	"github.com/prebid/prebid-server/analytics"
 	"github.com/prebid/prebid-server/analytics/openwrap"
 	"github.com/prebid/prebid-server/metrics"
-	"github.com/prebid/prebid-server/modules/pubmatic/openwrap/models"
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
 
@@ -63,12 +62,13 @@ func UpdateResponseExtOW(bidResponse *openrtb2.BidResponse, ao analytics.Auction
 		extBidResponse.OwLogInfo.Logger, _ = openwrap.GetLogAuctionObjectAsURL(ao, true, true)
 	}
 
-	if seatNonBids := updateSeatNoBid(rCtx, ao); len(seatNonBids) != 0 {
-		if extBidResponse.Prebid == nil {
-			extBidResponse.Prebid = &openrtb_ext.ExtResponsePrebid{}
-		}
-		extBidResponse.Prebid.SeatNonBid = seatNonBids
-	}
+	// TODO: uncomment after seatnonbid PR is merged https://github.com/prebid/prebid-server/pull/2505
+	// if seatNonBids := updateSeatNoBid(rCtx, ao); len(seatNonBids) != 0 {
+	// 	if extBidResponse.Prebid == nil {
+	// 		extBidResponse.Prebid = &openrtb_ext.ExtResponsePrebid{}
+	// 	}
+	// 	extBidResponse.Prebid.SeatNonBid = seatNonBids
+	// }
 
 	if rCtx.Debug {
 		extBidResponse.OwLogger, _ = openwrap.GetLogAuctionObjectAsURL(ao, false, true)
@@ -77,62 +77,63 @@ func UpdateResponseExtOW(bidResponse *openrtb2.BidResponse, ao analytics.Auction
 	bidResponse.Ext, _ = json.Marshal(extBidResponse)
 }
 
+// TODO: uncomment after seatnonbid PR is merged https://github.com/prebid/prebid-server/pull/2505
 // TODO: Move this to module once it gets []analytics.RejectedBid as param (submit it in vanilla)
-func updateSeatNoBid(rCtx *models.RequestCtx, ao analytics.AuctionObject) []openrtb_ext.SeatNonBid {
-	seatNonBids := make([]openrtb_ext.SeatNonBid, 0, len(ao.RejectedBids))
+// func updateSeatNoBid(rCtx *models.RequestCtx, ao analytics.AuctionObject) []openrtb_ext.SeatNonBid {
+// 	seatNonBids := make([]openrtb_ext.SeatNonBid, 0, len(ao.RejectedBids))
 
-	seatNoBids := make(map[string][]analytics.RejectedBid)
-	for _, rejectedBid := range ao.RejectedBids {
-		seatNoBids[rejectedBid.Seat] = append(seatNoBids[rejectedBid.Seat], rejectedBid)
-	}
+// 	seatNoBids := make(map[string][]analytics.RejectedBid)
+// 	for _, rejectedBid := range ao.RejectedBids {
+// 		seatNoBids[rejectedBid.Seat] = append(seatNoBids[rejectedBid.Seat], rejectedBid)
+// 	}
 
-	for seat, rejectedBids := range seatNoBids {
-		extSeatNoBid := openrtb_ext.SeatNonBid{
-			Seat:    seat,
-			NonBids: make([]openrtb_ext.NonBid, 0, len(rejectedBids)),
-		}
+// 	for seat, rejectedBids := range seatNoBids {
+// 		extSeatNoBid := openrtb_ext.SeatNonBid{
+// 			Seat:    seat,
+// 			NonBids: make([]openrtb_ext.NonBid, 0, len(rejectedBids)),
+// 		}
 
-		for _, rejectedBid := range rejectedBids {
-			bid := *rejectedBid.Bid.Bid
-			addClientConfig(rCtx, seat, &bid)
-			extSeatNoBid.NonBids = append(extSeatNoBid.NonBids, openrtb_ext.NonBid{
-				ImpId:      rejectedBid.Bid.Bid.ImpID,
-				StatusCode: rejectedBid.RejectionReason,
-				Ext: openrtb_ext.NonBidExt{
-					Prebid: openrtb_ext.ExtResponseNonBidPrebid{
-						Bid: openrtb_ext.Bid{
-							Bid: bid,
-						},
-					},
-				},
-			})
-		}
+// 		for _, rejectedBid := range rejectedBids {
+// 			bid := *rejectedBid.Bid.Bid
+// 			addClientConfig(rCtx, seat, &bid)
+// 			extSeatNoBid.NonBids = append(extSeatNoBid.NonBids, openrtb_ext.NonBid{
+// 				ImpId:      rejectedBid.Bid.Bid.ImpID,
+// 				StatusCode: rejectedBid.RejectionReason,
+// 				Ext: openrtb_ext.NonBidExt{
+// 					Prebid: openrtb_ext.ExtResponseNonBidPrebid{
+// 						Bid: openrtb_ext.Bid{
+// 							Bid: bid,
+// 						},
+// 					},
+// 				},
+// 			})
+// 		}
 
-		seatNonBids = append(seatNonBids, extSeatNoBid)
-	}
+// 		seatNonBids = append(seatNonBids, extSeatNoBid)
+// 	}
 
-	return seatNonBids
-}
+// 	return seatNonBids
+// }
 
-func addClientConfig(rCtx *models.RequestCtx, seat string, bid *openrtb2.Bid) {
-	if seatNoBidBySeat, ok := rCtx.NoSeatBids[bid.ImpID]; ok {
-		if seatNoBids, ok := seatNoBidBySeat[seat]; ok {
-			for _, seatNoBid := range seatNoBids {
-				bidExt := models.BidExt{}
-				if err := json.Unmarshal(seatNoBid.Ext, &bidExt); err != nil {
-					continue
-				}
+// func addClientConfig(rCtx *models.RequestCtx, seat string, bid *openrtb2.Bid) {
+// 	if seatNoBidBySeat, ok := rCtx.NoSeatBids[bid.ImpID]; ok {
+// 		if seatNoBids, ok := seatNoBidBySeat[seat]; ok {
+// 			for _, seatNoBid := range seatNoBids {
+// 				bidExt := models.BidExt{}
+// 				if err := json.Unmarshal(seatNoBid.Ext, &bidExt); err != nil {
+// 					continue
+// 				}
 
-				inBidExt := models.BidExt{}
-				if err := json.Unmarshal(bid.Ext, &inBidExt); err != nil {
-					continue
-				}
+// 				inBidExt := models.BidExt{}
+// 				if err := json.Unmarshal(bid.Ext, &inBidExt); err != nil {
+// 					continue
+// 				}
 
-				inBidExt.Banner = bidExt.Banner
-				inBidExt.Video = bidExt.Video
+// 				inBidExt.Banner = bidExt.Banner
+// 				inBidExt.Video = bidExt.Video
 
-				bid.Ext, _ = json.Marshal(inBidExt)
-			}
-		}
-	}
-}
+// 				bid.Ext, _ = json.Marshal(inBidExt)
+// 			}
+// 		}
+// 	}
+// }
