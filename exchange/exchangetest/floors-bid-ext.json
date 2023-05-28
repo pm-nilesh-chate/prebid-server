@@ -1,6 +1,7 @@
 {
     "description": "Verifies bid.ext.prebid for floors",
-    "floor_enabled": true,
+    "floors_enabled": true,
+    "account_floors_enabled":true,
     "incomingRequest": {
       "ortbRequest": {
         "id": "some-request-id",
@@ -40,7 +41,7 @@
                     "modelversion": "version1",
                     "default": 2,
                     "values": {
-                      "video-instream|*|test.somedomain.com": 16
+                      "video|*|test.somedomain.com": 16
                     },
                     "schema": {
                       "fields": [
@@ -77,7 +78,7 @@
                     "video/mp4"
                   ]
                 },
-                "bidfloor": 5,
+                "bidfloor": 16,
                 "bidfloorcur": "USD",
                 "ext": {
                   "bidder": {
@@ -132,7 +133,14 @@
                   "origbidcpm": 0.3,
                   "someField": "someValue",
                   "prebid": {
-                    "type": "video"
+                    "type": "video",
+                    "floors": 
+                      {
+                        "floorCurrency":"USD", 
+                        "floorRule":"video|*|test.somedomain.com", 
+                        "floorRuleValue":16, 
+                        "floorValue":16
+                      }
                   }
                 }
               }
