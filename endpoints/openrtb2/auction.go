@@ -495,12 +495,6 @@ func (deps *endpointDeps) parseRequest(httpRequest *http.Request, labels *metric
 
 	lmt.ModifyForIOS(req.BidRequest)
 
-	err = hookExecutor.ExecuteBeforeRequestValidationStage(req.BidRequest)
-	if err != nil {
-		errs = append(errs, err)
-		return
-	}
-
 	hasStoredResponses := len(storedAuctionResponses) > 0
 	errL := deps.validateRequest(req, false, hasStoredResponses, storedBidResponses, hasStoredBidRequest)
 	if len(errL) > 0 {
