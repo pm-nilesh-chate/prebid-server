@@ -1,4 +1,4 @@
-module github.com/pm-nilesh-chate/prebid-server
+module github.com/PubMatic-OpenWrap/prebid-server
 
 go 1.19
 
