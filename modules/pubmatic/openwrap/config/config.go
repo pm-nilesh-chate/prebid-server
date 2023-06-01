@@ -4,15 +4,14 @@ import "time"
 
 // Config contains the values read from the config file at boot time
 type Config struct {
-	Server             Server
-	Database           Database
-	Cache              Cache
-	Timeout            Timeout
-	Tracker            Tracker
-	PixelView          PixelView
-	BidderParamMapping map[string]map[string]*ParameterMapping `json:"bidder_param_mapping"`
-	Features           FeatureToggle
-	Log                Log
+	Server    Server
+	Database  Database
+	Cache     Cache
+	Timeout   Timeout
+	Tracker   Tracker
+	PixelView PixelView
+	Features  FeatureToggle
+	Log       Log
 }
 
 type Server struct {
@@ -69,15 +68,6 @@ type Tracker struct {
 
 type PixelView struct {
 	OMScript string //js script path for conditional tracker call fire
-}
-
-// ParameterMapping holds mapping information for bidder parameter
-type ParameterMapping struct {
-	BidderParamName string      `json:"bidderParameterName,omitempty"`
-	KeyName         string      `json:"keyName,omitempty"`
-	Datatype        string      `json:"type,omitempty"`
-	Required        bool        `json:"required,omitempty"`
-	DefaultValue    interface{} `json:"defaultValue,omitempty"`
 }
 
 type FeatureToggle struct {

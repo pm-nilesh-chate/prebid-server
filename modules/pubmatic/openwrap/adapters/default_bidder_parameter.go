@@ -30,6 +30,15 @@ type BidderParameter struct {
 	Items ArrayItemsType `json:"items"`
 }
 
+// ParameterMapping holds mapping information for bidder parameter
+type ParameterMapping struct {
+	BidderParamName string      `json:"bidderParameterName,omitempty"`
+	KeyName         string      `json:"keyName,omitempty"`
+	Datatype        string      `json:"type,omitempty"`
+	Required        bool        `json:"required,omitempty"`
+	DefaultValue    interface{} `json:"defaultValue,omitempty"`
+}
+
 // ArrayItemsType defines items type as per JSON schema files in static/bidder-param
 type ArrayItemsType struct {
 	Type string `json:"type"`
@@ -41,12 +50,12 @@ func parseBidderParams(cfg config.Config) error {
 		return err
 	}
 
-	owParameterMappings := cfg.BidderParamMapping
+	owParameterMappings := parseOpenWrapParameterMappings()
 	if owParameterMappings == nil {
 		return errors.New("BidderParamMapping is not defined in config")
 	}
 
-	adapterParams = make(map[string]map[string]*config.ParameterMapping)
+	adapterParams = make(map[string]map[string]*ParameterMapping)
 
 	for bidderName, jsonSchema := range schemas {
 
@@ -55,9 +64,9 @@ func parseBidderParams(cfg config.Config) error {
 			continue
 		}
 
-		parameters := make(map[string]*config.ParameterMapping)
+		parameters := make(map[string]*ParameterMapping)
 		for propertyName, propertyDef := range jsonSchema.Properties {
-			bidderParam := config.ParameterMapping{}
+			bidderParam := ParameterMapping{}
 			bidderParam.BidderParamName = propertyName
 			bidderParam.KeyName = propertyName
 			bidderParam.Datatype = getType(propertyDef)
@@ -172,4 +181,30 @@ func getBidderParamsDirectory() string {
 	}
 
 	return ""
+}
+
+func parseOpenWrapParameterMappings() map[string]map[string]*ParameterMapping {
+	return map[string]map[string]*ParameterMapping{
+		"dmx": {
+			"tagid": {
+				KeyName: "dmxid",
+			},
+		},
+		"vrtcal": {
+			"just_an_unused_vrtcal_param": {
+				KeyName:      "dummyParam",
+				DefaultValue: "1",
+			},
+		},
+		"grid": {
+			"uid": {
+				Required: true,
+			},
+		},
+		"adkernel": {
+			"zoneId": {
+				Datatype: "integer",
+			},
+		},
+	}
 }
