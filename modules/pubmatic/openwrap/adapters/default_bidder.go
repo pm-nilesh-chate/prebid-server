@@ -98,7 +98,7 @@ func addBidParam(bidParams map[string]interface{}, name string, paramType string
 			for _, elem := range v {
 				elemFloat, ok := elem.(float64) //Unmarshal's default type interface values
 				if !ok {
-					return fmt.Errorf("ErrTypeCastFailed", name, "float64", elem)
+					return fmt.Errorf("ErrTypeCastFailed %s float64 %v", name, elem)
 				}
 				arr = append(arr, int(elemFloat))
 			}
@@ -126,7 +126,7 @@ func addBidParam(bidParams map[string]interface{}, name string, paramType string
 			for _, elem := range v {
 				elemFloat, ok := elem.(float64) //Unmarshal's default type interface values
 				if !ok {
-					return fmt.Errorf("ErrTypeCastFailed", name, "float64", elem)
+					return fmt.Errorf("ErrTypeCastFailed %s float64 %v", name, elem)
 				}
 				arr = append(arr, elemFloat)
 			}
@@ -151,7 +151,7 @@ func addBidParam(bidParams map[string]interface{}, name string, paramType string
 			for _, elem := range v {
 				elemStr, ok := elem.(string)
 				if !ok {
-					return fmt.Errorf("ErrTypeCastFailed", name, "float64", elem)
+					return fmt.Errorf("ErrTypeCastFailed %s float64 %v", name, elem)
 				}
 				arr = append(arr, elemStr)
 			}
