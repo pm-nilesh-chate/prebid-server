@@ -168,7 +168,6 @@ func prepareModulesOutcome(modulesOutcome *ModulesOutcome, groups []GroupOutcome
 		for i, hookOutcome := range group.InvocationResults {
 			if !trace.isVerbose() {
 				group.InvocationResults[i].DebugMessages = nil
-				// group.InvocationResults[i].AnalyticsTags = hookanalytics.Analytics{}
 			}
 
 			if isDebugEnabled {
