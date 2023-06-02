@@ -24,8 +24,10 @@ func (m OpenWrap) handleEntrypointHook(
 	miCtx hookstage.ModuleInvocationContext,
 	payload hookstage.EntrypointPayload,
 ) (hookstage.HookResult[hookstage.EntrypointPayload], error) {
-	result := hookstage.HookResult[hookstage.EntrypointPayload]{
-		Reject: true,
+	result := hookstage.HookResult[hookstage.EntrypointPayload]{}
+	queryParams := payload.Request.URL.Query()
+	if queryParams.Get("sshb") == "1" {
+		return result, nil
 	}
 
 	var err error
@@ -42,22 +44,24 @@ func (m OpenWrap) handleEntrypointHook(
 		requestExtWrapper, err = models.GetRequestExtWrapper(payload.Body, "ext", "wrapper")
 	case OpenWrapV25Video:
 		requestExtWrapper, err = v25.ConvertVideoToAuctionRequest(payload, &result)
-		if err != nil {
-			result.NbrCode = nbr.InvalidVideoRequest
-			result.Errors = append(result.Errors, "InvalidVideoRequest")
-			return result, err
-		}
 	case OpenWrapAmp:
 		// requestExtWrapper, err = models.GetQueryParamRequestExtWrapper(payload.Body)
 	}
 
-	if err != nil || requestExtWrapper.ProfileId == 0 {
+	// init default for all modules
+	result.Reject = true
+
+	if err != nil {
+		result.NbrCode = nbr.InvalidRequest
+		result.Errors = append(result.Errors, "InvalidRequest")
+		return result, err
+	}
+
+	if requestExtWrapper.ProfileId == 0 {
 		result.NbrCode = nbr.InvalidProfileID
 		result.Errors = append(result.Errors, "ErrMissingProfileID")
 		return result, err
 	}
-
-	queryParams := payload.Request.URL.Query()
 
 	rCtx := models.RequestCtx{
 		StartTime:                 time.Now().Unix(),
