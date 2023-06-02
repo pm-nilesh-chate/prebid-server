@@ -26,7 +26,7 @@ func (m OpenWrap) handleEntrypointHook(
 ) (hookstage.HookResult[hookstage.EntrypointPayload], error) {
 	result := hookstage.HookResult[hookstage.EntrypointPayload]{}
 	queryParams := payload.Request.URL.Query()
-	if queryParams.Get("sshb") == "1" {
+	if queryParams.Get("sshb") != "1" {
 		return result, nil
 	}
 

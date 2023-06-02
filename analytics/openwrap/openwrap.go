@@ -39,7 +39,9 @@ func (ow HTTPLogger) LogAuctionObject(ao *analytics.AuctionObject) {
 	}()
 
 	url, headers := GetLogAuctionObjectAsURL(*ao, false, false)
-	Send(url, headers)
+	if url != "" {
+		Send(url, headers)
+	}
 }
 
 // Writes VideoObject to file
