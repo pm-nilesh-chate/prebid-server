@@ -20,7 +20,7 @@ func computePriceGranularity(rctx models.RequestCtx) (openrtb_ext.PriceGranulari
 		// If it is empty then use default value as 'auto'
 		// If it is custom but not CTV request then use default value as 'a
 		priceGranularity = "auto"
-	} else if rctx.IsTestRequest && rctx.IsCTVRequest {
+	} else if rctx.IsTestRequest > 0 && rctx.IsCTVRequest {
 		//OTT-603: Adding test flag check
 		priceGranularity = "testpg"
 	}

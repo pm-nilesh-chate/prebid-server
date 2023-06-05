@@ -57,7 +57,10 @@ func (m OpenWrap) handleBeforeValidationHook(
 		return result, err
 	}
 
-	rCtx.IsTestRequest = payload.BidRequest.Test == 2
+	// TODO: verify preference of request.test vs queryParam test
+	if payload.BidRequest.Test != 0 {
+		rCtx.IsTestRequest = payload.BidRequest.Test
+	}
 
 	partnerConfigMap, err := m.getProfileData(rCtx, *payload.BidRequest)
 	if err != nil || len(partnerConfigMap) == 0 {
@@ -354,7 +357,7 @@ func (m OpenWrap) handleBeforeValidationHook(
 
 // applyProfileChanges copies and updates BidRequest with required values from http header and partnetConfigMap
 func (m *OpenWrap) applyProfileChanges(rctx models.RequestCtx, bidRequest *openrtb2.BidRequest) (*openrtb2.BidRequest, error) {
-	if rctx.IsTestRequest {
+	if rctx.IsTestRequest > 0 {
 		bidRequest.Test = 1
 	}
 

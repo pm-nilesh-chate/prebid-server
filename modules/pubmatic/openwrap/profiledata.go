@@ -6,7 +6,7 @@ import (
 )
 
 func (m OpenWrap) getProfileData(rCtx models.RequestCtx, bidRequest openrtb2.BidRequest) (map[int]map[string]string, error) {
-	if rCtx.IsTestRequest {
+	if rCtx.IsTestRequest > 0 {
 		//get platform from request, since test mode can be enabled for display and app platform only
 		var platform string // TODO: should we've some default platform value
 		if bidRequest.App != nil {

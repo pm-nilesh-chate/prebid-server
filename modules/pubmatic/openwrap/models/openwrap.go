@@ -24,7 +24,7 @@ type RequestCtx struct {
 	TMax int64
 
 	//NYC_TODO: use enum?
-	IsTestRequest                     bool
+	IsTestRequest                     int8
 	ABTestConfig, ABTestConfigApplied int
 	IsCTVRequest                      bool
 
