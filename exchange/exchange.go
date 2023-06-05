@@ -408,6 +408,17 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 					}
 				}
 			}
+
+			if responseDebugAllow {
+				if err := r.BidRequestWrapper.RebuildRequestExt(); err != nil {
+					return nil, err
+				}
+				resolvedBidReq, err := json.Marshal(r.BidRequestWrapper.BidRequest)
+				if err != nil {
+					return nil, err
+				}
+				r.ResolvedBidRequest = resolvedBidReq
+			}
 		}
 
 		adapterBids, rejections := applyAdvertiserBlocking(r, adapterBids)
@@ -1270,6 +1281,7 @@ func (e *exchange) makeExtBidResponse(adapterBids map[openrtb_ext.BidderName]*en
 		}
 		if len(errList) > 0 {
 			bidResponseExt.Errors[openrtb_ext.PrebidExtKey] = errsToBidderErrors(errList)
+			bidResponseExt.Warnings[openrtb_ext.PrebidExtKey] = errsToBidderWarnings(errList)
 		}
 		bidResponseExt.ResponseTimeMillis[bidderName] = responseExtra.ResponseTimeMillis
 		// Defering the filling of bidResponseExt.Usersync[bidderName] until later

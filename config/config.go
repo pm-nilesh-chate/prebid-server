@@ -171,11 +171,6 @@ func (cfg *Configuration) validate(v *viper.Viper) []error {
 
 	errs = cfg.Experiment.validate(errs)
 	errs = cfg.BidderInfos.validate(errs)
-
-	if cfg.PriceFloors.Enabled {
-		glog.Warning(`PriceFloors.Enabled will enforce floor feature which is still under development.`)
-	}
-
 	return errs
 }
 
