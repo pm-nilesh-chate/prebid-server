@@ -28,9 +28,7 @@
               {"key": "valueless"}
             ],
             "use_pmt_rule": true,
-            "private_sizes": [{"w": 300, "h": 250}],
-            "ext_inv_code": "invCode",
-            "external_imp_id": "impId"
+            "private_sizes": [{"w": 300, "h": 250}]
           }
         }
       }
@@ -68,9 +66,7 @@
                   "keywords": "foo=bar,foo=baz,valueless",
                   "traffic_source_code": "trafficSource",
                   "use_pmt_rule": true,
-                  "private_sizes": [{"w": 300, "h": 250}],
-                  "ext_inv_code": "invCode",
-                  "external_imp_id": "impId"
+                  "private_sizes": [{"w": 300, "h": 250}]
                 }
               }
             }

@@ -23,10 +23,8 @@ type ExtImpAppnexus struct {
 	UsePaymentRule           *bool                  `json:"use_pmt_rule"`
 	DeprecatedUsePaymentRule *bool                  `json:"use_payment_rule"`
 	// At this time we do no processing on the private sizes, so just leaving it as a JSON blob.
-	PrivateSizes  json.RawMessage `json:"private_sizes"`
-	AdPodId       bool            `json:"generate_ad_pod_id"`
-	ExtInvCode    string          `json:"ext_inv_code"`
-	ExternalImpId string          `json:"external_imp_id"`
+	PrivateSizes json.RawMessage `json:"private_sizes"`
+	AdPodId      bool            `json:"generate_ad_pod_id"`
 }
 
 type ExtImpAppnexusKeywords string
