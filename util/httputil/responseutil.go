@@ -1,13 +1,14 @@
-package adapters
+package httputil
 
 import (
 	"fmt"
 	"net/http"
 
+	"github.com/prebid/prebid-server/adapters"
 	"github.com/prebid/prebid-server/errortypes"
 )
 
-func CheckResponseStatusCodeForErrors(response *ResponseData) error {
+func CheckResponseStatusCodeForErrors(response *adapters.ResponseData) error {
 	if response.StatusCode == http.StatusBadRequest {
 		return &errortypes.BadInput{
 			Message: fmt.Sprintf("Unexpected status code: %d. Run with request.debug = 1 for more info", response.StatusCode),
@@ -21,6 +22,6 @@ func CheckResponseStatusCodeForErrors(response *ResponseData) error {
 	return nil
 }
 
-func IsResponseStatusCodeNoContent(response *ResponseData) bool {
+func IsResponseStatusCodeNoContent(response *adapters.ResponseData) bool {
 	return response.StatusCode == http.StatusNoContent
 }

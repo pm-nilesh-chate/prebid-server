@@ -13,6 +13,7 @@ import (
 	"github.com/prebid/prebid-server/adapters"
 	"github.com/prebid/prebid-server/config"
 	"github.com/prebid/prebid-server/openrtb_ext"
+	"github.com/prebid/prebid-server/util/httputil"
 )
 
 const (
@@ -173,11 +174,11 @@ func buildPrebidRequest(flippExtParams openrtb_ext.ImpExtFlipp, request *openrtb
 }
 
 func (a *adapter) MakeBids(request *openrtb2.BidRequest, requestData *adapters.RequestData, responseData *adapters.ResponseData) (*adapters.BidderResponse, []error) {
-	if adapters.IsResponseStatusCodeNoContent(responseData) {
+	if httputil.IsResponseStatusCodeNoContent(responseData) {
 		return nil, nil
 	}
 
-	if err := adapters.CheckResponseStatusCodeForErrors(responseData); err != nil {
+	if err := httputil.CheckResponseStatusCodeForErrors(responseData); err != nil {
 		return nil, []error{err}
 	}
 
