@@ -53,8 +53,12 @@
       "expectedRequest": {
         "uri": "http://whatever.url",
         "headers": {
-          "Content-Type": ["application/json;charset=utf-8"],
-          "Accept": ["application/json"]
+          "Content-Type": [
+            "application/json;charset=utf-8"
+          ],
+          "Accept": [
+            "application/json"
+          ]
         },
         "body": {
           "id": "web-banner",
@@ -112,12 +116,7 @@
                   "adm": "<div>Ad</div>",
                   "price": 20,
                   "w": 300,
-                  "h": 250,
-                  "ext": {
-                    "prebid": {
-                      "type": "banner"
-                    }
-                  }
+                  "h": 250
                 }
               ]
             }
@@ -129,8 +128,12 @@
       "expectedRequest": {
         "uri": "http://whatever.url",
         "headers": {
-          "Content-Type": ["application/json;charset=utf-8"],
-          "Accept": ["application/json"]
+          "Content-Type": [
+            "application/json;charset=utf-8"
+          ],
+          "Accept": [
+            "application/json"
+          ]
         },
         "body": {
           "id": "web-banner",
@@ -188,12 +191,7 @@
                   "adm": "<div>Ad</div>",
                   "price": 20,
                   "w": 300,
-                  "h": 600,
-                  "ext": {
-                    "prebid": {
-                      "type": "banner"
-                    }
-                  }
+                  "h": 600
                 }
               ]
             }
@@ -214,12 +212,7 @@
             "adm": "<div>Ad</div>",
             "price": 20,
             "w": 300,
-            "h": 250,
-            "ext": {
-              "prebid": {
-                "type": "banner"
-              }
-            }
+            "h": 250
           },
           "type": "banner"
         }
@@ -236,12 +229,7 @@
             "adm": "<div>Ad</div>",
             "price": 20,
             "w": 300,
-            "h": 600,
-            "ext": {
-              "prebid": {
-                "type": "banner"
-              }
-            }
+            "h": 600
           },
           "type": "banner"
         }

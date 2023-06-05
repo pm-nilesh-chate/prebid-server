@@ -11,14 +11,21 @@
           },
           "bidder": {
             "pkey": "pkey",
-            "badv": ["ford.com"],
-            "bcat": ["IAB-1", "IAB-2"]
+            "badv": [
+              "ford.com"
+            ],
+            "bcat": [
+              "IAB-1",
+              "IAB-2"
+            ]
           }
         },
         "video": {
           "w": 640,
           "h": 480,
-          "mimes": ["video/mp4"],
+          "mimes": [
+            "video/mp4"
+          ],
           "placement": 1
         }
       }
@@ -41,8 +48,12 @@
       "expectedRequest": {
         "uri": "http://whatever.url",
         "headers": {
-          "Content-Type": ["application/json;charset=utf-8"],
-          "Accept": ["application/json"]
+          "Content-Type": [
+            "application/json;charset=utf-8"
+          ],
+          "Accept": [
+            "application/json"
+          ]
         },
         "body": {
           "id": "web-video",
@@ -57,14 +68,21 @@
                 },
                 "bidder": {
                   "pkey": "pkey",
-                  "badv": ["ford.com"],
-                  "bcat": ["IAB-1", "IAB-2"]
+                  "badv": [
+                    "ford.com"
+                  ],
+                  "bcat": [
+                    "IAB-1",
+                    "IAB-2"
+                  ]
                 }
               },
               "video": {
                 "w": 640,
                 "h": 480,
-                "mimes": ["video/mp4"],
+                "mimes": [
+                  "video/mp4"
+                ],
                 "placement": 1
               }
             }
@@ -105,12 +123,7 @@
                   "adm": "<VAST>TAG</VAST>",
                   "price": 20,
                   "w": 640,
-                  "h": 480,
-                  "ext": {
-                    "prebid": {
-                      "type": "video"
-                    }
-                  }
+                  "h": 480
                 }
               ]
             }
@@ -131,12 +144,7 @@
             "adm": "<VAST>TAG</VAST>",
             "price": 20,
             "w": 640,
-            "h": 480,
-            "ext": {
-              "prebid": {
-                "type": "video"
-              }
-            }
+            "h": 480
           },
           "type": "video"
         }

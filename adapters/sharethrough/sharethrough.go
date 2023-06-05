@@ -130,37 +130,20 @@ func (a *adapter) MakeBids(request *openrtb2.BidRequest, requestData *adapters.R
 
 	bidderResponse := adapters.NewBidderResponse()
 	bidderResponse.Currency = "USD"
-	var errors []error
 
 	for _, seatBid := range bidResp.SeatBid {
 		for i := range seatBid.Bid {
-			bid := &seatBid.Bid[i]
-			bidType, err := getMediaTypeForBid(*bid)
-			if err != nil {
-				errors = append(errors, err)
+			bidType := openrtb_ext.BidTypeBanner
+			if bidReq.Imp[0].Video != nil {
+				bidType = openrtb_ext.BidTypeVideo
 			}
 
 			bidderResponse.Bids = append(bidderResponse.Bids, &adapters.TypedBid{
 				BidType: bidType,
-				Bid:     bid,
+				Bid:     &seatBid.Bid[i],
 			})
 		}
 	}
 
-	return bidderResponse, errors
-}
-
-func getMediaTypeForBid(bid openrtb2.Bid) (openrtb_ext.BidType, error) {
-
-	if bid.Ext != nil {
-		var bidExt openrtb_ext.ExtBid
-		err := json.Unmarshal(bid.Ext, &bidExt)
-		if err == nil && bidExt.Prebid != nil {
-			return openrtb_ext.ParseBidType(string(bidExt.Prebid.Type))
-		}
-	}
-
-	return "", &errortypes.BadServerResponse{
-		Message: fmt.Sprintf("Failed to parse bid mediatype for impression \"%s\"", bid.ImpID),
-	}
+	return bidderResponse, nil
 }
