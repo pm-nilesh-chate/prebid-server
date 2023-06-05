@@ -400,6 +400,9 @@ func (bidder *bidderAdapter) requestBid(ctx context.Context, bidderRequest Bidde
 			reqInfo.MakeBidsTimeInfo.Durations = append(reqInfo.MakeBidsTimeInfo.Durations, time.Since(startTime))
 		} else {
 			errs = append(errs, httpInfo.err)
+			if errortypes.ReadCode(httpInfo.err) == errortypes.TimeoutErrorCode {
+				recordPartnerTimeout(ctx, bidderRequest.BidderLabels.PubID, bidder.BidderName.String())
+			}
 		}
 	}
 	reqInfo.MakeBidsTimeInfo.AfterMakeBidsStartTime = time.Now()
@@ -575,7 +578,6 @@ func (bidder *bidderAdapter) doRequestImpl(ctx context.Context, req *adapters.Re
 				// a loop of trying to report timeouts to the timeout notifications.
 				go bidder.doTimeoutNotification(tb, req, logger)
 			}
-
 		}
 		return &httpCallInfo{
 			request: req,
