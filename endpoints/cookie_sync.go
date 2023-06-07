@@ -135,6 +135,11 @@ func (c *cookieSyncEndpoint) parseRequest(r *http.Request) (usersync.Request, pr
 		return usersync.Request{}, privacy.Policies{}, err
 	}
 
+	//OpenWrap: do not allow publishers to bypass GDPR
+	if c.privacyConfig.gdprConfig.DefaultValue == "1" && gdprSignal == gdpr.SignalNo {
+		return usersync.Request{}, privacy.Policies{}, errCookieSyncGDPRMandatoryByHost
+	}
+
 	if request.GDPRConsent == "" {
 		if gdprSignal == gdpr.SignalYes {
 			return usersync.Request{}, privacy.Policies{}, errCookieSyncGDPRConsentMissing
@@ -160,11 +165,6 @@ func (c *cookieSyncEndpoint) parseRequest(r *http.Request) (usersync.Request, pr
 			Consent: request.GPP,
 			RawSID:  request.GPPSid,
 		},
-	}
-
-	//OpenWrap: do not allow publishers to bypass GDPR
-	if c.privacyConfig.gdprConfig.DefaultValue == "1" && gdprSignal == gdpr.SignalNo {
-		return usersync.Request{}, privacy.Policies{}, errCookieSyncGDPRMandatoryByHost
 	}
 
 	ccpaParsedPolicy := ccpa.ParsedPolicy{}
@@ -364,10 +364,10 @@ func (c *cookieSyncEndpoint) handleResponse(w http.ResponseWriter, tf usersync.S
 		if bidderName == "indexExchange" {
 			bidderName = "ix"
 		}
-		syncTypes := tf.ForBidder(syncerChoice.Bidder)
+		syncTypes := tf.ForBidder(bidderName)
 		sync, err := syncerChoice.Syncer.GetSync(syncTypes, p)
 		if err != nil {
-			glog.Errorf("Failed to get usersync info for %s: %v", syncerChoice.Bidder, err)
+			glog.Errorf("Failed to get usersync info for %s: %v", bidderName, err)
 			continue
 		}
 

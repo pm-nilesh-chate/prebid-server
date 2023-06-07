@@ -6,8 +6,7 @@ all: deps test build-modules build
 
 # deps will clean out the vendor directory and use go mod for a fresh install
 deps:
-	# GOPROXY="https://proxy.golang.org" go mod vendor -v && go mod tidy -v
-	go mod tidy -v
+	GOPROXY="https://proxy.golang.org" go mod vendor -v && go mod tidy -v
 	
 # test will ensure that all of our dependencies are available and run validate.sh
 test: deps
@@ -25,8 +24,8 @@ build-modules:
 
 # build will ensure all of our tests pass and then build the go binary
 build: test
-	go build ./...
+	go build -mod=vendor ./...
 
 # image will build a docker image
 image:
-	docker build --platform linux/amd64 -t prebid-server --build-arg TEST=false .
+	docker build -t prebid-server .
