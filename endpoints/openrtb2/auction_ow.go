@@ -9,7 +9,7 @@ import (
 	"github.com/prebid/openrtb/v19/openrtb2"
 	"github.com/prebid/openrtb/v19/openrtb3"
 	"github.com/prebid/prebid-server/analytics"
-	"github.com/prebid/prebid-server/analytics/openwrap"
+	"github.com/prebid/prebid-server/analytics/pubmatic"
 	"github.com/prebid/prebid-server/metrics"
 	"github.com/prebid/prebid-server/openrtb_ext"
 )
@@ -53,13 +53,13 @@ func UpdateResponseExtOW(bidResponse *openrtb2.BidResponse, ao analytics.Auction
 		}
 	}
 
-	rCtx := openwrap.GetRequestCtx(ao.HookExecutionOutcome)
+	rCtx := pubmatic.GetRequestCtx(ao.HookExecutionOutcome)
 	if rCtx == nil {
 		return
 	}
 
 	if rCtx.LogInfoFlag == 1 {
-		extBidResponse.OwLogInfo.Logger, _ = openwrap.GetLogAuctionObjectAsURL(ao, true, true)
+		extBidResponse.OwLogInfo.Logger, _ = pubmatic.GetLogAuctionObjectAsURL(ao, true, true)
 	}
 
 	// TODO: uncomment after seatnonbid PR is merged https://github.com/prebid/prebid-server/pull/2505
@@ -71,7 +71,7 @@ func UpdateResponseExtOW(bidResponse *openrtb2.BidResponse, ao analytics.Auction
 	// }
 
 	if rCtx.Debug {
-		extBidResponse.OwLogger, _ = openwrap.GetLogAuctionObjectAsURL(ao, false, true)
+		extBidResponse.OwLogger, _ = pubmatic.GetLogAuctionObjectAsURL(ao, false, true)
 	}
 
 	bidResponse.Ext, _ = json.Marshal(extBidResponse)

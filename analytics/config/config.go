@@ -6,7 +6,7 @@ import (
 	"github.com/prebid/prebid-server/analytics"
 	"github.com/prebid/prebid-server/analytics/clients"
 	"github.com/prebid/prebid-server/analytics/filesystem"
-	"github.com/prebid/prebid-server/analytics/openwrap"
+	"github.com/prebid/prebid-server/analytics/pubmatic"
 	"github.com/prebid/prebid-server/analytics/pubstack"
 	"github.com/prebid/prebid-server/config"
 )
@@ -40,7 +40,7 @@ func NewPBSAnalytics(analytics *config.Analytics) analytics.PBSAnalyticsModule {
 	}
 
 	if analytics.PubMatic.Enabled {
-		modules = append(modules, openwrap.NewHTTPLogger(analytics.PubMatic))
+		modules = append(modules, pubmatic.NewHTTPLogger(analytics.PubMatic))
 	}
 
 	return modules
