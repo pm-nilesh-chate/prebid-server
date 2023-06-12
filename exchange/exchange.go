@@ -371,7 +371,8 @@ func (e *exchange) HoldAuction(ctx context.Context, r *AuctionRequest, debugLog 
 		} else if r.Account.AlternateBidderCodes != nil {
 			alternateBidderCodes = *r.Account.AlternateBidderCodes
 		}
-		adapterBids, adapterExtra, fledge, anyBidsReturned = e.getAllBids(auctionCtx, bidderRequests, bidAdjustmentFactors, conversions, accountDebugAllow, r.GlobalPrivacyControlHeader, debugLog.DebugOverride, alternateBidderCodes, requestExtLegacy.Prebid.Experiment, r.HookExecutor, r.StartTime, bidAdjustmentRules)
+
+		adapterBids, adapterExtra, fledge, anyBidsReturned = e.getAllBids(auctionCtx, bidderRequests, bidAdjustmentFactors, conversions, accountDebugAllow, r.GlobalPrivacyControlHeader, debugLog.DebugOverride, alternateBidderCodes, requestExtLegacy.Prebid.Experiment, r.HookExecutor, r.StartTime, bidAdjustmentRules, r.Account.PriceFloors.BidAdjustment)
 		r.MakeBidsTimeInfo = buildMakeBidsTimeInfoMap(adapterExtra)
 	}
 
@@ -699,7 +700,8 @@ func (e *exchange) getAllBids(
 	experiment *openrtb_ext.Experiment,
 	hookExecutor hookexecution.StageExecutor,
 	pbsRequestStartTime time.Time,
-	bidAdjustmentRules map[string][]openrtb_ext.Adjustment) (
+	bidAdjustmentRules map[string][]openrtb_ext.Adjustment,
+	bidFloorAdjustment bool) (
 	map[openrtb_ext.BidderName]*entities.PbsOrtbSeatBid,
 	map[openrtb_ext.BidderName]*seatResponseExtra,
 	*openrtb_ext.Fledge,
@@ -733,6 +735,9 @@ func (e *exchange) getAllBids(
 			reqInfo := adapters.NewExtraRequestInfo(conversions)
 			reqInfo.PbsEntryPoint = bidderRequest.BidderLabels.RType
 			reqInfo.GlobalPrivacyControlHeader = globalPrivacyControlHeader
+			if bidAjustmentFactor, ok := bidAdjustments[bidderRequest.BidderName.String()]; ok && bidFloorAdjustment {
+				reqInfo.BidAdjustmentFactor = bidAjustmentFactor
+			}
 			reqInfo.BidderRequestStartTime = start
 
 			bidReqOptions := bidRequestOptions{
