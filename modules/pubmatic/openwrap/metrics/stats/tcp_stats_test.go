@@ -359,7 +359,7 @@ func TestRecordFunctions(t *testing.T) {
 			},
 			callRecord: func(st *StatsTCP) {
 				st.RecordPublisherInvalidProfileRequests("video", "5890", "pubmatic")
-				st.RecordPublisherInvalidProfileRequests("AMP", "5890", "pubmatic")
+				st.RecordPublisherInvalidProfileRequests("amp", "5890", "pubmatic")
 				st.RecordPublisherInvalidProfileRequests("", "5890", "pubmatic")
 			},
 		},
@@ -865,9 +865,9 @@ func TestRecordFunctions(t *testing.T) {
 				channelSize: 7,
 			},
 			callRecord: func(st *StatsTCP) {
-				st.RecordBadRequests("AMP", 1)
-				st.RecordBadRequests("Video", 1)
-				st.RecordBadRequests("V25", 1)
+				st.RecordBadRequests("amp", 1)
+				st.RecordBadRequests("video", 1)
+				st.RecordBadRequests("v25", 1)
 				st.RecordBadRequests("json", 100)
 				st.RecordBadRequests("openwrap", 200)
 				st.RecordBadRequests("ortb", 300)
@@ -1128,82 +1128,6 @@ func TestRecordFunctions(t *testing.T) {
 			},
 		},
 		{
-			name: "RecordAdomainPresentStats",
-			args: args{
-				statTCP: &StatsTCP{
-					&Client{
-						pubChan: make(chan stat, 1),
-					},
-				},
-			},
-			want: want{
-				expectedkeyVal: map[string]int{
-					fmt.Sprintf(statKeys[statsKeyPublisherPartnerAdomainPresent], "banner", "5890", "1234"): 1,
-				},
-				channelSize: 1,
-			},
-			callRecord: func(st *StatsTCP) {
-				st.RecordAdomainPresentStats("banner", "5890", "1234")
-			},
-		},
-		{
-			name: "RecordAdomainAbsentStats",
-			args: args{
-				statTCP: &StatsTCP{
-					&Client{
-						pubChan: make(chan stat, 1),
-					},
-				},
-			},
-			want: want{
-				expectedkeyVal: map[string]int{
-					fmt.Sprintf(statKeys[statsKeyPublisherPartnerAdomainAbsent], "banner", "5890", "1234"): 1,
-				},
-				channelSize: 1,
-			},
-			callRecord: func(st *StatsTCP) {
-				st.RecordAdomainAbsentStats("banner", "5890", "1234")
-			},
-		},
-		{
-			name: "RecordCatPresentStats",
-			args: args{
-				statTCP: &StatsTCP{
-					&Client{
-						pubChan: make(chan stat, 1),
-					},
-				},
-			},
-			want: want{
-				expectedkeyVal: map[string]int{
-					fmt.Sprintf(statKeys[statsKeyPublisherPartnerCatPresent], "banner", "5890", "pubmatic"): 1,
-				},
-				channelSize: 1,
-			},
-			callRecord: func(st *StatsTCP) {
-				st.RecordCatPresentStats("banner", "5890", "pubmatic")
-			},
-		},
-		{
-			name: "statsKeyPublisherPartnerCatAbsent",
-			args: args{
-				statTCP: &StatsTCP{
-					&Client{
-						pubChan: make(chan stat, 1),
-					},
-				},
-			},
-			want: want{
-				expectedkeyVal: map[string]int{
-					fmt.Sprintf(statKeys[statsKeyPublisherPartnerCatAbsent], "banner", "5890", "pubmatic"): 1,
-				},
-				channelSize: 1,
-			},
-			callRecord: func(st *StatsTCP) {
-				st.RecordCatAbsentStats("banner", "5890", "pubmatic")
-			},
-		},
-		{
 			name: "RecordPBSAuctionRequestsStats",
 			args: args{
 				statTCP: &StatsTCP{
@@ -1319,9 +1243,9 @@ func TestRecordFunctions(t *testing.T) {
 				channelSize: 6,
 			},
 			callRecord: func(st *StatsTCP) {
-				st.RecordPublisherRequests("AMP", "5890", "")
-				st.RecordPublisherRequests("Video", "5890", "")
-				st.RecordPublisherRequests("V25", "5890", "banner")
+				st.RecordPublisherRequests("amp", "5890", "")
+				st.RecordPublisherRequests("video", "5890", "")
+				st.RecordPublisherRequests("v25", "5890", "banner")
 				st.RecordPublisherRequests("ortb", "5890", "banner")
 				st.RecordPublisherRequests("json", "5890", "banner")
 				st.RecordPublisherRequests("vast", "5890", "banner")
@@ -1344,8 +1268,8 @@ func TestRecordFunctions(t *testing.T) {
 				channelSize: 2,
 			},
 			callRecord: func(st *StatsTCP) {
-				st.RecordCacheErrorRequests("AMP", "5890", "1234")
-				st.RecordCacheErrorRequests("Video", "5890", "1234")
+				st.RecordCacheErrorRequests("amp", "5890", "1234")
+				st.RecordCacheErrorRequests("video", "5890", "1234")
 			},
 		},
 	}
